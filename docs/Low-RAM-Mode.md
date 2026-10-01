@@ -54,8 +54,8 @@ Three rules keep the signal from flapping:
    further over-budget polls — an earlier version reset the timer on every poll,
    which meant the latch could never trip at all.
 2. **Hysteresis.** After usage drops back below the budget, the monitor stays
-   latched until usage falls to 90% of the budget. A workload hovering on the
-   limit does not cause repeated evict/reopen cycles.
+   latched until usage falls to 85% of the budget (`kRecoveryRatio`). A workload
+   hovering on the limit does not cause repeated evict/reopen cycles.
 3. **No budget, no reading, no action.** If the platform sampler fails, or the
    mode is off, or the budget is unset, the monitor reports "not over budget"
    rather than guessing.
@@ -68,7 +68,12 @@ is not mid-mutation:
 - a new tab is created
 - a tab is closed
 - the user switches tabs
-- the settings page polls its memory readout
+
+Those are also the points where memory actually grows, because each one
+allocates or releases a WebView and its DOM and JavaScript heap. The settings
+page deliberately does **not** trigger reclamation: it is a read-only diagnostic
+surface, and reclaiming from inside a JavaScript bridge callback would mean
+closing a tab from the middle of the call that is displaying memory figures.
 
 At each of those points, if the monitor is latched over budget, the browser
 repeatedly evicts the **least-recently-activated background tab** and re-measures

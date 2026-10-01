@@ -295,6 +295,26 @@ tar -xzf Ultralight-WebBrowser-*.tar.gz -C ~/.local/opt
 - **Shortcut Mapping** – JSON-based keyboard shortcut configuration
 - **Debug Panel** – Runtime settings inspection and diagnostics
 
+### 🧠 Low-RAM Mode
+Opt-in memory management that keeps the process working set under a budget you
+choose, by closing the least-recently-used background tabs. See
+**[docs/Low-RAM-Mode.md](docs/Low-RAM-Mode.md)** for the full design.
+- **Configurable budget** – Any whole number of megabytes, 64–16384 MB (default 512 MB)
+- **Working-set sampling** – Native per-platform: `GetProcessMemoryInfo` (Windows),
+  `task_info` (macOS), `/proc/self/statm` (Linux/Android)
+- **Flap-resistant detection** – 5 s grace period plus an 85% hysteresis watermark,
+  so a brief spike or a workload hovering on the limit never triggers churn
+- **Least-recently-used eviction** – Never closes the active tab, and never closes
+  a DRM tab that is holding a live media session
+- **Actual memory returned** – Calls `malloc_trim(0)` after each eviction on
+  glibc/Bionic, so the freed pages really leave the working set
+- **Live readout** – Settings → Performance shows current usage, peak, budget and
+  tab count, updated every 2 s
+- **Thread-safe by construction** – A background sampler only raises an atomic
+  flag; all tab and view mutation happens on the UI thread
+- **Unit tested** – `MemoryMonitorTest` exercises the monitor against an injected
+  fake sampler, with no dependency on the host's real memory usage
+
 ---
 
 ## 🆕 Recent Updates
@@ -306,6 +326,13 @@ tar -xzf Ultralight-WebBrowser-*.tar.gz -C ~/.local/opt
   - Configurable latitude/longitude in Settings → Privacy
   - Preset city buttons: New York, London, Tokyo, Sydney, Paris
   - JavaScript geolocation API override for privacy protection
+- **Low-RAM Mode** – Optional working-set budget with LRU background-tab reclamation
+  - See [docs/Low-RAM-Mode.md](docs/Low-RAM-Mode.md)
+  - Off by default; budget configurable 64–16384 MB
+- **Android ARM64 Build** – NDK cross-build via `cmake/toolchains/android-arm64.cmake`
+  - Added to `build-all.yml` and `build-all-arm.yml`
+  - Produces a TGZ of cross-compiled binaries, not an installable APK
+  - DRM is stubbed out (no embeddable system WebView in the NDK)
 - **WebP to PNG Conversion** – Automatic conversion of downloaded WebP images
   - Windows Imaging Component (WIC) based conversion
   - Toggle in Settings → Downloads
@@ -612,6 +639,39 @@ Override the browser's geolocation API with custom coordinates for privacy prote
 </details>
 
 <details>
+<summary><b>🧠 Low-RAM Mode</b></summary>
+
+Keep the process working set under a budget you choose, by closing the
+least-recently-used background tabs. Full design in
+**[docs/Low-RAM-Mode.md](docs/Low-RAM-Mode.md)**.
+
+**Configuration:**
+1. Open **Settings** → **Performance**
+2. Enable **Low-RAM mode**
+3. Set **Memory budget (MB)** — any whole number from 64 to 16384 (default 512)
+4. The readout below the setting updates every 2 seconds
+
+**How It Works:**
+- A background sampler reads the process working set twice a second:
+  `GetProcessMemoryInfo` (Windows), `task_info` (macOS), `/proc/self/statm` (Linux/Android)
+- Usage must stay above the budget for 5 continuous seconds before anything closes
+- Hysteresis at 85% of the budget stops a workload on the limit from flapping
+- The least-recently-activated background tab is closed, then usage is re-measured
+  and the loop repeats until under budget
+- `malloc_trim(0)` returns the freed pages to the OS (Linux/Android)
+- Every eviction is logged: `[UI] low-RAM: closed background tab 3, now 498.2 MB of 512.0 MB budget`
+
+**Never reclaimed:**
+- The active tab
+- DRM tabs holding a live media session
+- The last remaining tab
+
+**Threading:** a background thread only sets an atomic flag. All tab and view
+mutation happens on the UI thread, because Ultralight is not thread-safe.
+
+</details>
+
+<details>
 <summary><b>🛡️ Ad Blocking</b></summary>
 
 Rules loaded from:
@@ -642,7 +702,7 @@ Toggle via toolbar icon or Settings → Privacy → Enable AdBlock
 | **Privacy & Security** | AdBlock, Tracker Blocking, JavaScript, Cookies, DNT, Clear History, Location Spoofing |
 | **Address Bar** | Autocompletion, Favicons, Suggestions |
 | **Downloads** | Badge, Auto-open Panel, Location Prompt, WebP to PNG Conversion |
-| **Performance** | Smooth Scrolling, Hardware Acceleration, Local Storage |
+| **Performance** | Smooth Scrolling, Hardware Acceleration, Local Storage, Low-RAM Mode, Memory Budget (MB) |
 | **Accessibility** | Reduce Motion, High Contrast, Caret Browsing |
 | **Developer** | Remote Inspector, Performance Overlay |
 | **DRM Content** | Enable DRM WebView |
