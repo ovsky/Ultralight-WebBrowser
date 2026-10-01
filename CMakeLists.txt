@@ -112,6 +112,12 @@ elseif(APPLE)
 	list(APPEND SOURCES
 		"src/drm/DRMDependencyManager_mac.cpp"
 		"src/drm/DRMWebViewTab_mac.mm")
+elseif(ANDROID)
+	# Android defines __linux__, but it has none of the desktop DRM embedders
+	# (WebView2 / WKWebView / WebKit2GTK) and the NDK ships no GTK. Use the stub
+	# so the DRM code path stays null-safe instead of failing to compile.
+	list(APPEND SOURCES
+		"src/drm/DRMWebViewTab_android.cpp")
 elseif(UNIX)
 	list(APPEND SOURCES
 		"src/drm/DRMDependencyManager_linux.cpp"
@@ -122,7 +128,9 @@ add_app(Ultralight-WebBrowser ${SOURCES})
 
 # On Linux, DRM webview support depends on GTK and WebKit2GTK.
 # We require these packages in CI and link them when present.
-if(UNIX AND NOT APPLE)
+# Android is excluded: the NDK provides neither, and DRM is handled by the
+# Android stub in src/drm/DRMWebViewTab_android.cpp.
+if(UNIX AND NOT APPLE AND NOT ANDROID)
 	find_package(PkgConfig REQUIRED)
 	pkg_check_modules(GTK3 REQUIRED gtk+-3.0)
 	# Prefer WebKit2GTK 4.1 (Ubuntu 24.04 default), but fall back to 4.0
@@ -182,9 +190,12 @@ endif()
  # Unit test for utils
  enable_testing()
 
- # Only build tests in environments where linking to the Ultralight
- # libraries is supported.
- if(NOT (WIN32 AND NOT MSVC))
+	 # Only build tests in environments where linking to the Ultralight
+	 # libraries is supported. Android cross-builds are excluded: the test
+	 # binaries are AArch64 ELF files that cannot execute on the CI runner, and
+	 # fetching/building GoogleTest for a target we never run only slows the
+	 # build down. Test coverage runs in the native platform workflows.
+	 if(NOT (WIN32 AND NOT MSVC) AND NOT ANDROID)
 	 include(FetchContent)
 	 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 	 FetchContent_Declare(
@@ -519,8 +530,17 @@ else()
 	set(ARCH_SUFFIX ${CMAKE_SYSTEM_PROCESSOR})
 endif()
 
+# Android is always aarch64 in this project's CI, and the generic processor
+# string is unreliable across NDK versions ("aarch64", "arm64-v8a", ...).
+# Pin the name so artifacts are stable and self-describing.
+if(ANDROID)
+	set(ARCH_SUFFIX "arm64")
+endif()
+
 if(APPLE)
 	set(OS_NAME "macOS")
+elseif(ANDROID)
+	set(OS_NAME "Android")
 elseif(WIN32)
 	set(OS_NAME "Windows")
 elseif(UNIX)

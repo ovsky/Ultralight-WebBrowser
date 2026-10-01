@@ -81,10 +81,44 @@ Goals:
 | Windows 10/11+ | x64 | Portable ZIP, optional NSIS installer | ARM64 SDK not yet published by Ultralight |
 | macOS 12+ | x64, arm64 | TGZ, optional DMG | ARM64 auto‑detected when runner host is ARM64 |
 | Linux (Ubuntu/Fedora etc.) | x64, arm64 | TGZ / DEB / RPM | ARM64 requires aarch64 runner; workflow automatically includes detection & fallback |
+| Android | arm64 (API 24+) | TGZ of cross‑compiled binaries | NDK cross‑build; **not** an installable APK — see [Android builds](#-android-builds) |
 
-ARM64 archives are probed automatically when available in the `base-sdk` branch (eg: `ultralight-free-sdk-<ver>-linux-arm64.7z`, `...-mac-arm64.7z`). Current public CI uses x64 runners; arm64 builds may require:
+ARM64 archives are probed automatically when available in the `base-sdk` branch (eg: `ultralight-free-sdk-<ver>-linux-arm64.7z`, `...-mac-arm64.7z`, `...-android-arm64.7z`). Current public CI uses x64 runners; arm64 builds may require:
 - Self‑hosted runner (Apple Silicon / aarch64 Linux)
 - Future strategy matrix addition (see CI section)
+
+### 🤖 Android builds
+
+Android ARM64 is cross-compiled on the standard `ubuntu-latest` runner using the
+Android NDK, so it needs no emulation container and no self-hosted ARM hardware.
+
+```bash
+cmake -S . -B build-android \
+  -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/android-arm64.cmake \
+  -DANDROID_NDK="$ANDROID_NDK" \
+  -DANDROID_API=24 \
+  -DULTRALIGHT_SDK_ROOT="$SDK_ROOT"
+cmake --build build-android --parallel
+```
+
+`cmake/toolchains/android-arm64.cmake` validates `ANDROID_NDK` (must exist, must
+be absolute, must be NDK r23+) and `ANDROID_API` (must be ≥ 24), then delegates
+to the NDK's own `android.toolchain.cmake`. The NDK is pinned to `r26d` in CI so
+a new NDK release cannot silently change the Clang version or sysroot.
+
+**What the Android artifact is, and is not.** The workflow produces a TGZ
+containing the cross-compiled executable, the Ultralight shared libraries and
+`assets/`. It is **not** an installable APK: that additionally requires an
+Android application project — a Gradle manifest, a launcher Activity and a JNI
+bridge into `AppCore` — which this repository does not contain. The CI job proves
+the codebase cross-compiles and links for `aarch64-linux-android`, and it
+architecture-checks both the SDK libraries and the built binary to catch a
+wrong-architecture SDK archive early.
+
+DRM is unsupported on Android. The NDK ships neither WebView2, WKWebView nor
+WebKit2GTK, so `src/drm/DRMWebViewTab_android.cpp` provides a null-returning stub
+and the dependency manager reports "no manager"; DRM navigation falls back to the
+normal Ultralight path.
 
 ---
 
@@ -447,6 +481,8 @@ Major feature sync bringing all development improvements to the stable branch.
 | `build-macos-arm64.yml` | macOS ARM64 | Apple Silicon |
 | `build-linux.yml` | Linux x64 | GTK3, WebKit2GTK |
 | `build-linux-arm64.yml` | Linux ARM64 | Self-hosted/emulated |
+| `build-android-arm64.yml` | Android ARM64 | NDK cross-build, no emulation |
+| `build-all-arm.yml` | ARM64 meta | macOS + Linux + Android ARM64 |
 
 ### Environment Variables
 
@@ -646,6 +682,8 @@ Shortcuts are customizable via `assets/shortcuts.json`:
 | `build-macos-arm64.yml` | macOS ARM64 | Apple Silicon |
 | `build-linux.yml` | Linux x64 | GTK3, WebKit2GTK |
 | `build-linux-arm64.yml` | Linux ARM64 | Self-hosted/emulated |
+| `build-android-arm64.yml` | Android ARM64 | NDK cross-build, no emulation |
+| `build-all-arm.yml` | ARM64 meta | macOS + Linux + Android ARM64 |
 
 ### Environment Variables
 
