@@ -520,6 +520,7 @@ Major feature sync bringing all development improvements to the stable branch.
 | `WEBBROWSER_VERSION` | App version label |
 | `PACKAGE_GENERATORS` | CPack generators (`TGZ;DEB;RPM`) |
 | `CREATE_INSTALLER` | Build NSIS installer (Windows) |
+| `ULTRALIGHT_LOG_REQUESTS` | Runtime opt-in. `1` logs every network request to stderr; `0`/`false` disables. Off by default |
 
 ---
 
@@ -754,6 +755,7 @@ Shortcuts are customizable via `assets/shortcuts.json`:
 | `WEBBROWSER_VERSION` | App version label |
 | `PACKAGE_GENERATORS` | CPack generators (`TGZ;DEB;RPM`) |
 | `CREATE_INSTALLER` | Build NSIS installer (Windows) |
+| `ULTRALIGHT_LOG_REQUESTS` | Runtime opt-in. `1` logs every network request to stderr; `0`/`false` disables. Off by default |
 
 ---
 
