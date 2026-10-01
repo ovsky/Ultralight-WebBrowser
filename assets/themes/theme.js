@@ -10,6 +10,8 @@
     // Theme storage key
     const THEME_STORAGE_KEY = 'ultralight_active_theme';
     const CUSTOM_THEMES_KEY = 'ultralight_custom_themes';
+    // User edits layered on top of the shipped built-in palettes.
+    const OVERRIDES_KEY = 'ultralight_theme_overrides';
 
     // Default themes that ship with the browser
     // Note: Organized with more dark themes as they are more popular
@@ -983,6 +985,14 @@
         constructor() {
             this.currentTheme = null;
             this.customThemes = {};
+            // User edits layered on top of the shipped built-ins. Keeping them
+            // separate is what makes "Reset to default" possible: the built-in
+            // object is never mutated, so discarding the override restores the
+            // original palette exactly.
+            this.themeOverrides = {};
+            // Legacy assets/themes/*.json definitions, loaded as selectable
+            // "Classic" variants. See loadSeedThemes().
+            this.seedThemes = {};
             this.styleElement = null;
         }
 
@@ -990,6 +1000,8 @@
          * Initialize the theme manager
          */
         init() {
+            this.loadThemeOverrides();
+            this.loadSeedThemes();
             this.loadCustomThemes();
             this.createStyleElement();
 
@@ -1035,7 +1047,123 @@
          * Get all available themes (built-in + custom)
          */
         getAllThemes() {
-            return { ...DEFAULT_THEMES, ...this.customThemes };
+            // Layer order matters and is lowest-priority-first:
+            //   built-ins  <  seed variants  <  overrides  <  custom themes
+            // Overrides beat seeds/built-ins (user edits a shipped palette);
+            // custom themes beat everything (they are separate themes, and a
+            // custom theme must never be shadowed by a built-in of the same name).
+            const builtIns = { ...DEFAULT_THEMES };
+
+            // Apply any user override of a built-in palette on top of it.
+            for (const id in this.themeOverrides) {
+                if (!Object.prototype.hasOwnProperty.call(builtIns, id)) continue;
+                builtIns[id] = this._mergeTheme(builtIns[id], this.themeOverrides[id]);
+            }
+
+            return { ...builtIns, ...this.seedThemes, ...this.customThemes };
+        }
+
+        /**
+         * Shallow-merge a partial theme definition onto a base theme, keeping
+         * the base id and merging `colors` rather than replacing the object so a
+         * partial edit (a single colour) does not blank every other variable.
+         */
+        _mergeTheme(base, updates) {
+            if (!updates || typeof updates !== 'object') return base;
+            return {
+                ...base,
+                ...updates,
+                id: base.id,
+                colors: { ...(base.colors || {}), ...(updates.colors || {}) }
+            };
+        }
+
+        /**
+         * Load the built-in theme overrides from native storage.
+         */
+        loadThemeOverrides() {
+            try {
+                let parsed = null;
+                if (window.NativeGetThemeOverrides) {
+                    const json = window.NativeGetThemeOverrides();
+                    if (json && json !== '{}') parsed = JSON.parse(json);
+                }
+                if (!parsed) {
+                    const stored = localStorage.getItem(OVERRIDES_KEY);
+                    if (stored) parsed = JSON.parse(stored);
+                }
+                this.themeOverrides = parsed || {};
+            } catch (e) {
+                console.warn('Failed to load theme overrides:', e);
+                this.themeOverrides = {};
+            }
+        }
+
+        /**
+         * Persist the built-in theme overrides.
+         */
+        saveThemeOverrides() {
+            try {
+                const json = JSON.stringify(this.themeOverrides);
+                if (window.NativeSaveThemeOverrides) {
+                    window.NativeSaveThemeOverrides(json);
+                }
+                localStorage.setItem(OVERRIDES_KEY, json);
+            } catch (e) {
+                console.warn('Failed to save theme overrides:', e);
+            }
+        }
+
+        /**
+         * Load the legacy assets/themes/*.json definitions as selectable themes.
+         *
+         * The native layer returns them keyed by file stem. Those stems collide
+         * with built-in ids (dark, light, midnight, nord, monokai), so each is
+         * renamed to a `classic_` id. Without that rename the merge in
+         * getAllThemes() would silently replace the richer in-engine palettes,
+         * and "Reset to default" would no longer restore anything.
+         */
+        loadSeedThemes() {
+            try {
+                if (!window.NativeGetSeedThemes) {
+                    this.seedThemes = {};
+                    return;
+                }
+
+                const raw = window.NativeGetSeedThemes();
+                if (!raw || raw === '{}') {
+                    this.seedThemes = {};
+                    return;
+                }
+
+                const parsed = JSON.parse(raw);
+                const seeds = {};
+
+                for (const stem in parsed) {
+                    if (!Object.prototype.hasOwnProperty.call(parsed, stem)) continue;
+
+                    const theme = parsed[stem];
+                    if (!theme || typeof theme !== 'object' || !theme.colors) continue;
+
+                    const id = 'classic_' + stem;
+                    seeds[id] = {
+                        ...theme,
+                        id: id,
+                        // Marked so the UI can offer "Reset to default" and so a
+                        // future edit is treated as a custom theme, not an
+                        // override of a shipped palette.
+                        isSeed: true,
+                        isBuiltIn: false,
+                        name: (theme.name || stem) + ' (Classic)',
+                        description: (theme.description || '') + ' — legacy palette.'
+                    };
+                }
+
+                this.seedThemes = seeds;
+            } catch (e) {
+                console.warn('Failed to load legacy seed themes:', e);
+                this.seedThemes = {};
+            }
         }
 
         /**
@@ -1051,7 +1179,13 @@
         getSavedThemeId() {
             try {
                 if (window.NativeGetSetting) {
-                    return window.NativeGetSetting('theme') || 'dark';
+                    const native = window.NativeGetSetting('theme');
+                    // Native is authoritative once it actually holds a value.
+                    // Falling through when it is empty migrates installs that
+                    // predate the native bridge without losing the user's choice;
+                    // a hard '|| dark' here would silently reset every existing
+                    // theme selection the first time an updated page loads.
+                    if (native) return native;
                 }
                 return localStorage.getItem(THEME_STORAGE_KEY) || 'dark';
             } catch (e) {
@@ -1078,13 +1212,25 @@
          */
         loadCustomThemes() {
             try {
+                let parsed = null;
+
                 if (window.NativeGetThemes) {
                     const json = window.NativeGetThemes();
-                    this.customThemes = JSON.parse(json || '{}');
-                } else {
-                    const stored = localStorage.getItem(CUSTOM_THEMES_KEY);
-                    this.customThemes = stored ? JSON.parse(stored) : {};
+                    // The native layer returns '{}' when it has nothing stored.
+                    // Treating that as "no themes yet" rather than as an empty
+                    // result keeps themes saved before the native bridge existed
+                    // from being wiped on first load after an update.
+                    if (json && json !== '{}') {
+                        parsed = JSON.parse(json);
+                    }
                 }
+
+                if (!parsed) {
+                    const stored = localStorage.getItem(CUSTOM_THEMES_KEY);
+                    if (stored) parsed = JSON.parse(stored);
+                }
+
+                this.customThemes = parsed || {};
             } catch (e) {
                 console.warn('Failed to load custom themes:', e);
                 this.customThemes = {};
@@ -1376,28 +1522,94 @@
         }
 
         /**
-         * Update an existing custom theme
+         * Update an existing theme.
+         *
+         * Built-in palettes are editable, but the edit is stored as an override
+         * rather than by mutating DEFAULT_THEMES. That keeps the shipped palette
+         * recoverable, so resetTheme() can always restore the original exactly.
+         *
+         * Legacy seed variants are editable too: editing one turns it into a
+         * regular custom theme under the same id, which then behaves like any
+         * other custom theme (including delete).
          */
         updateTheme(themeId, updates) {
-            if (DEFAULT_THEMES[themeId]) {
-                console.warn('Cannot modify built-in theme');
+            let target;
+
+            if (this.customThemes[themeId]) {
+                // Custom theme: update in place as before.
+                this.customThemes[themeId] = this._mergeTheme(this.customThemes[themeId], updates);
+                this.saveCustomThemes();
+                target = this.customThemes[themeId];
+            } else if (this.seedThemes[themeId]) {
+                // Editing a legacy variant promotes it to a custom theme.
+                const seed = this.seedThemes[themeId];
+                this.customThemes[themeId] = {
+                    ...this._mergeTheme(seed, updates),
+                    id: themeId,
+                    isSeed: false,
+                    isBuiltIn: false
+                };
+                delete this.seedThemes[themeId];
+                this.saveCustomThemes();
+                target = this.customThemes[themeId];
+            } else if (DEFAULT_THEMES[themeId]) {
+                // Built-in: record an override.
+                const existing = this.themeOverrides[themeId] || {};
+                this.themeOverrides[themeId] = this._mergeTheme(
+                    { ...DEFAULT_THEMES[themeId], ...existing },
+                    updates
+                );
+                // Keep the shipped identity; only the palette is user-defined.
+                this.themeOverrides[themeId].id = themeId;
+                this.themeOverrides[themeId].isBuiltIn = true;
+                this.saveThemeOverrides();
+                target = this._mergeTheme(DEFAULT_THEMES[themeId], this.themeOverrides[themeId]);
+            } else {
+                console.warn('Theme not found:', themeId);
                 return false;
             }
 
-            if (!this.customThemes[themeId]) {
-                console.warn('Custom theme not found:', themeId);
-                return false;
+            // Re-apply if this is the theme currently on screen.
+            if (this.currentTheme && this.currentTheme.id === themeId) {
+                this.applyTheme(themeId);
             }
 
-            this.customThemes[themeId] = {
-                ...this.customThemes[themeId],
-                ...updates,
-                id: themeId // Ensure ID doesn't change
-            };
+            return target || false;
+        }
 
-            this.saveCustomThemes();
+        /**
+         * True when a theme carries user edits and can be reset.
+         */
+        isThemeModified(themeId) {
+            if (this.customThemes[themeId]) return true;
+            if (this.seedThemes[themeId]) return false;
+            return !!this.themeOverrides[themeId];
+        }
 
-            // Re-apply if this is the current theme
+        /**
+         * Discard user edits.
+         *
+         * For a built-in this drops the override and restores the shipped
+         * palette exactly. For a custom theme it deletes the theme, matching what
+         * the UI has always done for those. Returns true when something changed.
+         */
+        resetTheme(themeId) {
+            let changed = false;
+
+            if (this.themeOverrides[themeId]) {
+                delete this.themeOverrides[themeId];
+                this.saveThemeOverrides();
+                changed = true;
+            }
+
+            if (this.customThemes[themeId]) {
+                delete this.customThemes[themeId];
+                this.saveCustomThemes();
+                changed = true;
+            }
+
+            if (!changed) return false;
+
             if (this.currentTheme && this.currentTheme.id === themeId) {
                 this.applyTheme(themeId);
             }
