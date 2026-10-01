@@ -226,6 +226,14 @@
     "default": true
   },
   {
+    "key": "media_fallback_enabled",
+    "name": "Media Fallback",
+    "description": "Open known video sites (YouTube, Vimeo, Twitch...) in the native OS WebView. The bundled engine ships no video codecs, so playback shows an empty box otherwise.",
+    "category": "drm",
+    "note": "Requires native runtime",
+    "default": false
+  },
+  {
     "key": "enable_remote_inspector",
     "name": "Enable remote inspector",
     "description": "Allow remote debugging via Chrome DevTools Protocol.",

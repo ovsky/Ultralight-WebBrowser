@@ -1,0 +1,28 @@
+# Hosts that cannot play video in the bundled engine.
+#
+# The engine ships no media pipeline and no codecs, so <video> and <audio>
+# render as empty boxes on these sites. When "Media fallback" is enabled the
+# browser hands them to the platform's own webview instead, which already exists
+# for DRM and already works.
+#
+# One host per line. '#' starts a comment. A leading "*." is accepted but
+# stripped, so store bare hosts. Suffix matching is on a label boundary, meaning
+# "youtube.com" also covers www., m. and music. subdomains.
+
+youtube.com
+youtu.be
+vimeo.com
+dailymotion.com
+twitch.tv
+netflix.com
+hulu.com
+disneyplus.com
+primevideo.com
+peacocktv.com
+paramountplus.com
+max.com
+crunchyroll.com
+bilibili.com
+nicovideo.jp
+youku.com
+iqiyi.com
