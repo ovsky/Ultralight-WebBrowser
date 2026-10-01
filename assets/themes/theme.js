@@ -1622,7 +1622,12 @@
          */
         deleteTheme(themeId) {
             if (DEFAULT_THEMES[themeId]) {
-                console.warn('Cannot delete built-in theme');
+                // A built-in palette is shipped with the app, so deleting it would
+                // be unrecoverable. If the user has edited it, resetTheme() is the
+                // action they want; point them at it rather than silently failing.
+                console.warn(this.isThemeModified(themeId)
+                    ? 'Cannot delete built-in theme; use reset to restore its default'
+                    : 'Cannot delete built-in theme');
                 return false;
             }
 
