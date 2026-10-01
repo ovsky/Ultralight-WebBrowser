@@ -265,12 +265,16 @@ public:
   void NoteTabActivated(uint64_t tab_id);
   // Starts the background sampler. It only reads process memory and raises an
   // atomic flag; it never touches views, so it is safe off the UI thread.
-  // Reclamation itself happens on the UI thread at navigation and tab events.
+  // Reclamation itself happens on the UI thread, at tab open/close/activate.
   void StartMemoryWatchdog();
   // Stops the background sampler. Called from the destructor.
   void StopMemoryWatchdog();
   // True when the watchdog has seen sustained pressure since the last check.
   bool ConsumeMemoryPressureSignal();
+  // Creates the monitor on first use, configured from the current settings.
+  // Single lazy-init path so the two accessors above can never disagree about
+  // the monitor's mode or budget.
+  void EnsureMemoryMonitor();
   AdBlocker *network_blocker() { return adblock_; }
 
   // Privacy settings accessors for Tab's JavaScript injection

@@ -3441,6 +3441,19 @@ void UI::OnUpdateSetting(const JSObject &, const JSArgs &args)
         {
           size_t consumed = 0;
           requested = std::stoll(str, &consumed);
+
+          // Reject trailing garbage. Without this check stoll silently accepts
+          // "512abc" and "512.5" as 512, so a partially-typed value could be
+          // saved from the bridge even though the settings loader rejects it.
+          // Surrounding whitespace is tolerated, matching strtol semantics.
+          while (consumed < str.size() && std::isspace(static_cast<unsigned char>(str[consumed])))
+          {
+            ++consumed;
+          }
+          if (consumed != str.size())
+          {
+            return;
+          }
         }
         catch (const std::exception &)
         {
@@ -4053,25 +4066,29 @@ ultralight::JSValue UI::OnGetMemorySnapshot(const JSObject &obj, const JSArgs &a
   return JSValue(String(PollMemory().ToJSON().c_str()));
 }
 
+void UI::EnsureMemoryMonitor()
+{
+  if (memory_monitor_)
+    return;
+
+  // Constructed lazily so the accessors stay safe even if called during
+  // teardown. Both lazy paths funnel through here so the monitor can never end
+  // up with a different configuration depending on which one ran first.
+  memory_monitor_ = std::make_unique<memory::MemoryMonitor>();
+  memory_monitor_->SetLowRamModeEnabled(settings_.low_ram_mode);
+  memory_monitor_->SetBudgetBytes(
+      static_cast<uint64_t>(settings_.memory_budget_mb) * 1024ull * 1024ull);
+}
+
 memory::MemorySnapshot UI::GetMemorySnapshot()
 {
-  if (!memory_monitor_)
-  {
-    // Constructed lazily so the accessor is safe even if called during teardown.
-    memory_monitor_ = std::make_unique<memory::MemoryMonitor>();
-  }
+  EnsureMemoryMonitor();
   return memory_monitor_->Snapshot();
 }
 
 memory::MemorySnapshot UI::PollMemory()
 {
-  if (!memory_monitor_)
-  {
-    memory_monitor_ = std::make_unique<memory::MemoryMonitor>();
-    memory_monitor_->SetLowRamModeEnabled(settings_.low_ram_mode);
-    memory_monitor_->SetBudgetBytes(
-        static_cast<uint64_t>(settings_.memory_budget_mb) * 1024ull * 1024ull);
-  }
+  EnsureMemoryMonitor();
 
   // Keep the reported tab load accurate. tabs_ and drm_tabs_ are the real
   // containers; the monitor's running counter can drift across session restore.
