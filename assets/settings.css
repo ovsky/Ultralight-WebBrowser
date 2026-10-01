@@ -109,6 +109,11 @@ button { display:inline-flex; align-items:center; gap:6px; padding:10px 20px; bo
 .dark-sites-textarea { width:100%; min-height:150px; padding:10px 12px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-tertiary); color:var(--text-primary); font-size:12px; font-family:'Consolas','Courier New',monospace; resize:vertical; }
 .dark-sites-textarea:focus { outline:none; border-color:var(--accent-color); }
 .dark-sites-help { font-size:12px; color:var(--text-tertiary); margin-top:8px; }
+/* Numeric setting control (e.g. low-RAM budget) rendered by settings.html. */
+.setting-number-input { width:96px; padding:8px 12px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-tertiary); color:var(--text-primary); font-size:13px; font-family:'Consolas','Courier New',monospace; text-align:right; flex-shrink:0; }
+.setting-number-input:focus { outline:none; border-color:var(--accent-color); box-shadow:0 0 0 3px var(--accent-light); }
+/* Live working-set readout, only shown while low-RAM mode is enabled. */
+.memory-readout { margin:16px 0; padding:12px 16px; background:var(--bg-secondary); border:1px solid var(--border-color); border-left:3px solid var(--accent-color); border-radius:10px; font-size:12px; color:var(--text-primary); font-family:'Consolas','Courier New',monospace; line-height:1.5; }
 .::-webkit-scrollbar { width:8px; height:8px; }
 .::-webkit-scrollbar-track { background:var(--bg-secondary); border-radius:4px; }
 .::-webkit-scrollbar-thumb { background:var(--bg-hover); border-radius:4px; }
