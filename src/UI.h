@@ -5,6 +5,7 @@
 #include "ExtensionManager.h"
 #include "BookmarkStore.h"
 #include "MemoryMonitor.h"
+#include "ThemeManager.h"
 #include <map>
 #include <memory>
 #include <string>
@@ -177,6 +178,23 @@ public:
   void OnDownloadsOverlayPauseItem(const JSObject &obj, const JSArgs &args);
   void OnDownloadsOverlayRemoveItem(const JSObject &obj, const JSArgs &args);
   ultralight::JSValue OnGetDarkModeEnabled(const JSObject &obj, const JSArgs &args);
+  // Native persistence for assets/themes/theme.js. Without these bindings the
+  // theme engine silently degrades to localStorage, which is scoped to the
+  // file:// origin of whichever internal page happened to save it: it is not
+  // shared with browser settings, and clearing site data or opening assets from
+  // a different path drops the user's theme selection.
+  ultralight::JSValue OnNativeGetThemeSetting(const JSObject &obj, const JSArgs &args);
+  void OnNativeSetThemeSetting(const JSObject &obj, const JSArgs &args);
+  ultralight::JSValue OnNativeGetCustomThemes(const JSObject &obj, const JSArgs &args);
+  void OnNativeSaveCustomThemes(const JSObject &obj, const JSArgs &args);
+  // Built-in themes are editable through a persisted override layer rather than
+  // by mutating the shipped defaults, so "Reset to default" can always restore
+  // the original palette.
+  ultralight::JSValue OnNativeGetThemeOverrides(const JSObject &obj, const JSArgs &args);
+  void OnNativeSaveThemeOverrides(const JSObject &obj, const JSArgs &args);
+  // Returns the legacy assets/themes/*.json definitions as one JSON object
+  // keyed by file stem, so the theme engine can offer them as selectable themes.
+  ultralight::JSValue OnNativeGetSeedThemes(const JSObject &obj, const JSArgs &args);
   void OnToggleAdblock(const JSObject &obj, const JSArgs &args);
   ultralight::JSValue OnGetAdblockEnabled(const JSObject &obj, const JSArgs &args);
   void OnOpenSettingsPanel(const JSObject &obj, const JSArgs &args);
@@ -280,6 +298,12 @@ public:
   // Single lazy-init path so the two accessors above can never disagree about
   // the monitor's mode or budget.
   void EnsureMemoryMonitor();
+
+  // Native theme persistence backing the OnNative*Theme* bridges above. The
+  // engine and all theme data live in assets/themes/theme.js; this owns only the
+  // on-disk state, and delegates to themes::ThemeManager.
+  std::unique_ptr<themes::ThemeManager> theme_manager_;
+  themes::ThemeManager *theme_store();
   AdBlocker *network_blocker() { return adblock_; }
 
   // Privacy settings accessors for Tab's JavaScript injection

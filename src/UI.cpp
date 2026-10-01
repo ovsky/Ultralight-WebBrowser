@@ -1594,6 +1594,20 @@ void UI::OnDOMReady(View *caller, uint64_t frame_id, bool is_main_frame, const S
   global["OnRestoreSettingsDefaults"] = BindJSCallbackWithRetval(&UI::OnRestoreSettingsDefaults);
   global["OnSaveSettings"] = BindJSCallback(&UI::OnSaveSettings);
 
+  // Native theme persistence. Bound to every UI-owned view because
+  // assets/themes/theme.js is loaded by nine different pages (ui, settings,
+  // passwords, themes, history, downloads, bookmarks, extensions, new tab) and
+  // each of them checks for these globals independently. Binding them only on
+  // the chrome overlay would leave every internal page on the localStorage
+  // fallback, and the active theme would then differ between pages.
+  global["NativeGetSetting"] = BindJSCallbackWithRetval(&UI::OnNativeGetThemeSetting);
+  global["NativeSetSetting"] = BindJSCallback(&UI::OnNativeSetThemeSetting);
+  global["NativeGetThemes"] = BindJSCallbackWithRetval(&UI::OnNativeGetCustomThemes);
+  global["NativeSaveThemes"] = BindJSCallback(&UI::OnNativeSaveCustomThemes);
+  global["NativeGetThemeOverrides"] = BindJSCallbackWithRetval(&UI::OnNativeGetThemeOverrides);
+  global["NativeSaveThemeOverrides"] = BindJSCallback(&UI::OnNativeSaveThemeOverrides);
+  global["NativeGetSeedThemes"] = BindJSCallbackWithRetval(&UI::OnNativeGetSeedThemes);
+
   if (is_ctx_view)
   {
     // context menu overlay actions
@@ -3343,6 +3357,102 @@ ultralight::JSValue UI::OnGetDarkModeEnabled(const JSObject &, const JSArgs &)
   return ultralight::JSValue(dark_mode_enabled_ ? 1.0 : 0.0);
 }
 
+// ---------------------------------------------------------------------------
+// Native theme persistence
+//
+// assets/themes/theme.js prefers these bridges and falls back to localStorage
+// when they are absent. They were never bound, so the theme engine ran entirely
+// on localStorage: the selection was scoped to the file:// origin of whichever
+// internal page saved it, was invisible to the settings system, and was lost
+// whenever site data was cleared. Binding them puts the active theme and any
+// custom themes next to the rest of the browser's persistent state.
+// ---------------------------------------------------------------------------
+
+themes::ThemeManager *UI::theme_store()
+{
+  if (!theme_manager_)
+  {
+    theme_manager_ = std::make_unique<themes::ThemeManager>(SettingsDirectory());
+    theme_manager_->Initialize();
+  }
+  return theme_manager_.get();
+}
+
+// ---------------------------------------------------------------------------
+// Native theme persistence
+//
+// assets/themes/theme.js owns the theme engine. These bridges give it disk
+// access with validation, delegated to themes::ThemeManager. They are bound on
+// every UI-owned view because nine separate pages load theme.js and each one
+// checks for the globals independently; binding them only on the chrome overlay
+// would leave every internal page on the localStorage fallback and the theme
+// would differ between pages.
+// ---------------------------------------------------------------------------
+
+ultralight::JSValue UI::OnNativeGetThemeSetting(const JSObject &, const JSArgs &args)
+{
+  if (args.size() >= 1 && args[0].IsString())
+  {
+    auto key = args[0].ToString().utf8();
+    const std::string key_str = key.data() ? key.data() : "";
+
+    if (key_str == "theme")
+      return ultralight::JSValue(String(theme_store()->GetActiveThemeId().c_str()));
+  }
+
+  return ultralight::JSValue(String(""));
+}
+
+void UI::OnNativeSetThemeSetting(const JSObject &, const JSArgs &args)
+{
+  if (args.size() < 2 || !args[0].IsString() || !args[1].IsString())
+    return;
+
+  auto key = args[0].ToString().utf8();
+  const std::string key_str = key.data() ? key.data() : "";
+  if (key_str != "theme")
+    return;
+
+  auto value = args[1].ToString().utf8();
+  const std::string theme_id = value.data() ? value.data() : "";
+
+  // The manager logs why a value was refused. It also keeps a localStorage copy
+  // via the engine, so a refused write is not a lost selection.
+  theme_store()->SetActiveThemeId(theme_id);
+}
+
+ultralight::JSValue UI::OnNativeGetCustomThemes(const JSObject &, const JSArgs &)
+{
+  return ultralight::JSValue(String(theme_store()->GetCustomThemesJSON().c_str()));
+}
+
+void UI::OnNativeSaveCustomThemes(const JSObject &, const JSArgs &args)
+{
+  if (args.size() < 1 || !args[0].IsString())
+    return;
+
+  auto json = args[0].ToString().utf8();
+  theme_store()->SaveCustomThemesJSON(json.data() ? json.data() : "");
+}
+
+ultralight::JSValue UI::OnNativeGetThemeOverrides(const JSObject &, const JSArgs &)
+{
+  return ultralight::JSValue(String(theme_store()->GetOverridesJSON().c_str()));
+}
+
+void UI::OnNativeSaveThemeOverrides(const JSObject &, const JSArgs &args)
+{
+  if (args.size() < 1 || !args[0].IsString())
+    return;
+
+  auto json = args[0].ToString().utf8();
+  theme_store()->SaveOverridesJSON(json.data() ? json.data() : "");
+}
+
+ultralight::JSValue UI::OnNativeGetSeedThemes(const JSObject &, const JSArgs &)
+{
+  return ultralight::JSValue(String(theme_store()->GetSeedThemesJSON("assets").c_str()));
+}
 void UI::OnToggleAdblock(const JSObject &, const JSArgs &)
 {
   HandleSettingMutation("enable_adblock", !settings_.enable_adblock);
