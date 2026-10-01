@@ -104,9 +104,23 @@ jobs:
       development_build: ${{ inputs.development_build || github.event.inputs.development_build || false }}
       clean_build: ${{ inputs.clean_build || github.event.inputs.clean_build || false }}
 
+  # Android ARM64 cross-builds natively on the runner via the NDK (no emulation
+  # container). The artifact is always a TGZ of cross-compiled binaries, so an
+  # unset package_format is filled in with TGZ.
+  android-arm64:
+    uses: ./.github/workflows/build-android-arm64.yml
+    secrets: inherit
+    with:
+      sdk_url: ${{ inputs.sdk_url || github.event.inputs.sdk_url }}
+      version: ${{ inputs.version || github.event.inputs.version }}
+      webbrowser_version: ${{ inputs.webbrowser_version || github.event.inputs.webbrowser_version }}
+      package_format: ${{ inputs.package_format || github.event.inputs.package_format || 'TGZ' }}
+      development_build: ${{ inputs.development_build || github.event.inputs.development_build || false }}
+      clean_build: ${{ inputs.clean_build || github.event.inputs.clean_build || false }}
+
   summary:
     name: "📊 Build Summary"
-    needs: [windows, macos-x64, macos-arm64, linux-x64, linux-arm64]
+    needs: [windows, macos-x64, macos-arm64, linux-x64, linux-arm64, android-arm64]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -140,6 +154,7 @@ jobs:
           echo "| 🍎 macOS ARM64 | ${{ needs.macos-arm64.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 🐧 Linux x64 | ${{ needs.linux-x64.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 🐧 Linux ARM64 | ${{ needs.linux-arm64.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🤖 Android ARM64 | ${{ needs.android-arm64.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "---" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -195,13 +210,15 @@ jobs:
              [[ "${{ needs.macos-x64.result }}" != "success" ]] || \
              [[ "${{ needs.macos-arm64.result }}" != "success" ]] || \
              [[ "${{ needs.linux-x64.result }}" != "success" ]] || \
-             [[ "${{ needs.linux-arm64.result }}" != "success" ]]; then
+             [[ "${{ needs.linux-arm64.result }}" != "success" ]] || \
+             [[ "${{ needs.android-arm64.result }}" != "success" ]]; then
             echo "⚠️ One or more builds failed or were skipped"
             echo "Windows: ${{ needs.windows.result }}"
             echo "macOS x64: ${{ needs.macos-x64.result }}"
             echo "macOS ARM64: ${{ needs.macos-arm64.result }}"
             echo "Linux x64: ${{ needs.linux-x64.result }}"
             echo "Linux ARM64: ${{ needs.linux-arm64.result }}"
+            echo "Android ARM64: ${{ needs.android-arm64.result }}"
             exit 1
           else
             echo "✅ All builds succeeded!"

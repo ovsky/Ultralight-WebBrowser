@@ -1,0 +1,265 @@
+# .github/workflows/build-android-arm64.yml
+# Dedicated Android ARM64 (aarch64-linux-android) build using the Android NDK.
+#
+# Produces a TGZ containing the cross-compiled executable, the Ultralight
+# shared libraries and the assets directory. This is a *build* artifact, not an
+# installable APK: packaging an APK additionally requires an Android application
+# project (Gradle manifest, launcher Activity, JNI bridge into AppCore) that
+# this repository does not contain. See docs/Low-RAM-Mode.md and the Android
+# section of README.md.
+
+name: Build - Android (ARM64)
+
+on:
+  workflow_dispatch:
+    inputs:
+      sdk_url:
+        description: "Override ULTRALIGHT_SDK_URL (raw .7z in base-sdk branch)"
+        required: false
+        type: string
+      version:
+        description: "Override ULTRALIGHT_VERSION (eg. 1.4.0)"
+        required: false
+        type: string
+      webbrowser_version:
+        description: "Override build version name (default 'dev')"
+        required: false
+        type: string
+      package_format:
+        description: "Package format to produce via CPack (only TGZ is supported here)"
+        required: false
+        type: string
+        default: "TGZ"
+      development_build:
+        description: "Development build (keeps intermediate packages, verbose logs)"
+        required: false
+        type: boolean
+        default: false
+      clean_build:
+        description: "Force clean build without using caches"
+        required: false
+        type: boolean
+        default: false
+  workflow_call:
+    inputs:
+      sdk_url:
+        description: "Override ULTRALIGHT_SDK_URL (raw .7z in base-sdk branch)"
+        required: false
+        type: string
+      version:
+        description: "Override ULTRALIGHT_VERSION (eg. 1.4.0)"
+        required: false
+        type: string
+      webbrowser_version:
+        description: "Override build version name (default 'dev')"
+        required: false
+        type: string
+      package_format:
+        description: "Package format to produce via CPack (only TGZ is supported here)"
+        required: false
+        default: "TGZ"
+        type: string
+      development_build:
+        description: "Development build (keeps intermediate packages, verbose logs)"
+        required: false
+        type: boolean
+        default: false
+      clean_build:
+        description: "Force clean build without using caches"
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
+    env:
+      ULTRALIGHT_SDK_URL: ${{ inputs.sdk_url || github.event.inputs.sdk_url }}
+      ULTRALIGHT_VERSION: ${{ inputs.version || github.event.inputs.version }}
+    steps:
+      - name: 1. Checkout Code (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
+
+      # The NDK is pinned so a new NDK release cannot silently change the Clang
+      # version, sysroot or minimum API level underneath the build.
+      - name: 2. Set up Android NDK
+        id: ndk
+        uses: android-actions/setup-ndk@v1
+        with:
+          ndk-version: r26d
+          add-to-path: false
+
+      - name: 3. Install build tools
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y p7zip-full file
+
+      - name: 4. Build and Package (Android ARM64)
+        id: android_arm64_build
+        env:
+          ANDROID_NDK: ${{ steps.ndk.outputs.ndk-path }}
+          CLEAN_BUILD: ${{ inputs.clean_build || github.event.inputs.clean_build || 'false' }}
+        run: |
+          set -euo pipefail
+          cd "$GITHUB_WORKSPACE"
+          export WEBBROWSER_VERSION="${{ inputs.webbrowser_version || github.event.inputs.webbrowser_version || 'dev' }}"
+          export DEVELOPMENT_BUILD="${{ inputs.development_build || github.event.inputs.development_build || 'false' }}"
+
+          # Clean first, so nothing below recreates a tree we just removed.
+          if [ "$CLEAN_BUILD" = "true" ]; then
+            echo "Clean build requested; removing build/ and ctest temp"
+            rm -rf build
+          fi
+
+          echo "== Android ARM64: Detect ULTRALIGHT_SDK_URL from base-sdk =="
+          API="https://api.github.com/repos/${{ github.repository }}/contents/sdks?ref=base-sdk"
+          RESP=$(curl -fLs -H "Accept: application/vnd.github+json" "$API" || true)
+          URL=""; VER=""
+          if [ -n "$RESP" ]; then
+            NAMES=$(printf "%s" "$RESP" | grep -oE '"name"\s*:\s*"[^"]+"' | sed -E 's/.*"name"\s*:\s*"([^"]+)".*/\1/')
+            for f in $NAMES; do
+              case "$f" in
+                # The NDK toolchain names Android libraries lib*.so, so match on
+                # the android-arm64 SDK archive naming used by the other
+                # workflows rather than on a library extension.
+                ultralight*-sdk-*-android-arm64.7z|ultralight*-sdk-android-arm64.7z)
+                  v=$(echo "$f" | sed -nE 's/^.*-([0-9]+\.[0-9]+\.[0-9]+)-android-.*$/\1/p')
+                  URL="https://raw.githubusercontent.com/${{ github.repository }}/base-sdk/sdks/$f"
+                  [ -n "$v" ] && VER="$v"
+                  break;;
+              esac
+            done
+          fi
+          if [ -z "$URL" ]; then
+            HEADER="data/include/Ultralight/Defines.h"
+            VER=$(sed -n 's/^#define[[:space:]]\+ULTRALIGHT_VERSION[[:space:]]\+"\([^"]\+\)".*/\1/p' "$HEADER" | head -n1 || true)
+            [ -z "$VER" ] && VER="1.4.0"
+            URL="https://raw.githubusercontent.com/${{ github.repository }}/base-sdk/sdks/ultralight-free-sdk-$VER-android-arm64.7z"
+          fi
+          echo "Using SDK URL: $URL (version=$VER)"
+
+          echo "== Android ARM64: Fetch and extract SDK =="
+          mkdir -p "$RUNNER_TEMP/sdk-extract"
+          curl -fL "$URL" -o "$RUNNER_TEMP/ultralight-sdk.7z"
+          7z x -y -o"$RUNNER_TEMP/sdk-extract" "$RUNNER_TEMP/ultralight-sdk.7z"
+          ROOT=""
+          while IFS= read -r -d '' dir; do
+            if [ -d "$dir/include" ] && { [ -d "$dir/lib" ] || [ -d "$dir/bin" ]; }; then
+              ROOT="$dir"; break
+            fi
+          done < <(find "$RUNNER_TEMP/sdk-extract" -mindepth 1 -maxdepth 4 -type d -print0)
+          if [ -z "$ROOT" ]; then
+            INC_PARENT=$(find "$RUNNER_TEMP/sdk-extract" -type d -path '*/include/Ultralight' -print -quit 2>/dev/null | xargs -I{} dirname {} | xargs -I{} dirname {}) || true
+            if [ -n "$INC_PARENT" ] && [ -d "$INC_PARENT/include" ] && { [ -d "$INC_PARENT/lib" ] || [ -d "$INC_PARENT/bin" ]; }; then
+              ROOT="$INC_PARENT"
+            fi
+          fi
+          if [ -z "$ROOT" ]; then
+            echo "::error::Android ARM64 SDK root not found after extraction";
+            echo "Extraction tree (depth 3):"; find "$RUNNER_TEMP/sdk-extract" -maxdepth 3 -type d -print | sed 's/^/  /'
+            exit 1
+          fi
+          echo "Found SDK at: $ROOT"
+          echo "-- SDK lib contents --"
+          ls -la "$ROOT/lib" 2>/dev/null || true
+          ls -la "$ROOT/bin" 2>/dev/null || true
+
+          # An Android SDK archive must ship AArch64 shared objects. Catching a
+          # wrong-architecture archive here gives a clear message instead of a
+          # wall of "incompatible ELF" link errors later.
+          echo "== Android ARM64: Verify SDK object architecture =="
+          SAMPLE_SO=$(find "$ROOT" -name 'libAppCore.so' -o -name 'libUltralight.so' | head -n1 || true)
+          if [ -n "$SAMPLE_SO" ]; then
+            file_out=$(file -b "$SAMPLE_SO" 2>/dev/null || echo "")
+            echo "$SAMPLE_SO -> $file_out"
+            case "$file_out" in
+              *aarch64*|*ARM\ aarch64*) echo "SDK architecture OK (aarch64)";;
+              *) echo "::error::SDK library '$SAMPLE_SO' is not aarch64 ($file_out). Pick an android-arm64 SDK archive."; exit 1;;
+            esac
+          else
+            echo "::warning::No libAppCore.so/libUltralight.so found to architecture-check; continuing."
+          fi
+
+          # Record SDK version for the build summary. This is written after the
+          # build directory exists, so a clean build cannot wipe it.
+          echo "== Android ARM64: Configure & Build =="
+          cmake -S . -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/android-arm64.cmake \
+            -DANDROID_NDK="$ANDROID_NDK" \
+            -DANDROID_API=24 \
+            -DULTRALIGHT_SDK_ROOT="$ROOT" \
+            -DBUILD_TESTING=OFF \
+            -DWEBBROWSER_VERSION="$WEBBROWSER_VERSION"
+          cmake --build build --parallel
+          echo "${VER:-Unknown}" > build/ultralight_sdk_version.txt
+
+          # Confirm the toolchain really produced an Android binary rather than
+          # silently falling back to the host toolchain.
+          echo "== Android ARM64: Verify output architecture =="
+          BUILT_BIN=$(find build -name 'Ultralight-WebBrowser' -type f | head -n1 || true)
+          if [ -z "$BUILT_BIN" ]; then
+            echo "::error::Expected build output 'Ultralight-WebBrowser' not found"
+            exit 1
+          fi
+          built_out=$(file -b "$BUILT_BIN")
+          echo "$BUILT_BIN -> $built_out"
+          case "$built_out" in
+            *aarch64*) echo "Output architecture OK (aarch64)";;
+            *) echo "::error::Built binary is not aarch64 ($built_out). Toolchain file may not have been applied."; exit 1;;
+          esac
+
+          echo "== Android ARM64: Package (TGZ) =="
+          cpack --config build/CPackConfig.cmake -C Release -G TGZ -D CPACK_OUTPUT_FILE_PREFIX="$GITHUB_WORKSPACE/build"
+          outdir="$GITHUB_WORKSPACE/build"
+          version="$WEBBROWSER_VERSION"
+          for file in "$outdir"/*.tar.gz; do
+            [ -f "$file" ] || continue
+            finalname="Ultralight-WebBrowser-${version}-Android-arm64.tar.gz"
+            bname=$(basename "$file")
+            if [ "$bname" = "$finalname" ]; then
+              echo "Skipping rename for $bname (already final name)"
+            else
+              echo "Renaming: $bname -> $finalname"
+              mv "$file" "$outdir/$finalname"
+            fi
+          done
+          if [ "$DEVELOPMENT_BUILD" = "true" ]; then
+            echo "Uploading intermediate packages (development build)"
+            mkdir -p "$GITHUB_WORKSPACE/intermediate"
+            cp -r "$outdir/_CPack_Packages" "$GITHUB_WORKSPACE/intermediate/" || true
+          fi
+
+      - name: 5. Write build summary
+        if: always()
+        run: |
+          {
+            echo "### Android ARM64 build"
+            echo ""
+            echo "- Ultralight SDK version: $(cat build/ultralight_sdk_version.txt 2>/dev/null || echo unknown)"
+            echo "- API level: 24 (aarch64-linux-android)"
+            echo "- Note: artifact is a TGZ of cross-compiled binaries, not an APK."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: 6. Upload Android ARM64 Final Package
+        uses: actions/upload-artifact@v4
+        with:
+          name: Ultralight-WebBrowser-${{ inputs.webbrowser_version || github.event.inputs.webbrowser_version || 'dev' }}-Android-arm64
+          path: build/Ultralight-WebBrowser-*-Android-arm64.tar.gz
+          if-no-files-found: warn
+
+      - name: 7. Upload Android ARM64 Intermediate Packages (Development Only)
+        if: inputs.development_build == true || github.event.inputs.development_build == 'true'
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: Ultralight-WebBrowser-${{ inputs.webbrowser_version || github.event.inputs.webbrowser_version || 'dev' }}-Android-arm64-Intermediate
+          path: intermediate/_CPack_Packages/
+          if-no-files-found: warn

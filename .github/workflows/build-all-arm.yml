@@ -1,5 +1,5 @@
 # .github/workflows/build-all-arm.yml
-# Orchestrates all ARM64 builds (macOS arm64, Linux arm64)
+# Orchestrates all ARM64 builds (macOS arm64, Linux arm64, Android arm64)
 
 name: Build - All ARM64
 
@@ -22,7 +22,7 @@ on:
         required: false
         type: string
       package_format:
-        description: "Package format(s) for macOS/Linux (eg. TGZ;DMG or TGZ;DEB;RPM)"
+        description: "Package format(s) for macOS/Linux (eg. TGZ;DMG or TGZ;DEB;RPM). Android always uses TGZ."
         required: false
         type: string
       clean_build:
@@ -55,4 +55,18 @@ jobs:
       version: ${{ inputs.version }}
       webbrowser_version: ${{ inputs.webbrowser_version }}
       package_format: ${{ inputs.package_format }}
+      clean_build: ${{ inputs.clean_build || false }}
+
+  # Android ARM64 is native on the runner via the NDK, so it needs no
+  # emulation container. It accepts the same inputs as the other targets; the
+  # workflow falls back to TGZ when package_format is left blank, because the
+  # Android artifact is always a TGZ of cross-compiled binaries.
+  android-arm64:
+    uses: ./.github/workflows/build-android-arm64.yml
+    secrets: inherit
+    with:
+      sdk_url: ${{ inputs.sdk_url }}
+      version: ${{ inputs.version }}
+      webbrowser_version: ${{ inputs.webbrowser_version }}
+      package_format: ${{ inputs.package_format || 'TGZ' }}
       clean_build: ${{ inputs.clean_build || false }}
