@@ -752,19 +752,69 @@ std::string DownloadManager::DeriveFilename(const std::string &url, const std::s
 
 std::string DownloadManager::SanitizeFilename(const std::string &filename)
 {
+    // A filename arrives from Content-Disposition or the URL path, so it is fully
+    // attacker-controlled. Strip anything that could escape download_dir_ or
+    // produce a path Windows cannot represent.
     std::string result;
     result.reserve(filename.size());
     const std::string invalid = "\\/:*?\"<>|";
     for (char c : filename)
     {
-        if (static_cast<unsigned char>(c) < 32)
+        if (static_cast<unsigned char>(c) < 32 || c == '\x7f')
             continue;
         if (invalid.find(c) != std::string::npos)
             continue;
         result.push_back(c);
     }
+
+    // "." and ".." would resolve to a directory rather than a file.
+    if (result.empty() || result == "." || result == "..")
+        return kDefaultFilename;
+
+    // Windows silently strips trailing dots and spaces, which makes "evil.exe."
+    // collide with "evil.exe" and can defeat EnsureUniquePath(). Remove them.
+    while (!result.empty() &&
+           (result.back() == ' ' || result.back() == '.'))
+    {
+        result.pop_back();
+    }
     if (result.empty())
-        result = kDefaultFilename;
+        return kDefaultFilename;
+
+    // Reserved DOS device names cannot be used as filenames on Windows; creating
+    // them addresses the device instead of a file.
+    static const char *kReserved[] = {
+        "CON", "PRN", "AUX", "NUL",
+        "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+        "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"};
+
+    std::string stem = result.substr(0, result.find('.'));
+    for (const char *reserved : kReserved)
+    {
+        if (util::ToLower(stem) == reserved)
+            return std::string(kDefaultFilename) + "_" + result;
+    }
+
+    // Most filesystems cap a single path component at 255 bytes. Trim on a
+    // UTF-8 boundary so we never emit a partial code point. Walk back while the
+    // byte at the cut point is a UTF-8 continuation byte (0b10xxxxxx).
+    constexpr size_t kMaxFilenameBytes = 200;
+    if (result.size() > kMaxFilenameBytes)
+    {
+        size_t cut = kMaxFilenameBytes;
+        while (cut > 0 &&
+               (static_cast<unsigned char>(result[cut]) & 0xC0) == 0x80)
+        {
+            --cut;
+        }
+        result.resize(cut);
+        while (!result.empty() && (result.back() == ' ' || result.back() == '.'))
+            result.pop_back();
+    }
+
+    if (result.empty())
+        return kDefaultFilename;
+
     return result;
 }
 

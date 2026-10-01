@@ -3,6 +3,9 @@
 #include <iomanip>
 #include <sstream>
 #include <cstdlib>
+#include <cstring>
+#include <algorithm>
+#include <cctype>
 
 namespace util {
 
@@ -20,6 +23,12 @@ std::string EscapeJsonString(const std::string &input)
     case '"':
       out += "\\\"";
       break;
+    case '\b':
+      out += "\\b";
+      break;
+    case '\f':
+      out += "\\f";
+      break;
     case '\n':
       out += "\\n";
       break;
@@ -30,17 +39,69 @@ std::string EscapeJsonString(const std::string &input)
       out += "\\t";
       break;
     default:
-      out += c;
+      // JSON forbids raw control characters (U+0000..U+001F) inside strings, and
+      // U+2028/U+2029 terminate a JavaScript string literal. Escaping them keeps
+      // the output parseable and prevents literal breakout when the escaped value
+      // is interpolated into an EvaluateScript() payload.
+      {
+        unsigned char uc = static_cast<unsigned char>(c);
+        if (uc < 0x20)
+        {
+          static const char kHex[] = "0123456789abcdef";
+          out += "\\u00";
+          out += kHex[(uc >> 4) & 0x0F];
+          out += kHex[uc & 0x0F];
+        }
+        else
+        {
+          out += c;
+        }
+      }
       break;
     }
   }
   return out;
 }
 
+namespace {
+
+// Replace every occurrence of `needle` with `replacement`, skipping past each
+// inserted text so the replacement is never rescanned.
+void ReplaceAll(std::string &text, const char *needle, const char *replacement)
+{
+  const size_t needle_len = std::strlen(needle);
+  if (needle_len == 0)
+    return;
+
+  const size_t replacement_len = std::strlen(replacement);
+  size_t pos = 0;
+  while ((pos = text.find(needle, pos)) != std::string::npos)
+  {
+    text.replace(pos, needle_len, replacement);
+    pos += replacement_len;
+  }
+}
+
+} // namespace
+
 std::string EscapeJsStringLiteral(const std::string &input)
 {
-  // For simplicity reuse same escaping as JSON for string literals
-  return EscapeJsonString(input);
+  // EscapeJsonString already covers backslashes, double quotes and C0 controls.
+  std::string out = EscapeJsonString(input);
+
+  // Escape the single quote as well: these values are interpolated into
+  // single-quoted JavaScript string literals in several EvaluateScript() payloads,
+  // and an unescaped ' would terminate the literal so the rest of the value would
+  // be parsed as code.
+  ReplaceAll(out, "'", "\\'");
+
+  // EscapeJsonString operates byte-wise, so U+2028 (E2 80 A8) and U+2029
+  // (E2 80 A9) still pass through as raw UTF-8. They are valid inside a JSON
+  // string but terminate a JavaScript string literal, so escape them here.
+  ReplaceAll(out, "\xE2\x80\xA8", "\\u2028");
+  ReplaceAll(out, "\xE2\x80\xA9", "\\u2029");
+
+  return out;
 }
 
 std::string EscapeShellArg(const std::string &input)

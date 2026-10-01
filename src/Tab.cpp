@@ -11,6 +11,8 @@
 #include <cstdio>
 #include <sstream>
 #include <unordered_map>
+#include <cctype>
+#include <exception>
 
 #define INSPECTOR_DRAG_HANDLE_HEIGHT 10
 
@@ -654,7 +656,7 @@ void Tab::OnDOMReady(View *caller, uint64_t frame_id, bool is_main_frame, const 
       global["OnReloadExtension"] = BindJSCallback(&Tab::JS_ReloadExtension);
       global["OnReloadAllExtensions"] = BindJSCallback(&Tab::JS_ReloadAllExtensions);
       global["OnDeleteExtension"] = BindJSCallback(&Tab::JS_DeleteExtension);
-      global["OnLoadExtension"] = BindJSCallback(&Tab::JS_LoadExtension);
+      global["OnLoadExtension"] = BindJSCallbackWithRetval(&Tab::JS_LoadExtension);
       global["OnCreateExtension"] = BindJSCallback(&Tab::JS_CreateExtension);
       global["OnOpenExtensionsFolder"] = BindJSCallback(&Tab::JS_OpenExtensionsFolder);
     }
@@ -1721,7 +1723,7 @@ void Tab::JS_ReorderBookmarks(const JSObject &obj, const JSArgs &args)
   while (pos < json.length())
   {
     // Skip whitespace
-    while (pos < json.length() && std::isspace(json[pos]))
+    while (pos < json.length() && std::isspace(static_cast<unsigned char>(json[pos])))
       pos++;
 
     if (json[pos] == ']')
@@ -1729,18 +1731,26 @@ void Tab::JS_ReorderBookmarks(const JSObject &obj, const JSArgs &args)
 
     // Parse number
     std::string num;
-    while (pos < json.length() && std::isdigit(json[pos]))
+    while (pos < json.length() && std::isdigit(static_cast<unsigned char>(json[pos])))
     {
       num += json[pos++];
     }
 
     if (!num.empty())
     {
-      ordered_ids.push_back(std::stoull(num));
+      // The array is produced by page-side JS; an oversized value must not
+      // throw std::out_of_range out of a JS binding callback.
+      try
+      {
+        ordered_ids.push_back(std::stoull(num));
+      }
+      catch (const std::exception &)
+      {
+      }
     }
 
     // Skip comma and whitespace
-    while (pos < json.length() && (json[pos] == ',' || std::isspace(json[pos])))
+    while (pos < json.length() && (json[pos] == ',' || std::isspace(static_cast<unsigned char>(json[pos]))))
       pos++;
   }
 
@@ -1917,10 +1927,11 @@ void Tab::JS_DeleteExtension(const JSObject &obj, const JSArgs &args)
     ui_->OnDeleteExtension(obj, args);
 }
 
-void Tab::JS_LoadExtension(const JSObject &obj, const JSArgs &args)
+JSValue Tab::JS_LoadExtension(const JSObject &obj, const JSArgs &args)
 {
   if (ui_)
-    ui_->OnLoadExtension(obj, args);
+    return ui_->OnLoadExtension(obj, args);
+  return JSValue(false);
 }
 
 void Tab::JS_CreateExtension(const JSObject &obj, const JSArgs &args)
@@ -2132,8 +2143,8 @@ void Tab::OnPasswordSelected(const JSObject &obj, const JSArgs &args)
   // Fill the form via JS
   std::ostringstream ss;
   ss << "(function(){ if(window.__ul_fill_password_form) window.__ul_fill_password_form("
-     << "'" << util::EscapeJsonString(username) << "',"
-     << "'" << util::EscapeJsonString(password) << "'"
+     << "'" << util::EscapeJsStringLiteral(username) << "',"
+     << "'" << util::EscapeJsStringLiteral(password) << "'"
      << "); })();";
   view()->EvaluateScript(String(ss.str().c_str()), nullptr);
 }
@@ -2406,7 +2417,43 @@ JSValue Tab::JS_GetDecryptedPassword(const JSObject &obj, const JSArgs &args)
 
 void Tab::JS_SavePasswordSettings(const JSObject &obj, const JSArgs &args)
 {
-  // TODO: Implement password settings storage
+  if (!ui_ || !ui_->password_manager() || args.empty())
+    return;
+
+  ultralight::String json_ul = args[0].ToString();
+  auto json_str = json_ul.utf8();
+  std::string json = json_str.data() ? json_str.data() : "";
+  if (json.empty())
+    return;
+
+  // Each key is applied through UpdateBoolSetting so the mutation and the
+  // persistence happen under the password manager's own lock.
+  static const char *const kBoolKeys[] = {
+      "offer_to_save_passwords",
+      "auto_signin",
+      "generate_passwords_automatically"};
+
+  for (const char *key : kBoolKeys)
+  {
+    std::string search = std::string("\"") + key + "\"";
+    size_t pos = json.find(search);
+    if (pos == std::string::npos)
+      continue;
+
+    pos = json.find(':', pos);
+    if (pos == std::string::npos)
+      continue;
+    ++pos;
+
+    while (pos < json.size() && (json[pos] == ' ' || json[pos] == '\t' ||
+                                 json[pos] == '\n' || json[pos] == '\r'))
+      ++pos;
+
+    if (json.compare(pos, 4, "true") == 0)
+      ui_->password_manager()->UpdateBoolSetting(key, true);
+    else if (json.compare(pos, 5, "false") == 0)
+      ui_->password_manager()->UpdateBoolSetting(key, false);
+  }
 }
 
 void Tab::JS_ExportPasswords(const JSObject &obj, const JSArgs &args)

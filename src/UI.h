@@ -194,7 +194,7 @@ public:
   void OnReloadExtension(const JSObject &obj, const JSArgs &args);
   void OnReloadAllExtensions(const JSObject &obj, const JSArgs &args);
   void OnDeleteExtension(const JSObject &obj, const JSArgs &args);
-  void OnLoadExtension(const JSObject &obj, const JSArgs &args);
+  ultralight::JSValue OnLoadExtension(const JSObject &obj, const JSArgs &args);
   void OnCreateExtension(const JSObject &obj, const JSArgs &args);
   void OnOpenExtensionsFolder(const JSObject &obj, const JSArgs &args);
 

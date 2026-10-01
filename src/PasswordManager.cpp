@@ -7,7 +7,10 @@
 #include <iomanip>
 #include <cstring>
 #include <cctype>
+#include <iostream>
 #include <regex>
+#include <exception>
+#include <vector>
 
 #ifdef _WIN32
 #ifndef NOMINMAX
@@ -87,28 +90,34 @@ namespace password
         std::string Base64Decode(const std::string &encoded_string)
         {
             size_t in_len = encoded_string.size();
-            int i = 0;
-            int j = 0;
-            int in_ = 0;
-            unsigned char char_array_4[4], char_array_3[3];
+            size_t i = 0;
+            size_t j = 0;
+            size_t in_ = 0;
+            unsigned char char_array_4[4] = {0, 0, 0, 0};
+            unsigned char char_array_3[3] = {0, 0, 0};
             std::string ret;
 
-            while (in_len-- && encoded_string[in_] != '=' &&
-                   (isalnum(encoded_string[in_]) || encoded_string[in_] == '+' || encoded_string[in_] == '/'))
+            auto is_base64_char = [](unsigned char c) -> bool
             {
-                char_array_4[i++] = encoded_string[in_];
+                return std::isalnum(c) != 0 || c == '+' || c == '/';
+            };
+
+            while (in_len-- && encoded_string[in_] != '=' &&
+                   is_base64_char(static_cast<unsigned char>(encoded_string[in_])))
+            {
+                char_array_4[i++] = static_cast<unsigned char>(encoded_string[in_]);
                 in_++;
                 if (i == 4)
                 {
                     for (i = 0; i < 4; i++)
                         char_array_4[i] = static_cast<unsigned char>(base64_chars.find(char_array_4[i]));
 
-                    char_array_3[0] = (char_array_4[0] << 2) + ((char_array_4[1] & 0x30) >> 4);
-                    char_array_3[1] = ((char_array_4[1] & 0xf) << 4) + ((char_array_4[2] & 0x3c) >> 2);
-                    char_array_3[2] = ((char_array_4[2] & 0x3) << 6) + char_array_4[3];
+                    char_array_3[0] = static_cast<unsigned char>((char_array_4[0] << 2) + ((char_array_4[1] & 0x30) >> 4));
+                    char_array_3[1] = static_cast<unsigned char>(((char_array_4[1] & 0xf) << 4) + ((char_array_4[2] & 0x3c) >> 2));
+                    char_array_3[2] = static_cast<unsigned char>(((char_array_4[2] & 0x3) << 6) + char_array_4[3]);
 
                     for (i = 0; i < 3; i++)
-                        ret += char_array_3[i];
+                        ret += static_cast<char>(char_array_3[i]);
                     i = 0;
                 }
             }
@@ -118,11 +127,13 @@ namespace password
                 for (j = 0; j < i; j++)
                     char_array_4[j] = static_cast<unsigned char>(base64_chars.find(char_array_4[j]));
 
-                char_array_3[0] = (char_array_4[0] << 2) + ((char_array_4[1] & 0x30) >> 4);
-                char_array_3[1] = ((char_array_4[1] & 0xf) << 4) + ((char_array_4[2] & 0x3c) >> 2);
+                // char_array_3 is zero-initialized above, so a short trailing group
+                // (i == 1 or i == 2) no longer reads uninitialized bytes.
+                char_array_3[0] = static_cast<unsigned char>((char_array_4[0] << 2) + ((char_array_4[1] & 0x30) >> 4));
+                char_array_3[1] = static_cast<unsigned char>(((char_array_4[1] & 0xf) << 4) + ((char_array_4[2] & 0x3c) >> 2));
 
-                for (j = 0; j < i - 1; j++)
-                    ret += char_array_3[j];
+                for (j = 0; j + 1 < i; j++)
+                    ret += static_cast<char>(char_array_3[j]);
             }
 
             return ret;
@@ -194,16 +205,27 @@ namespace password
                 return 0;
             pos++;
 
-            while (pos < json.size() && std::isspace(json[pos]))
+            while (pos < json.size() && std::isspace(static_cast<unsigned char>(json[pos])))
                 pos++;
 
             std::string num;
-            while (pos < json.size() && std::isdigit(json[pos]))
+            while (pos < json.size() && std::isdigit(static_cast<unsigned char>(json[pos])))
             {
                 num += json[pos++];
             }
 
-            return num.empty() ? 0 : std::stoull(num);
+            if (num.empty())
+                return 0;
+
+            // settings.json is on-disk state; never let std::out_of_range escape.
+            try
+            {
+                return std::stoull(num);
+            }
+            catch (const std::exception &)
+            {
+                return 0;
+            }
         }
 
         bool ParseJsonBool(const std::string &json, const std::string &key, bool default_val = false)
@@ -218,7 +240,7 @@ namespace password
                 return default_val;
             pos++;
 
-            while (pos < json.size() && std::isspace(json[pos]))
+            while (pos < json.size() && std::isspace(static_cast<unsigned char>(json[pos])))
                 pos++;
 
             if (json.compare(pos, 4, "true") == 0)
@@ -437,6 +459,14 @@ namespace password
         if (!cred.password.empty())
         {
             cred.encrypted_password = Encrypt(cred.password);
+
+            // Encryption failed (DPAPI unavailable / key cleared). Refuse to store
+            // a credential we would not be able to read back.
+            if (cred.encrypted_password.empty())
+            {
+                std::cerr << "[PasswordManager] Encrypt failed; credential not saved\n";
+                return false;
+            }
         }
 
         // Check for existing credential with same origin+username
@@ -489,6 +519,12 @@ namespace password
         if (!updated.password.empty() && updated.password != it->password)
         {
             updated.encrypted_password = Encrypt(updated.password);
+
+            if (updated.encrypted_password.empty())
+            {
+                std::cerr << "[PasswordManager] Encrypt failed; credential not updated\n";
+                return false;
+            }
         }
 
         *it = updated;
@@ -1156,6 +1192,12 @@ namespace password
     {
         std::lock_guard<std::mutex> lock(mutex_);
 
+        // Remember the previous state so a re-key failure can be rolled back
+        // completely: the hash, the flag and the derived key.
+        const std::string previous_hash = master_password_hash_;
+        const bool previous_require = settings_.require_master_password;
+        const std::string previous_key = encryption_key_;
+
         master_password_hash_ = HashMasterPassword(password);
         settings_.require_master_password = true;
 
@@ -1164,18 +1206,48 @@ namespace password
         std::string old_key = encryption_key_;
         encryption_key_ = new_key;
 
-        for (auto &cred : credentials_)
+        // Decrypt every credential with the old key before re-encrypting. If any
+        // value cannot be decrypted we must abort and restore the old key, since a
+        // failed decrypt yields an empty string that would be re-encrypted into an
+        // unrecoverable empty credential.
+        std::vector<std::string> plaintexts;
+        plaintexts.reserve(credentials_.size());
+        encryption_key_ = old_key;
+        for (const auto &cred : credentials_)
         {
-            if (!cred.encrypted_password.empty())
+            if (cred.encrypted_password.empty())
             {
-                // Decrypt with old key
-                std::string temp = encryption_key_;
-                encryption_key_ = old_key;
-                cred.password = Decrypt(cred.encrypted_password);
-                encryption_key_ = temp;
+                plaintexts.push_back(std::string());
+                continue;
+            }
 
-                // Re-encrypt with new key
-                cred.encrypted_password = Encrypt(cred.password);
+            std::string plain = Decrypt(cred.encrypted_password);
+            if (plain.empty())
+            {
+                encryption_key_ = previous_key;
+                master_password_hash_ = previous_hash;
+                settings_.require_master_password = previous_require;
+                std::cerr << "[PasswordManager] Re-key aborted: a credential could not be decrypted\n";
+                return false;
+            }
+            plaintexts.push_back(std::move(plain));
+        }
+
+        encryption_key_ = new_key;
+        for (size_t i = 0; i < credentials_.size(); ++i)
+        {
+            if (credentials_[i].encrypted_password.empty())
+                continue;
+
+            credentials_[i].password = plaintexts[i];
+            credentials_[i].encrypted_password = Encrypt(plaintexts[i]);
+            if (credentials_[i].encrypted_password.empty())
+            {
+                encryption_key_ = previous_key;
+                master_password_hash_ = previous_hash;
+                settings_.require_master_password = previous_require;
+                std::cerr << "[PasswordManager] Re-key aborted: re-encryption failed\n";
+                return false;
             }
         }
 
@@ -1202,23 +1274,58 @@ namespace password
 
         std::lock_guard<std::mutex> lock(mutex_);
 
+        // Remember the previous state so a re-key failure can be rolled back.
+        const std::string previous_hash = master_password_hash_;
+        const bool previous_require = settings_.require_master_password;
+        const std::string previous_key = encryption_key_;
+
         master_password_hash_.clear();
         settings_.require_master_password = false;
 
         // Re-encrypt with default key
         std::string new_key = GetEncryptionKey();
         std::string old_key = encryption_key_;
-        encryption_key_ = new_key;
 
-        for (auto &cred : credentials_)
+        // Same two-phase re-key as SetMasterPassword: decrypt everything with the
+        // old key first so a failure cannot leave a half-rekeyed vault behind.
+        std::vector<std::string> plaintexts;
+        plaintexts.reserve(credentials_.size());
+        encryption_key_ = old_key;
+        for (const auto &cred : credentials_)
         {
-            if (!cred.encrypted_password.empty())
+            if (cred.encrypted_password.empty())
             {
-                std::string temp = encryption_key_;
-                encryption_key_ = old_key;
-                cred.password = Decrypt(cred.encrypted_password);
-                encryption_key_ = temp;
-                cred.encrypted_password = Encrypt(cred.password);
+                plaintexts.push_back(std::string());
+                continue;
+            }
+
+            std::string plain = Decrypt(cred.encrypted_password);
+            if (plain.empty())
+            {
+                encryption_key_ = previous_key;
+                master_password_hash_ = previous_hash;
+                settings_.require_master_password = previous_require;
+                std::cerr << "[PasswordManager] Re-key aborted: a credential could not be decrypted\n";
+                return false;
+            }
+            plaintexts.push_back(std::move(plain));
+        }
+
+        encryption_key_ = new_key;
+        for (size_t i = 0; i < credentials_.size(); ++i)
+        {
+            if (credentials_[i].encrypted_password.empty())
+                continue;
+
+            credentials_[i].password = plaintexts[i];
+            credentials_[i].encrypted_password = Encrypt(plaintexts[i]);
+            if (credentials_[i].encrypted_password.empty())
+            {
+                encryption_key_ = previous_key;
+                master_password_hash_ = previous_hash;
+                settings_.require_master_password = previous_require;
+                std::cerr << "[PasswordManager] Re-key aborted: re-encryption failed\n";
+                return false;
             }
         }
 
@@ -1278,8 +1385,35 @@ namespace password
         return settings_;
     }
 
+    bool PasswordManager::UpdateBoolSetting(const std::string &key, bool value)
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+
+        bool *target = nullptr;
+        if (key == "offer_to_save_passwords")
+            target = &settings_.offer_to_save_passwords;
+        else if (key == "auto_signin")
+            target = &settings_.auto_signin;
+        else if (key == "check_passwords_leaked")
+            target = &settings_.check_passwords_leaked;
+        else if (key == "generate_passwords_automatically")
+            target = &settings_.generate_passwords_automatically;
+        else if (key == "require_master_password")
+            target = &settings_.require_master_password;
+
+        if (!target)
+            return false;
+
+        *target = value;
+        SaveSettings();
+        return true;
+    }
+
     void PasswordManager::SaveSettings()
     {
+        // NOTE: callers (SetMasterPassword, RemoveMasterPassword, Shutdown) already
+        // hold mutex_, so this must NOT take the lock again - std::mutex is not
+        // recursive and doing so would deadlock.
         std::ofstream file(settings_file_);
         if (!file.is_open())
             return;
@@ -1368,6 +1502,15 @@ namespace password
         if (!content.empty())
         {
             content = Decrypt(content);
+
+            // A failed decryption now yields an empty string. Bail out instead of
+            // parsing nothing, otherwise the next Save() would overwrite the
+            // vault with an empty array and destroy the user's credentials.
+            if (content.empty())
+            {
+                std::cerr << "[PasswordManager] Failed to decrypt credentials.dat; keeping existing state\n";
+                return false;
+            }
         }
 
         credentials_.clear();
@@ -1444,11 +1587,19 @@ namespace password
         // Encrypt and write
         std::string encrypted = Encrypt(json.str());
 
+        // Never truncate the vault to an empty file: if encryption failed we would
+        // otherwise destroy every stored credential.
+        if (encrypted.empty() && !json.str().empty())
+        {
+            std::cerr << "[PasswordManager] Refusing to overwrite credentials.dat with unencrypted/empty data\n";
+            return false;
+        }
+
         std::ofstream file(passwords_file_, std::ios::binary | std::ios::trunc);
         if (!file.is_open())
             return false;
 
-        file.write(encrypted.data(), encrypted.size());
+        file.write(encrypted.data(), static_cast<std::streamsize>(encrypted.size()));
         return file.good();
     }
 
@@ -1548,6 +1699,12 @@ namespace password
         if (plaintext.empty())
             return "";
 
+        // The non-Windows paths index the key with a modulo, so an empty key would
+        // be a division by zero. GetEncryptionKey() always returns 32 bytes, but
+        // Shutdown() clears encryption_key_, so guard defensively.
+        if (encryption_key_.empty())
+            return "";
+
 #ifdef _WIN32
         // Use Windows DPAPI
         DATA_BLOB input;
@@ -1562,21 +1719,28 @@ namespace password
             LocalFree(output.pbData);
             return Base64Encode(result);
         }
-        return Base64Encode(plaintext); // Fallback: just encode
+
+        // Never fall back to storing the plaintext (even base64-encoded) when DPAPI
+        // fails: that would silently write an unprotected credential to disk.
+        // Returning an empty ciphertext is treated as "not stored" by callers.
+        std::cerr << "[PasswordManager] CryptProtectData failed; refusing to store plaintext password\n";
+        return "";
 #elif defined(__APPLE__)
-        // Simple XOR encryption with key for macOS (Keychain would be better for production)
         std::string result = plaintext;
+        const size_t key_len = encryption_key_.size();
         for (size_t i = 0; i < result.size(); i++)
         {
-            result[i] ^= encryption_key_[i % encryption_key_.size()];
+            result[i] = static_cast<char>(static_cast<unsigned char>(result[i]) ^
+                                          static_cast<unsigned char>(encryption_key_[i % key_len]));
         }
         return Base64Encode(result);
 #else
-        // Simple XOR encryption for Linux
         std::string result = plaintext;
+        const size_t key_len = encryption_key_.size();
         for (size_t i = 0; i < result.size(); i++)
         {
-            result[i] ^= encryption_key_[i % encryption_key_.size()];
+            result[i] = static_cast<char>(static_cast<unsigned char>(result[i]) ^
+                                          static_cast<unsigned char>(encryption_key_[i % key_len]));
         }
         return Base64Encode(result);
 #endif
@@ -1585,6 +1749,9 @@ namespace password
     std::string PasswordManager::Decrypt(const std::string &ciphertext) const
     {
         if (ciphertext.empty())
+            return "";
+
+        if (encryption_key_.empty())
             return "";
 
 #ifdef _WIN32
@@ -1602,19 +1769,27 @@ namespace password
             LocalFree(output.pbData);
             return result;
         }
-        return decoded; // Fallback
+
+        // Returning the raw (still-encrypted) DPAPI blob here would surface the
+        // ciphertext as if it were the password. Report failure instead.
+        std::cerr << "[PasswordManager] CryptUnprotectData failed\n";
+        return "";
 #elif defined(__APPLE__)
         std::string decoded = Base64Decode(ciphertext);
+        const size_t key_len = encryption_key_.size();
         for (size_t i = 0; i < decoded.size(); i++)
         {
-            decoded[i] ^= encryption_key_[i % encryption_key_.size()];
+            decoded[i] = static_cast<char>(static_cast<unsigned char>(decoded[i]) ^
+                                           static_cast<unsigned char>(encryption_key_[i % key_len]));
         }
         return decoded;
 #else
         std::string decoded = Base64Decode(ciphertext);
+        const size_t key_len = encryption_key_.size();
         for (size_t i = 0; i < decoded.size(); i++)
         {
-            decoded[i] ^= encryption_key_[i % encryption_key_.size()];
+            decoded[i] = static_cast<char>(static_cast<unsigned char>(decoded[i]) ^
+                                           static_cast<unsigned char>(encryption_key_[i % key_len]));
         }
         return decoded;
 #endif

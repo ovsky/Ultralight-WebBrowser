@@ -157,7 +157,7 @@ public:
   void JS_ReloadExtension(const JSObject &obj, const JSArgs &args);
   void JS_ReloadAllExtensions(const JSObject &obj, const JSArgs &args);
   void JS_DeleteExtension(const JSObject &obj, const JSArgs &args);
-  void JS_LoadExtension(const JSObject &obj, const JSArgs &args);
+  JSValue JS_LoadExtension(const JSObject &obj, const JSArgs &args);
   void JS_CreateExtension(const JSObject &obj, const JSArgs &args);
   void JS_OpenExtensionsFolder(const JSObject &obj, const JSArgs &args);
 

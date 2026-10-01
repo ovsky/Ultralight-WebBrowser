@@ -1005,16 +1005,28 @@ console.log('Extension loaded!');"></textarea>
             }
             
             log('Load extension from: ' + path);
-            if (typeof window.OnLoadExtension === 'function') {
-                try {
-                    const result = window.OnLoadExtension(path);
-                    closeModal('modal-load');
-                    document.getElementById('load-path').value = '';
-                    setTimeout(loadExtensions, 100);
-                } catch (error) {
-                    log('ERROR: ' + error.message);
-                    alert('Failed to load extension: ' + error.message);
+            if (typeof window.OnLoadExtension !== 'function') {
+                log('ERROR: extension bridge unavailable');
+                alert('Extension support is not available on this page');
+                return;
+            }
+
+            try {
+                // The native side returns false when the folder is not a valid
+                // extension (missing manifest.json, not a directory, copy failed).
+                const result = window.OnLoadExtension(path);
+                if (result === false) {
+                    log('ERROR: import rejected');
+                    alert('Could not load extension.\n\nMake sure the folder exists and contains a manifest.json file.');
+                    return;
                 }
+
+                closeModal('modal-load');
+                document.getElementById('load-path').value = '';
+                setTimeout(loadExtensions, 100);
+            } catch (error) {
+                log('ERROR: ' + error.message);
+                alert('Failed to load extension: ' + error.message);
             }
         }
 

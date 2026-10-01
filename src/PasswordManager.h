@@ -180,6 +180,12 @@ namespace password
 
         Settings &GetSettings();
         const Settings &GetSettings() const;
+
+        // Applies a single boolean setting by its JSON key and persists the result.
+        // Thread-safe: takes mutex_ internally, so callers must not hold a reference
+        // returned by GetSettings() across this call. Unknown keys are ignored.
+        bool UpdateBoolSetting(const std::string &key, bool value);
+
         void SaveSettings();
 
         // Statistics

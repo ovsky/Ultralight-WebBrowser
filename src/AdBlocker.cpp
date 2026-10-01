@@ -144,8 +144,10 @@ bool AdBlocker::OnNetworkRequest(View * /*caller*/, NetworkRequest &request)
     auto host_ul = request.urlHost();
     auto url_ul = request.url();
     auto method = request.httpMethod().utf8();
-    auto host = util::ToLower(std::string(host_ul.utf8().data()));
-    auto url = std::string(url_ul.utf8().data());
+    // String::utf8().data() can be null for an empty string; constructing
+    // std::string from a null pointer is undefined behaviour, so normalize first.
+    auto host = util::ToLower(util::ToStdString(host_ul));
+    auto url = util::ToStdString(url_ul);
 
     // Debug logging of all requests
     if (log_all)

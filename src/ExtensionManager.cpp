@@ -6,6 +6,7 @@
 #include <chrono>
 #include <regex>
 #include <cctype>
+#include <system_error>
 
 namespace extensions {
 
@@ -382,7 +383,7 @@ bool ExtensionManager::LoadState() {
                 size_t colonPos = content.find(':', enabledPos);
                 if (colonPos != std::string::npos) {
                     size_t valueStart = colonPos + 1;
-                    while (valueStart < content.size() && std::isspace(content[valueStart]))
+                    while (valueStart < content.size() && std::isspace(static_cast<unsigned char>(content[valueStart])))
                         valueStart++;
                     
                     if (content.substr(valueStart, 4) == "true") {
@@ -399,20 +400,83 @@ bool ExtensionManager::LoadState() {
 }
 
 bool ExtensionManager::ImportExtension(const std::filesystem::path& source) {
-    // For now, just support folder import (copy to extensions dir)
-    if (std::filesystem::is_directory(source)) {
-        auto dest = extensions_dir_ / source.filename();
-        
-        if (std::filesystem::exists(dest)) {
-            std::filesystem::remove_all(dest);
-        }
-        
-        std::filesystem::copy(source, dest, std::filesystem::copy_options::recursive);
-        return LoadExtension(dest);
+    std::error_code ec;
+
+    if (!std::filesystem::is_directory(source, ec) || ec) {
+        std::cerr << "[Extensions] Import source is not a directory: " << source.string() << std::endl;
+        return false;
     }
-    
-    // TODO: Support .zip import
-    return false;
+
+    const auto folder_name = source.filename().string();
+    if (folder_name.empty() || folder_name == "." || folder_name == "..") {
+        std::cerr << "[Extensions] Refusing to import from an unnamed directory\n";
+        return false;
+    }
+
+    // Stage into a temporary sibling first. Copying over the live directory would
+    // otherwise destroy the installed extension if the copy failed part-way, and
+    // remove_all() before the copy loses it outright on any error.
+    const auto dest = extensions_dir_ / folder_name;
+    const auto staging = extensions_dir_ / (folder_name + ".importing");
+
+    std::filesystem::remove_all(staging, ec);
+    ec.clear();
+
+    std::filesystem::copy(source, staging,
+                          std::filesystem::copy_options::recursive |
+                          std::filesystem::copy_options::copy_symlinks,
+                          ec);
+    if (ec) {
+        std::cerr << "[Extensions] Failed to stage extension: " << ec.message() << std::endl;
+        std::filesystem::remove_all(staging, ec);
+        return false;
+    }
+
+    // An extension directory must contain a manifest to be loadable. Validate the
+    // staged copy before replacing anything that is already installed.
+    if (!std::filesystem::exists(staging / "manifest.json", ec) || ec) {
+        std::cerr << "[Extensions] Imported directory has no manifest.json: "
+                  << source.string() << std::endl;
+        std::filesystem::remove_all(staging, ec);
+        return false;
+    }
+
+    const auto backup = extensions_dir_ / (folder_name + ".replaced");
+    std::filesystem::remove_all(backup, ec);
+    ec.clear();
+
+    const bool had_previous = std::filesystem::exists(dest, ec) && !ec;
+    if (had_previous) {
+        std::filesystem::rename(dest, backup, ec);
+        if (ec) {
+            std::cerr << "[Extensions] Failed to move existing extension aside: "
+                      << ec.message() << std::endl;
+            std::filesystem::remove_all(staging, ec);
+            return false;
+        }
+    }
+    ec.clear();
+
+    std::filesystem::rename(staging, dest, ec);
+    if (ec) {
+        std::cerr << "[Extensions] Failed to install extension: " << ec.message() << std::endl;
+        if (had_previous) {
+            std::error_code restore_ec;
+            std::filesystem::rename(backup, dest, restore_ec);
+            if (restore_ec) {
+                std::cerr << "[Extensions] Could not restore previous extension: "
+                          << restore_ec.message() << std::endl;
+            }
+        }
+        std::filesystem::remove_all(staging, ec);
+        return false;
+    }
+
+    if (had_previous) {
+        std::filesystem::remove_all(backup, ec);
+    }
+
+    return LoadExtension(dest);
 }
 
 bool ExtensionManager::DeleteExtension(const std::string& id) {

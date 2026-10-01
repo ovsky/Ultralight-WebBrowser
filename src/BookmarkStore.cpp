@@ -4,6 +4,7 @@
 #include <chrono>
 #include <algorithm>
 #include <cctype>
+#include <exception>
 
 BookmarkStore::BookmarkStore() = default;
 BookmarkStore::~BookmarkStore() = default;
@@ -295,7 +296,7 @@ static std::string ExtractString(const std::string &json, const std::string &key
 
     pos += search.length();
     // Skip whitespace
-    while (pos < json.length() && std::isspace(json[pos]))
+    while (pos < json.length() && std::isspace(static_cast<unsigned char>(json[pos])))
         pos++;
 
     if (pos >= json.length() || json[pos] != '"')
@@ -348,18 +349,28 @@ static uint64_t ExtractUint64(const std::string &json, const std::string &key)
 
     pos += search.length();
     // Skip whitespace
-    while (pos < json.length() && std::isspace(json[pos]))
+    while (pos < json.length() && std::isspace(static_cast<unsigned char>(json[pos])))
         pos++;
 
     std::string num;
-    while (pos < json.length() && std::isdigit(json[pos]))
+    while (pos < json.length() && std::isdigit(static_cast<unsigned char>(json[pos])))
     {
         num += json[pos++];
     }
 
     if (num.empty())
         return 0;
-    return std::stoull(num);
+
+    // bookmarks.json is on-disk state; a corrupted or oversized value must not
+    // propagate std::out_of_range out of the parser.
+    try
+    {
+        return std::stoull(num);
+    }
+    catch (const std::exception &)
+    {
+        return 0;
+    }
 }
 
 static bool ExtractBool(const std::string &json, const std::string &key, bool default_val = false)
@@ -488,7 +499,7 @@ std::string BookmarkStore::NormalizeUrl(const std::string &url)
     {
         // Lowercase scheme
         for (size_t i = 0; i < scheme_end; i++)
-            result[i] = std::tolower(result[i]);
+            result[i] = static_cast<char>(std::tolower(static_cast<unsigned char>(result[i])));
 
         // Find end of host (start of path, query, or fragment)
         size_t host_start = scheme_end + 3;
@@ -498,7 +509,7 @@ std::string BookmarkStore::NormalizeUrl(const std::string &url)
 
         // Lowercase host
         for (size_t i = host_start; i < host_end; i++)
-            result[i] = std::tolower(result[i]);
+            result[i] = static_cast<char>(std::tolower(static_cast<unsigned char>(result[i])));
     }
 
     return result;

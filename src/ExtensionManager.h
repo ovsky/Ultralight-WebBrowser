@@ -77,6 +77,12 @@ public:
     
     // Load a single extension from a directory
     bool LoadExtension(const std::filesystem::path& extension_dir);
+
+    // Copy an extension folder into the managed extensions directory and load it.
+    // The folder must contain a manifest.json. Replacing an already-installed
+    // extension is atomic: the staged copy is validated before anything is
+    // overwritten, and the previous copy is restored if the install fails.
+    bool ImportExtension(const std::filesystem::path& source);
     
     // Unload an extension by ID
     bool UnloadExtension(const std::string& id);
@@ -112,9 +118,6 @@ private:
     
     // Load extension states from disk
     bool LoadState();
-    
-    // Import an extension from a .zip or folder
-    bool ImportExtension(const std::filesystem::path& source);
     
     // Create a new empty extension with template files
     bool CreateExtensionTemplate(const std::string& name);

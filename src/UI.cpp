@@ -17,6 +17,7 @@
 #include <array>
 #include <vector>
 #include <cstdlib>
+#include <exception>
 #include "DownloadManager.h"
 #include "PasswordManager.h"
 #include "Settings.h"
@@ -1595,7 +1596,7 @@ void UI::OnDOMReady(View *caller, uint64_t frame_id, bool is_main_frame, const S
     global["OnReloadExtension"] = BindJSCallback(&UI::OnReloadExtension);
     global["OnReloadAllExtensions"] = BindJSCallback(&UI::OnReloadAllExtensions);
     global["OnDeleteExtension"] = BindJSCallback(&UI::OnDeleteExtension);
-    global["OnLoadExtension"] = BindJSCallback(&UI::OnLoadExtension);
+    global["OnLoadExtension"] = BindJSCallbackWithRetval(&UI::OnLoadExtension);
     global["OnCreateExtension"] = BindJSCallback(&UI::OnCreateExtension);
     global["OnOpenExtensionsFolder"] = BindJSCallback(&UI::OnOpenExtensionsFolder);
   }
@@ -2209,14 +2210,21 @@ void UI::OnDeleteExtension(const JSObject &obj, const JSArgs &args)
   extensions::ExtensionManager::Instance().DeleteExtension(id);
 }
 
-void UI::OnLoadExtension(const JSObject &obj, const JSArgs &args)
+ultralight::JSValue UI::OnLoadExtension(const JSObject &obj, const JSArgs &args)
 {
   if (args.empty())
-    return;
+    return JSValue(false);
   ultralight::String path_ul = args[0].ToString();
   auto path_str = path_ul.utf8();
   std::string path = path_str.data() ? path_str.data() : "";
-  extensions::ExtensionManager::Instance().LoadExtension(path);
+  if (path.empty())
+    return JSValue(false);
+
+  // ImportExtension copies into the managed extensions directory, so the extension
+  // is still present after ReloadAll()/restart. Loading it in place would make it
+  // disappear on the next scan.
+  auto &manager = extensions::ExtensionManager::Instance();
+  return JSValue(manager.ImportExtension(path));
 }
 
 void UI::OnCreateExtension(const JSObject &obj, const JSArgs &args)
@@ -4612,10 +4620,22 @@ void UI::LoadHistoryFromDisk()
         while (num_start < obj.size() && (obj[num_start] == ' ' || obj[num_start] == '\t'))
           num_start++;
         size_t num_end = num_start;
-        while (num_end < obj.size() && std::isdigit(obj[num_end]))
+        while (num_end < obj.size() && std::isdigit(static_cast<unsigned char>(obj[num_end])))
           num_end++;
         if (num_end > num_start)
-          timestamp = std::stoull(obj.substr(num_start, num_end - num_start));
+        {
+          // history.json is on-disk state and may be truncated or hand-edited;
+          // std::stoull throws std::out_of_range on overflow, which would escape
+          // as an unhandled exception and abort startup.
+          try
+          {
+            timestamp = std::stoull(obj.substr(num_start, num_end - num_start));
+          }
+          catch (const std::exception &)
+          {
+            timestamp = 0;
+          }
+        }
       }
     }
 
@@ -4631,10 +4651,19 @@ void UI::LoadHistoryFromDisk()
         while (num_start < obj.size() && (obj[num_start] == ' ' || obj[num_start] == '\t'))
           num_start++;
         size_t num_end = num_start;
-        while (num_end < obj.size() && std::isdigit(obj[num_end]))
+        while (num_end < obj.size() && std::isdigit(static_cast<unsigned char>(obj[num_end])))
           num_end++;
         if (num_end > num_start)
-          count = (uint32_t)std::stoul(obj.substr(num_start, num_end - num_start));
+        {
+          try
+          {
+            count = (uint32_t)std::stoul(obj.substr(num_start, num_end - num_start));
+          }
+          catch (const std::exception &)
+          {
+            count = 1;
+          }
+        }
       }
     }
 
@@ -6214,8 +6243,44 @@ ultralight::JSValue UI::OnGetDecryptedPassword(const JSObject &obj, const JSArgs
 
 void UI::OnSavePasswordSettings(const JSObject &obj, const JSArgs &args)
 {
-  // Password settings are stored in browser settings, not password manager
-  // This is a placeholder for future implementation
+  if (!password_manager_ || args.empty())
+    return;
+
+  ultralight::String json_ul = args[0].ToString();
+  auto json_str = json_ul.utf8();
+  std::string json = json_str.data() ? json_str.data() : "";
+  if (json.empty())
+    return;
+
+  // passwords.html sends a JSON object with the checkbox states. Each key is applied
+  // through UpdateBoolSetting so the mutation and the persistence happen under the
+  // password manager's own lock, and unknown/absent keys are left untouched.
+  static const char *const kBoolKeys[] = {
+      "offer_to_save_passwords",
+      "auto_signin",
+      "generate_passwords_automatically"};
+
+  for (const char *key : kBoolKeys)
+  {
+    std::string search = std::string("\"") + key + "\"";
+    size_t pos = json.find(search);
+    if (pos == std::string::npos)
+      continue;
+
+    pos = json.find(':', pos);
+    if (pos == std::string::npos)
+      continue;
+    ++pos;
+
+    while (pos < json.size() && (json[pos] == ' ' || json[pos] == '\t' ||
+                                  json[pos] == '\n' || json[pos] == '\r'))
+      ++pos;
+
+    if (json.compare(pos, 4, "true") == 0)
+      password_manager_->UpdateBoolSetting(key, true);
+    else if (json.compare(pos, 5, "false") == 0)
+      password_manager_->UpdateBoolSetting(key, false);
+  }
 }
 
 void UI::OnExportPasswords(const JSObject &obj, const JSArgs &args)
@@ -6269,17 +6334,25 @@ void UI::OnImportPasswords(const JSObject &obj, const JSArgs &args)
 
 void UI::OnShowPasswordSavePrompt(const JSObject &obj, const JSArgs &args)
 {
-  // Placeholder for showing password save prompt overlay
+  // Delegate to the working prompt implementation used by Tab.
+  if (args.size() < 2)
+    return;
+
+  auto origin_str = args[0].ToString().utf8();
+  auto username_str = args[1].ToString().utf8();
+
+  ShowPasswordSavePrompt(origin_str.data() ? origin_str.data() : "",
+                         username_str.data() ? username_str.data() : "");
 }
 
 void UI::OnHidePasswordSavePrompt(const JSObject &obj, const JSArgs &args)
 {
-  // Placeholder for hiding password save prompt overlay
+  HidePasswordSavePrompt();
 }
 
 void UI::OnPasswordSaveResponse(const JSObject &obj, const JSArgs &args)
 {
-  // Placeholder for handling user response to password save prompt
+  OnPasswordSaveBarResponse(obj, args);
 }
 
 // Non-JS versions called from Tab
@@ -6289,7 +6362,7 @@ void UI::ShowPasswordSavePrompt(const std::string &origin, const std::string &us
   std::ostringstream js;
   js << "(function(){ "
      << "if(typeof window.showPasswordSaveBar === 'function') { "
-     << "  window.showPasswordSaveBar('" << util::EscapeJsonString(origin) << "', '" << util::EscapeJsonString(username) << "'); "
+     << "  window.showPasswordSaveBar('" << util::EscapeJsStringLiteral(origin) << "', '" << util::EscapeJsStringLiteral(username) << "'); "
      << "} "
      << "})();";
   view()->EvaluateScript(String(js.str().c_str()), nullptr);
@@ -6350,7 +6423,7 @@ void UI::ShowDrmPrompt(const std::string &url, uint64_t tab_id)
   std::ostringstream js;
   js << "(function(){ "
      << "if(typeof window.showDrmPromptBar === 'function') { "
-     << "  window.showDrmPromptBar('" << util::EscapeJsonString(url) << "', " << tab_id << "); "
+     << "  window.showDrmPromptBar('" << util::EscapeJsStringLiteral(url) << "', " << tab_id << "); "
      << "} "
      << "})();";
   view()->EvaluateScript(String(js.str().c_str()), nullptr);
