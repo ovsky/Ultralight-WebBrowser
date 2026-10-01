@@ -4,6 +4,7 @@
 #include <iostream>
 #include <Ultralight/Renderer.h>
 #include <chrono>
+#include <thread>
 #include <fstream>
 #include <sstream>
 #include <cctype>
@@ -57,9 +58,17 @@ namespace
     bool reload_page;
     bool UI::BrowserSettings::*member;
     bool default_value;
+
+    // Integer settings. When is_number is true the trailing five fields are
+    // authoritative and `member`/`default_value` are ignored.
+    bool is_number = false;
+    int UI::BrowserSettings::*number_member = nullptr;
+    int number_default = 0;
+    int min_value = 0;
+    int max_value = 0;
   };
 
-  constexpr std::array<SettingDescriptor, 32> kFallbackSettingsCatalog = {
+  constexpr std::array<SettingDescriptor, 34> kFallbackSettingsCatalog = {
       // Appearance
       SettingDescriptor{"launch_dark_theme", "Launch in dark theme",
                         "Start Ultralight with dark chrome, toolbars, and tabs by default.",
@@ -132,6 +141,13 @@ namespace
       SettingDescriptor{"enable_database", "Enable database storage",
                         "Allow websites to use IndexedDB and Web SQL for data storage.",
                         "performance", nullptr, false, &UI::BrowserSettings::enable_database, true},
+      SettingDescriptor{"low_ram_mode", "Low-RAM mode",
+                        "Watch the process working set and reclaim memory from background tabs when it grows past your budget.",
+                        "performance", nullptr, false, &UI::BrowserSettings::low_ram_mode, false},
+      SettingDescriptor{"memory_budget_mb", "Memory budget (MB)",
+                        "Working-set budget in megabytes. Once usage stays above it for a few seconds, low-RAM mode kicks in.",
+                        "performance", "Used by low-RAM mode", false, nullptr, false,
+                        true, &UI::BrowserSettings::memory_budget_mb, 512, 64, 16384},
 
       // Accessibility
       SettingDescriptor{"reduce_motion", "Reduce motion effects",
@@ -421,6 +437,11 @@ namespace
       runtime.member = fallback.member;
       runtime.default_value = fallback.default_value;
       runtime.reload_page = fallback.reload_page;
+      runtime.is_number = fallback.is_number;
+      runtime.number_member = fallback.number_member;
+      runtime.number_default = fallback.number_default;
+      runtime.min_value = fallback.min_value;
+      runtime.max_value = fallback.max_value;
 
       auto it = parsed_entries.find(runtime.key);
       if (it != parsed_entries.end())
@@ -506,6 +527,13 @@ UI::UI(RefPtr<Window> window)
   bookmark_store_ = std::make_unique<BookmarkStore>();
   bookmark_store_->Initialize(SettingsDirectory());
 
+  // Initialize the low-RAM memory monitor and apply the persisted budget.
+  memory_monitor_ = std::make_unique<memory::MemoryMonitor>();
+  memory_monitor_->SetLowRamModeEnabled(settings_.low_ram_mode);
+  memory_monitor_->SetBudgetBytes(
+      static_cast<uint64_t>(settings_.memory_budget_mb) * 1024ull * 1024ull);
+  StartMemoryWatchdog();
+
   // Apply runtime toggles (visual sync happens on DOMReady via SyncSettingsStateToUI)
   ApplySettings(true, true);
 
@@ -565,6 +593,13 @@ UI::UI(RefPtr<Window> window, AdBlocker *adblock, AdBlocker *tracker)
   // Initialize bookmark store
   bookmark_store_ = std::make_unique<BookmarkStore>();
   bookmark_store_->Initialize(SettingsDirectory());
+
+  // Initialize the low-RAM memory monitor and apply the persisted budget.
+  memory_monitor_ = std::make_unique<memory::MemoryMonitor>();
+  memory_monitor_->SetLowRamModeEnabled(settings_.low_ram_mode);
+  memory_monitor_->SetBudgetBytes(
+      static_cast<uint64_t>(settings_.memory_budget_mb) * 1024ull * 1024ull);
+  StartMemoryWatchdog();
 
   // Apply runtime toggles (visual sync happens on DOMReady via SyncSettingsStateToUI)
   ApplySettings(true, true);
@@ -886,6 +921,9 @@ void UI::HandleDrmNavigationState(uint64_t tab_id, bool can_back, bool can_forwa
 
 UI::~UI()
 {
+  // Stop the sampler first so it cannot outlive the monitor it polls.
+  StopMemoryWatchdog();
+
   // Save session one final time with clean_exit flag
   // This preserves tabs for restoration while indicating it was a normal shutdown
   SaveSessionToDiskWithCleanExit();
@@ -1509,6 +1547,7 @@ void UI::OnDOMReady(View *caller, uint64_t frame_id, bool is_main_frame, const S
   // This ensures settings.html can call GetSettingsSnapshot when loaded in a tab
   global["GetSettingsSnapshot"] = BindJSCallbackWithRetval(&UI::OnGetSettings);
   global["OnUpdateSetting"] = BindJSCallback(&UI::OnUpdateSetting);
+  global["GetMemorySnapshot"] = BindJSCallbackWithRetval(&UI::OnGetMemorySnapshot);
   global["OnRestoreSettingsDefaults"] = BindJSCallbackWithRetval(&UI::OnRestoreSettingsDefaults);
   global["OnSaveSettings"] = BindJSCallback(&UI::OnSaveSettings);
 
@@ -1801,6 +1840,13 @@ void UI::OnRequestTabClose(const JSObject &obj, const JSArgs &args)
     RefPtr<JSContext> lock(view()->LockJSContext());
     closeTab({id});
 
+    tab_last_active_seq_.erase(id);
+    if (memory_monitor_)
+      memory_monitor_->NoteTabClosed();
+
+    // Closing a tab is a natural moment to top up: the user just made room.
+    ReclaimMemoryIfNeeded();
+
     // Save session after tab close for crash recovery
     SaveSessionToDisk();
   }
@@ -1818,6 +1864,8 @@ void UI::OnActiveTabChange(const JSObject &obj, const JSArgs &args)
     auto &tab = tabs_[id];
     if (!tab)
       return;
+
+    NoteTabActivated(id);
 
     // Always hide all DRM tabs first to ensure clean state
     HideAllDrmTabs();
@@ -1899,6 +1947,11 @@ void UI::OnRequestChangeURL(const JSObject &obj, const JSArgs &args)
         tab->view()->LoadURL(url);
       }
     }
+
+    // Reclaim only now that active_tab_id_ reflects the tab the user chose.
+    // Doing this earlier would let the monitor treat the incoming tab as
+    // background and evict the page the user just switched to.
+    ReclaimMemoryIfNeeded();
   }
 }
 
@@ -2368,6 +2421,16 @@ void UI::CreateNewTab()
     addTab({id, "New Tab", GetFaviconURL(kStartPageURL), tabs_[id]->view()->is_loading()});
   }
   UpdateDrmBadge(id, false);
+
+  // Track tab load for the low-RAM monitor. A brand-new tab is not activated
+  // until the chrome UI reports the selection, so it is intentionally left with
+  // no recency entry and sorts as the coldest candidate.
+  if (memory_monitor_)
+    memory_monitor_->NoteTabOpened();
+
+  // Opening a tab is the point where pressure most often matters. Reclaim before
+  // adding load, not after.
+  ReclaimMemoryIfNeeded();
 
   // Save session after new tab for crash recovery
   SaveSessionToDisk();
@@ -3354,6 +3417,58 @@ void UI::OnUpdateSetting(const JSObject &, const JSArgs &args)
     return;
   }
 
+  // Integer settings declared in the catalog (currently memory_budget_mb).
+  // The descriptor owns the bounds, so the value is clamped in one place.
+  if (const RuntimeSettingDescriptor *numeric = FindSettingDescriptor(key))
+  {
+    if (!numeric->is_number || !numeric->number_member)
+    {
+      // Not numeric - fall through to the boolean path below.
+    }
+    else
+    {
+      long long requested = numeric->number_default;
+      if (args[1].IsNumber())
+      {
+        requested = static_cast<long long>(args[1].ToNumber());
+      }
+      else if (args[1].IsString())
+      {
+        ultralight::String str_ul = args[1].ToString();
+        auto str_data = str_ul.utf8();
+        std::string str = str_data.data() ? str_data.data() : "";
+        try
+        {
+          size_t consumed = 0;
+          requested = std::stoll(str, &consumed);
+        }
+        catch (const std::exception &)
+        {
+          // Ignore unparseable input and keep the previous value.
+          return;
+        }
+      }
+      else
+      {
+        return;
+      }
+
+      const int clamped = static_cast<int>((std::max)(
+          static_cast<long long>(numeric->min_value),
+          (std::min)(static_cast<long long>(numeric->max_value), requested)));
+
+      int &field = settings_.*(numeric->number_member);
+      if (field == clamped)
+        return;
+
+      field = clamped;
+      UpdateSettingsDirtyFlag();
+      ApplySettings(false, false);
+      UpdateSettingsDirtyFlag();
+      return;
+    }
+  }
+
   bool value = false;
   if (args[1].IsBoolean())
   {
@@ -3593,6 +3708,17 @@ void UI::ApplySettings(bool initial, bool snapshot_is_baseline)
   adblock_enabled_cached_ = settings_.enable_adblock;
   clear_history_on_exit_ = settings_.clear_history_on_exit;
 
+  // Low-RAM mode: keep the monitor's budget in sync with the settings so a
+  // change takes effect immediately rather than at the next launch. Setting the
+  // budget resets the pressure latch, so toggling it never leaves the browser
+  // stuck reporting memory pressure.
+  if (memory_monitor_)
+  {
+    memory_monitor_->SetLowRamModeEnabled(settings_.low_ram_mode);
+    memory_monitor_->SetBudgetBytes(
+        static_cast<uint64_t>(settings_.memory_budget_mb) * 1024ull * 1024ull);
+  }
+
   // Note: enable_javascript and hardware_acceleration are applied to NEW tabs via TabViewSettings.
   // Existing tabs keep their original settings since ViewConfig is immutable after creation.
   //
@@ -3821,7 +3947,10 @@ std::string UI::BuildSettingsPayload(bool snapshot_is_baseline) const
   bool first = true;
   for (const auto &desc : catalog)
   {
-    if (!desc.member)
+    // A descriptor must map to exactly one concrete field; skip any that do not.
+    const bool is_bool = !desc.is_number && desc.member != nullptr;
+    const bool is_int = desc.is_number && desc.number_member != nullptr;
+    if (!is_bool && !is_int)
       continue;
     if (!first)
       ss << ",";
@@ -3830,12 +3959,27 @@ std::string UI::BuildSettingsPayload(bool snapshot_is_baseline) const
     ss << "\"name\":\"" << util::EscapeJsonString(desc.name) << "\",";
     ss << "\"description\":\"" << util::EscapeJsonString(desc.description) << "\",";
     ss << "\"category\":\"" << util::EscapeJsonString(desc.category) << "\",";
-    bool current = settings_.*(desc.member);
-    bool default_value = desc.default_value;
-    bool saved_value = saved_settings_.*(desc.member);
-    ss << "\"value\": " << (current ? "true" : "false") << ",";
-    ss << "\"default\": " << (default_value ? "true" : "false") << ",";
-    ss << "\"saved\": " << (saved_value ? "true" : "false");
+    if (is_int)
+    {
+      const int current = settings_.*(desc.number_member);
+      const int saved = saved_settings_.*(desc.number_member);
+      ss << "\"type\": \"number\",";
+      ss << "\"value\": " << current << ",";
+      ss << "\"default\": " << desc.number_default << ",";
+      ss << "\"saved\": " << saved << ",";
+      ss << "\"min\": " << desc.min_value << ",";
+      ss << "\"max\": " << desc.max_value << ",";
+      ss << "\"step\": " << desc.step;
+    }
+    else
+    {
+      const bool current = settings_.*(desc.member);
+      const bool saved = saved_settings_.*(desc.member);
+      ss << "\"type\": \"bool\",";
+      ss << "\"value\": " << (current ? "true" : "false") << ",";
+      ss << "\"default\": " << (desc.default_value ? "true" : "false") << ",";
+      ss << "\"saved\": " << (saved ? "true" : "false");
+    }
     if (!desc.note.empty())
       ss << ",\"note\":\"" << util::EscapeJsonString(desc.note) << "\"";
     ss << ",\"reload_page\": " << (desc.reload_page ? "true" : "false");
@@ -3904,6 +4048,181 @@ void UI::AdjustUIHeight(uint32_t new_height)
     LayoutDownloadsOverlay();
 }
 
+ultralight::JSValue UI::OnGetMemorySnapshot(const JSObject &obj, const JSArgs &args)
+{
+  return JSValue(String(PollMemory().ToJSON().c_str()));
+}
+
+memory::MemorySnapshot UI::GetMemorySnapshot()
+{
+  if (!memory_monitor_)
+  {
+    // Constructed lazily so the accessor is safe even if called during teardown.
+    memory_monitor_ = std::make_unique<memory::MemoryMonitor>();
+  }
+  return memory_monitor_->Snapshot();
+}
+
+memory::MemorySnapshot UI::PollMemory()
+{
+  if (!memory_monitor_)
+  {
+    memory_monitor_ = std::make_unique<memory::MemoryMonitor>();
+    memory_monitor_->SetLowRamModeEnabled(settings_.low_ram_mode);
+    memory_monitor_->SetBudgetBytes(
+        static_cast<uint64_t>(settings_.memory_budget_mb) * 1024ull * 1024ull);
+  }
+
+  // Keep the reported tab load accurate. tabs_ and drm_tabs_ are the real
+  // containers; the monitor's running counter can drift across session restore.
+  const int open_tabs = static_cast<int>(tabs_.size() + drm_tabs_.size());
+  memory_monitor_->SetTabCounts(open_tabs, open_tabs);
+
+  return memory_monitor_->Poll();
+}
+
+void UI::StartMemoryWatchdog()
+{
+  if (memory_watchdog_.joinable())
+    return;
+
+  memory_watchdog_stop_.store(false);
+  memory_watchdog_ = std::thread([this]()
+  {
+    // Only reads process memory through the (mutex-protected) monitor and sets
+    // an atomic flag. No view, tab or DOM access happens on this thread.
+    while (!memory_watchdog_stop_.load(std::memory_order_relaxed))
+    {
+      if (memory_monitor_)
+      {
+        if (memory_monitor_->IsLowRamModeEnabled())
+        {
+          if (memory_monitor_->Poll().over_budget)
+          {
+            memory_pressure_pending_.store(true, std::memory_order_relaxed);
+          }
+        }
+      }
+
+      // Two seconds is well under the 5s grace period, so a transient spike is
+      // always resolved before the signal is ever raised.
+      for (int i = 0; i < 20 && !memory_watchdog_stop_.load(std::memory_order_relaxed); ++i)
+      {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      }
+    }
+  });
+}
+
+void UI::StopMemoryWatchdog()
+{
+  memory_watchdog_stop_.store(true, std::memory_order_relaxed);
+  if (memory_watchdog_.joinable())
+  {
+    if (memory_watchdog_.get_id() == std::this_thread::get_id())
+    {
+      // Never join ourselves; detaching is the only safe option here.
+      memory_watchdog_.detach();
+    }
+    else
+    {
+      memory_watchdog_.join();
+    }
+  }
+}
+
+bool UI::ConsumeMemoryPressureSignal()
+{
+  return memory_pressure_pending_.exchange(false, std::memory_order_relaxed);
+}
+
+void UI::NoteTabActivated(uint64_t tab_id)
+{
+  tab_last_active_seq_[tab_id] = ++tab_activation_counter_;
+}
+
+void UI::ReclaimMemoryIfNeeded()
+{
+  if (!memory_monitor_ || !settings_.low_ram_mode)
+    return;
+
+  // The watchdog thread only raises a flag; all view mutation happens here on
+  // the UI thread, which is the thread that created the App.
+  if (!ConsumeMemoryPressureSignal())
+    return;
+
+  // Poll first: this refreshes the hysteresis and grace-period state.
+  memory::MemorySnapshot snapshot = memory_monitor_->Poll();
+  if (!snapshot.over_budget)
+    return;
+
+  // Evict one tab at a time, re-reading the footprint in between: closing a
+  // single view rarely brings a process that is far over budget back under it.
+  // The loop stops as soon as we are healthy, or when only the active tab is
+  // left, so the user is never left with a blank browser.
+  while (snapshot.over_budget)
+  {
+    if (!memory_monitor_->ShouldEvictBackgroundTab())
+      break;
+
+    // Pick the least-recently-activated background tab. Never touch the active
+    // tab, and never close a DRM tab automatically: those hold a media session
+    // the user is watching, and tearing one down would be far more disruptive
+    // than the memory it costs.
+    uint64_t victim = 0;
+    bool found = false;
+    uint64_t coldest_seq = UINT64_MAX;
+    for (const auto &entry : tabs_)
+    {
+      const uint64_t id = entry.first;
+      if (id == active_tab_id_ || !entry.second)
+        continue;
+
+      auto seq_it = tab_last_active_seq_.find(id);
+      const uint64_t seq = (seq_it != tab_last_active_seq_.end()) ? seq_it->second : 0;
+      if (!found || seq < coldest_seq)
+      {
+        found = true;
+        coldest_seq = seq;
+        victim = id;
+      }
+    }
+
+    if (!found)
+      break;
+
+    tab_last_active_seq_.erase(victim);
+    memory_monitor_->NoteTabClosed();
+    ReclaimMemory(victim);
+
+    // ReclaimMemory destroyed the view; hand the freed pages back to the OS and
+    // restart the grace window so the next poll measures the new footprint.
+    memory::MemoryMonitor::ReleaseFreedMemory();
+    memory_monitor_->NotifyMemoryReclaimed();
+    snapshot = memory_monitor_->Poll();
+
+    std::fprintf(stderr,
+                 "[UI] low-RAM: closed background tab %llu, now %.1f MB of %.1f MB budget\n",
+                 static_cast<unsigned long long>(victim),
+                 static_cast<double>(snapshot.resident_bytes) / (1024.0 * 1024.0),
+                 static_cast<double>(snapshot.budget_bytes) / (1024.0 * 1024.0));
+  }
+}
+
+void UI::ReclaimMemory(uint64_t tab_id)
+{
+  auto it = tabs_.find(tab_id);
+  if (it == tabs_.end() || !it->second)
+    return;
+
+  it->second->set_ready_to_close(true);
+  RefPtr<JSContext> lock(view()->LockJSContext());
+  closeTab({tab_id});
+  it->second.reset();
+  tabs_.erase(it);
+  SaveSessionToDisk();
+}
+
 void UI::ReloadChromeUI()
 {
   if (!overlay_)
@@ -3928,12 +4247,24 @@ std::string UI::BuildSettingsJSON() const
   bool first = true;
   for (const auto &desc : catalog)
   {
-    if (!desc.member)
-      continue;
-    if (!first)
-      ss << ",";
-    ss << "\"" << util::EscapeJsonString(desc.key) << "\": " << (settings_.*(desc.member) ? "true" : "false");
-    first = false;
+    // Flat key -> value map consumed by the settings page's JS. Boolean and
+    // numeric settings are both emitted as native JSON scalars.
+    if (!desc.is_number && desc.member)
+    {
+      if (!first)
+        ss << ",";
+      ss << "\"" << util::EscapeJsonString(desc.key) << "\": "
+         << (settings_.*(desc.member) ? "true" : "false");
+      first = false;
+    }
+    else if (desc.is_number && desc.number_member)
+    {
+      if (!first)
+        ss << ",";
+      ss << "\"" << util::EscapeJsonString(desc.key) << "\": "
+         << settings_.*(desc.number_member);
+      first = false;
+    }
   }
   ss << "}";
   return ss.str();
@@ -6019,8 +6350,10 @@ bool UI::BrowserSettings::operator==(const BrowserSettings &other) const
          ask_download_location == other.ask_download_location &&
          smooth_scrolling == other.smooth_scrolling &&
          hardware_acceleration == other.hardware_acceleration &&
-         enable_local_storage == other.enable_local_storage &&
-         enable_database == other.enable_database &&
+          enable_local_storage == other.enable_local_storage &&
+          enable_database == other.enable_database &&
+          low_ram_mode == other.low_ram_mode &&
+          memory_budget_mb == other.memory_budget_mb &&
          reduce_motion == other.reduce_motion &&
          high_contrast_ui == other.high_contrast_ui &&
          enable_caret_browsing == other.enable_caret_browsing &&

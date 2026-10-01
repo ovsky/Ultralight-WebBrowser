@@ -126,6 +126,59 @@ namespace
       return fallback;
     }
   }
+
+  // Reads an integer setting, clamped into [min_value, max_value]. A corrupt or
+  // out-of-range value on disk must not be able to put the browser into an
+  // unusable state (e.g. a zero or negative memory budget).
+  int ParseIntClamped(const std::string &buffer, const std::string &key, int fallback,
+                      int min_value, int max_value)
+  {
+    if (key.empty())
+      return fallback;
+
+    std::string needle = std::string("\"") + key + "\"";
+    auto pos = buffer.find(needle);
+    if (pos == std::string::npos)
+      return fallback;
+    pos = buffer.find(':', pos + needle.size());
+    if (pos == std::string::npos)
+      return fallback;
+    ++pos;
+
+    while (pos < buffer.size() && std::isspace(static_cast<unsigned char>(buffer[pos])))
+      ++pos;
+
+    // Accept an optional sign, then digits only. Reject anything else (a quoted
+    // value, an exponent, trailing garbage) rather than partially parsing it.
+    size_t num_start = pos;
+    if (pos < buffer.size() && (buffer[pos] == '-' || buffer[pos] == '+'))
+      ++pos;
+    size_t digits_start = pos;
+    while (pos < buffer.size() && std::isdigit(static_cast<unsigned char>(buffer[pos])))
+      ++pos;
+    if (pos == digits_start)
+      return fallback;
+
+    // Reject a fractional part: this is an integer setting.
+    if (pos < buffer.size() && (buffer[pos] == '.' || buffer[pos] == 'e' || buffer[pos] == 'E'))
+      return fallback;
+
+    long long value = fallback;
+    try
+    {
+      value = std::stoll(buffer.substr(num_start, pos - num_start));
+    }
+    catch (const std::exception &)
+    {
+      return fallback;
+    }
+
+    if (value < min_value)
+      return min_value;
+    if (value > max_value)
+      return max_value;
+    return static_cast<int>(value);
+  }
 }
 
 void SettingsManager::EnsureDataDirectoryExists()
@@ -142,9 +195,16 @@ void SettingsManager::RestoreSettingsToDefaults(UI &ui)
   const auto &catalog = GetSettingsCatalog();
   for (const auto &desc : catalog)
   {
-    if (!desc.member)
-      continue;
-    ui.settings_.*(desc.member) = desc.default_value;
+    if (!desc.is_number)
+    {
+      if (!desc.member)
+        continue;
+      ui.settings_.*(desc.member) = desc.default_value;
+    }
+    else if (desc.number_member)
+    {
+      ui.settings_.*(desc.number_member) = desc.number_default;
+    }
   }
   ui.drm_settings_.SetEnabled(ui.settings_.enable_drm_webview);
   ui.drm_settings_.Save();
@@ -187,10 +247,18 @@ bool SettingsManager::LoadSettingsFromDisk(UI &ui)
     const auto &catalog = GetSettingsCatalog();
     for (const auto &desc : catalog)
     {
-      if (!desc.member)
-        continue;
-      bool fallback = ui.settings_.*(desc.member);
-      ui.settings_.*(desc.member) = ParseBoolLenient(content, desc.key, fallback);
+      if (!desc.is_number)
+      {
+        if (!desc.member)
+          continue;
+        bool fallback = ui.settings_.*(desc.member);
+        ui.settings_.*(desc.member) = ParseBoolLenient(content, desc.key, fallback);
+      }
+      else if (desc.number_member)
+      {
+        ui.settings_.*(desc.number_member) =
+            ParseIntClamped(content, desc.key, desc.number_default, desc.min_value, desc.max_value);
+      }
     }
     // Parse string settings
     ui.settings_.custom_user_agent = ParseStringLenient(content, "custom_user_agent", "");
@@ -243,12 +311,17 @@ bool SettingsManager::SaveSettingsToDisk(UI &ui)
   bool first = true;
   for (const auto &desc : catalog)
   {
-    if (!desc.member)
+    const bool is_bool = !desc.is_number && desc.member;
+    const bool is_int = desc.is_number && desc.number_member;
+    if (!is_bool && !is_int)
       continue;
     if (!first)
       doc << ",\n";
     doc << "      {\"key\":\"" << util::EscapeJsonString(desc.key) << "\",";
-    doc << "\"value\": " << (ui.settings_.*(desc.member) ? "true" : "false") << "}";
+    if (is_int)
+      doc << "\"type\":\"number\",\"value\": " << (ui.settings_.*(desc.number_member)) << "}";
+    else
+      doc << "\"type\":\"bool\",\"value\": " << (ui.settings_.*(desc.member) ? "true" : "false") << "}";
     first = false;
   }
   doc << "\n    ]\n  }\n}\n";

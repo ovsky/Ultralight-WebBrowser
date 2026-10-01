@@ -58,6 +58,11 @@ function(add_app NAME)
 		${WEB_CORE_LIB}
 	)
 
+	# MemoryMonitor reads the process working set via GetProcessMemoryInfo.
+	if(WIN32)
+		target_link_libraries(${NAME} PRIVATE psapi)
+	endif()
+
 	if(APPLE OR UNIX)
 		set_target_properties(${NAME} PROPERTIES BUILD_RPATH "$ORIGIN" INSTALL_RPATH "$ORIGIN")
 	endif()
@@ -79,6 +84,8 @@ set(SOURCES
 	"src/ExtensionManager.cpp"
 	"src/PasswordManager.h"
 	"src/PasswordManager.cpp"
+	"src/MemoryMonitor.h"
+	"src/MemoryMonitor.cpp"
 	"src/Tab.h"
 	"src/Tab.cpp"
 	"src/UI.h"
@@ -216,6 +223,16 @@ endif()
 	 	src/drm/DRMSettings.cpp)
 	 target_link_libraries(DRMSettingsTest PRIVATE GTest::gtest_main)
 	 add_test(NAME DRMSettingsTest COMMAND DRMSettingsTest)
+
+	 # MemoryMonitorTest doesn't need Ultralight libraries - it's standalone
+	 add_executable(MemoryMonitorTest
+	 	tests/MemoryMonitorTest.cpp
+	 	src/MemoryMonitor.cpp)
+	 target_link_libraries(MemoryMonitorTest PRIVATE GTest::gtest_main)
+	 if(WIN32)
+	 	target_link_libraries(MemoryMonitorTest PRIVATE psapi)
+	 endif()
+	 add_test(NAME MemoryMonitorTest COMMAND MemoryMonitorTest)
  else()
 	 message(STATUS "Skipping tests on Windows when not using MSVC (to avoid linking MSVC .lib with MinGW)")
  endif()

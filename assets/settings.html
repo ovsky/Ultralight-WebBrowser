@@ -620,6 +620,7 @@
         <div id="settings-container">
             <div class="loading">Loading settings...</div>
         </div>
+        <div id="memory-readout" class="memory-readout" style="display:none"></div>
         <section id="drm-panel" class="drm-panel">
             <div class="drm-header">
                 <div>
@@ -934,6 +935,53 @@
                     descDiv.textContent = setting.description;
                     infoDiv.appendChild(nameDiv);
                     infoDiv.appendChild(descDiv);
+
+                    // Catalog metadata drives the control type. Numeric settings
+                    // (e.g. the low-RAM budget) must render as a bounded number
+                    // input; rendering them as a toggle would coerce 512 MB to
+                    // "on" and then save 1 or 0.
+                    const meta = window.__settingMeta && window.__settingMeta[setting.key];
+                    if (meta && meta.type === 'number') {
+                        const min = (typeof meta.min === 'number') ? meta.min : 0;
+                        const max = (typeof meta.max === 'number') ? meta.max : 100000;
+                        const step = (typeof meta.step === 'number' && meta.step > 0) ? meta.step : 1;
+                        const input = document.createElement('input');
+                        input.type = 'number';
+                        input.className = 'setting-number-input';
+                        input.min = String(min);
+                        input.max = String(max);
+                        input.step = String(step);
+                        input.value = String(currentSettings[setting.key] ?? meta.default ?? min);
+                        input.title = 'Allowed range: ' + min + '-' + max;
+
+                        const commit = () => {
+                            const raw = parseInt(input.value, 10);
+                            if (isNaN(raw)) {
+                                // Restore the last good value rather than saving NaN.
+                                input.value = String(currentSettings[setting.key] ?? '');
+                                return;
+                            }
+                            const clamped = Math.min(max, Math.max(min, raw));
+                            if (clamped !== raw) input.value = String(clamped);
+                            currentSettings[setting.key] = clamped;
+                            log('Changed ' + setting.key + ' to ' + clamped);
+                            if (typeof window.OnUpdateSetting === 'function') {
+                                window.OnUpdateSetting(setting.key, clamped);
+                            }
+                            updateDirtyState();
+                            const autoSave = !!currentSettings.auto_save_settings;
+                            if (autoSave && typeof window.OnSaveSettings === 'function') {
+                                window.OnSaveSettings();
+                            }
+                        };
+
+                        input.addEventListener('change', commit);
+                        itemDiv.appendChild(infoDiv);
+                        itemDiv.appendChild(input);
+                        groupDiv.appendChild(itemDiv);
+                        return;
+                    }
+
                     const toggleDiv = document.createElement('div');
                     toggleDiv.className = 'toggle-switch';
                     if (currentSettings[setting.key]) toggleDiv.classList.add('active');
@@ -975,6 +1023,46 @@
                 container.appendChild(groupDiv);
             });
             log('Rendered UI');
+        }
+
+        // Live working-set readout, shown only while low-RAM mode is enabled.
+        // Polled by the caller; never throws into the render path.
+        function updateMemoryReadout() {
+            const panel = document.getElementById('memory-readout');
+            if (!panel) return;
+            if (!currentSettings.low_ram_mode) {
+                panel.style.display = 'none';
+                return;
+            }
+            if (typeof window.GetMemorySnapshot !== 'function') {
+                panel.style.display = 'none';
+                return;
+            }
+
+            let snap;
+            try {
+                const raw = window.GetMemorySnapshot();
+                snap = typeof raw === 'string' ? JSON.parse(raw) : raw;
+            } catch (error) {
+                panel.style.display = 'none';
+                return;
+            }
+
+            if (!snap || snap.valid !== true) {
+                // The platform refused to report usage; hide rather than show 0 MB.
+                panel.style.display = 'none';
+                return;
+            }
+
+            const mib = (bytes) => (bytes / (1024 * 1024)).toFixed(1);
+            panel.style.display = 'block';
+            panel.textContent =
+                'Memory: ' + mib(snap.resident_bytes) + ' MB used' +
+                (snap.peak_resident_bytes > 0 ? ' (peak ' + mib(snap.peak_resident_bytes) + ' MB)' : '') +
+                ' of ' + snap.budget_bytes / (1024 * 1024) + ' MB budget' +
+                ' · ' + snap.open_tabs + ' open tab' + (snap.open_tabs === 1 ? '' : 's') +
+                (snap.over_budget ? ' · OVER BUDGET' : '');
+            panel.style.color = snap.over_budget ? '#d9534f' : '';
         }
 
         function updateDirtyState() {

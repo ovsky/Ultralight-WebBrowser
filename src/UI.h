@@ -4,6 +4,7 @@
 #include "drm/DRMSettings.h"
 #include "ExtensionManager.h"
 #include "BookmarkStore.h"
+#include "MemoryMonitor.h"
 #include <map>
 #include <memory>
 #include <string>
@@ -11,6 +12,8 @@
 #include <filesystem>
 #include <deque>
 #include <optional>
+#include <atomic>
+#include <thread>
 
 namespace drm
 {
@@ -79,6 +82,10 @@ public:
     bool hardware_acceleration = true;
     bool enable_local_storage = true;
     bool enable_database = true;
+
+  // Low-RAM mode
+  bool low_ram_mode = false;          // Enable memory-pressure monitoring
+  int memory_budget_mb = 512;         // Working-set budget before pressure is reported
 
     // Accessibility
     bool reduce_motion = false;
@@ -171,6 +178,8 @@ public:
   void OnCloseSettingsPanel(const JSObject &obj, const JSArgs &args);
   ultralight::JSValue OnGetSettings(const JSObject &obj, const JSArgs &args);
   void OnUpdateSetting(const JSObject &obj, const JSArgs &args);
+  // Returns the live working-set / budget snapshot as JSON for the settings UI.
+  ultralight::JSValue OnGetMemorySnapshot(const JSObject &obj, const JSArgs &args);
   ultralight::JSValue OnRestoreSettingsDefaults(const JSObject &obj, const JSArgs &args);
   void OnSaveSettings(const JSObject &obj, const JSArgs &args);
   ultralight::JSValue OnGetDrmStatus(const JSObject &obj, const JSArgs &args);
@@ -237,6 +246,31 @@ public:
   DownloadManager *download_manager() { return download_manager_.get(); }
   password::PasswordManager *password_manager() { return password_manager_.get(); }
   BookmarkStore *bookmark_store() { return bookmark_store_.get(); }
+
+  // Memory monitor for the low-RAM mode budget policy. Never null after
+  // construction; returns the last computed sample without re-reading the OS.
+  memory::MemorySnapshot GetMemorySnapshot();
+  // Polls the platform and refreshes the over-budget state. Cheap enough to call
+  // from the UI bridge on demand.
+  memory::MemorySnapshot PollMemory();
+  // Closes background tabs until the process is back under its memory budget.
+  // No-op unless low-RAM mode is enabled and the budget has been exceeded for
+  // longer than the grace period. Never closes the active tab.
+  void ReclaimMemoryIfNeeded();
+  // Destroys a specific tab and its view. Used by low-RAM reclamation and by
+  // ordinary tab close paths.
+  void ReclaimMemory(uint64_t tab_id);
+  // Records that a tab became active, so eviction can pick the coldest tab
+  // first. Cheap; called on every tab activation.
+  void NoteTabActivated(uint64_t tab_id);
+  // Starts the background sampler. It only reads process memory and raises an
+  // atomic flag; it never touches views, so it is safe off the UI thread.
+  // Reclamation itself happens on the UI thread at navigation and tab events.
+  void StartMemoryWatchdog();
+  // Stops the background sampler. Called from the destructor.
+  void StopMemoryWatchdog();
+  // True when the watchdog has seen sustained pressure since the last check.
+  bool ConsumeMemoryPressureSignal();
   AdBlocker *network_blocker() { return adblock_; }
 
   // Privacy settings accessors for Tab's JavaScript injection
@@ -378,6 +412,10 @@ protected:
   std::unique_ptr<DownloadManager> download_manager_;
   std::unique_ptr<password::PasswordManager> password_manager_;
   std::unique_ptr<BookmarkStore> bookmark_store_;
+  // Samples the process working set and decides when memory pressure warrants
+  // reclaiming background tabs. Always constructed; only polled when the
+  // low_ram_mode setting is enabled.
+  std::unique_ptr<memory::MemoryMonitor> memory_monitor_;
   bool downloads_overlay_had_active_ = false;
   bool downloads_overlay_user_dismissed_ = false;
   uint64_t downloads_last_sequence_seen_ = 0;
@@ -393,6 +431,17 @@ protected:
 
   std::map<uint64_t, std::unique_ptr<Tab>> tabs_;
   std::map<uint64_t, std::unique_ptr<drm::DRMWebViewTab>> drm_tabs_;
+  // Monotonic activation counter used to find the least-recently-used tab.
+  // Map order is by tab id, which says nothing about recency, so low-RAM mode
+  // needs its own ordering.
+  std::map<uint64_t, uint64_t> tab_last_active_seq_;
+  uint64_t tab_activation_counter_ = 0;
+  // Raised by the watchdog thread, consumed on the UI thread. Using an atomic
+  // flag keeps every view mutation on the thread that created the App, which
+  // Ultralight requires.
+  std::atomic<bool> memory_pressure_pending_{false};
+  std::atomic<bool> memory_watchdog_stop_{false};
+  std::thread memory_watchdog_;
   std::map<uint64_t, std::string> drm_tab_titles_;
   std::map<uint64_t, std::string> drm_tab_urls_;
   uint64_t active_tab_id_ = 0;
@@ -538,6 +587,10 @@ protected:
 };
 
 // Datatype used at runtime to represent a settings catalog entry.
+//
+// Boolean settings use `member`/`default_value`. Integer settings set
+// `is_number` and use `number_member` instead; the two forms are mutually
+// exclusive so a descriptor always maps to exactly one field.
 struct RuntimeSettingDescriptor
 {
   std::string key;
@@ -548,6 +601,15 @@ struct RuntimeSettingDescriptor
   bool reload_page = false;
   bool UI::BrowserSettings::*member = nullptr;
   bool default_value = false;
+
+  bool is_number = false;
+  int UI::BrowserSettings::*number_member = nullptr;
+  int number_default = 0;
+  // Inclusive bounds applied to incoming values. min_value == max_value means
+  // "no range restriction" is not assumed; callers should always clamp.
+  int min_value = 0;
+  int max_value = 0;
+  int step = 1;
 };
 
 // Accessors for the runtime settings catalog. Implemented in UI.cpp.

@@ -201,6 +201,23 @@
     "default": true
   },
   {
+    "key": "low_ram_mode",
+    "name": "Low-RAM mode",
+    "description": "Watch the process working set and reclaim memory from background tabs when it grows past your budget.",
+    "category": "performance",
+    "note": null,
+    "default": false
+  },
+  {
+    "key": "memory_budget_mb",
+    "name": "Memory budget (MB)",
+    "description": "Working-set budget in megabytes. Once usage stays above it for a few seconds, low-RAM mode kicks in.",
+    "category": "performance",
+    "note": "Used by low-RAM mode",
+    "default": 512,
+    "type": "number"
+  },
+  {
     "key": "enable_drm_webview",
     "name": "Enable DRM WebView",
     "description": "Automatically switch DRM-protected sites to a native OS WebView with Widevine support.",
