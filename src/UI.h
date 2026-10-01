@@ -6,6 +6,7 @@
 #include "BookmarkStore.h"
 #include "MemoryMonitor.h"
 #include "ThemeManager.h"
+#include "MediaFallback.h"
 #include <map>
 #include <memory>
 #include <string>
@@ -111,6 +112,9 @@ public:
 
     // DRM WebView subsystem toggle (disabled by default, user must opt-in)
     bool enable_drm_webview = false;
+  // Open known video hosts in the platform webview. Off by default: it hands the
+  // page to a different engine, which should be the user's choice.
+  bool media_fallback_enabled = false;
 
     // Session restore settings
     bool restore_session_on_startup = true; // Restore previous session tabs on startup
@@ -610,6 +614,20 @@ protected:
   std::deque<std::string> drm_log_lines_;
 
   void EnsureDrmManager();
+  // Hosts listed in assets/media_sites.json. These are handed to the platform
+  // webview when media fallback is on, because the bundled engine has no codecs
+  // and <video> would otherwise render as an empty box.
+  media::MediaFallback media_fallback_;
+  bool media_fallback_enabled_ = false;
+
+  // Routes a tab to the platform webview when the URL is a known media host.
+  // Called alongside MaybeOpenDrmTab; returns true if it took over the tab.
+  bool MaybeOpenMediaTab(uint64_t tab_id, const std::string &url);
+
+  // Creates and drives a tab backed by the platform's own webview. Shared by the
+  // DRM path and the media fallback; `loading_title` is what the tab shows while
+  // the webview spins up.
+  bool OpenSystemWebViewTab(uint64_t tab_id, const std::string &url, const std::string &loading_title);
   bool MaybeOpenDrmTab(uint64_t tab_id, const std::string &url, bool user_initiated);
   void HandleDrmTitleChanged(uint64_t tab_id, const std::string &title);
   void HandleDrmUrlChanged(uint64_t tab_id, const std::string &url);

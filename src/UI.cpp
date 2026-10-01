@@ -185,6 +185,9 @@ namespace
       SettingDescriptor{"enable_drm_webview", "Enable DRM WebView",
                         "Automatically switch Widevine-protected sites to a native DRM-capable WebView.",
                         "drm", "Requires native runtime", false, &UI::BrowserSettings::enable_drm_webview, false},
+      SettingDescriptor{"media_fallback_enabled", "Media Fallback",
+                        "Open known video sites in the native OS WebView. The bundled engine has no video codecs, so playback shows an empty box otherwise.",
+                        "drm", "Requires native runtime", false, &UI::BrowserSettings::media_fallback_enabled, false},
 
       // Networking / User Agent
       SettingDescriptor{"use_custom_user_agent", "Use custom user agent",
@@ -491,8 +494,9 @@ const RuntimeSettingDescriptor *FindSettingDescriptor(const std::string &key)
 UI::UI(RefPtr<Window> window)
     : window_(window), cur_cursor_(Cursor::kCursor_Pointer),
       is_resizing_inspector_(false), is_over_inspector_resize_drag_handle_(false),
-      drm_settings_(SettingsDirectory() / "drm_settings.json")
-{
+    drm_settings_(SettingsDirectory() / "drm_settings.json"),
+    media_fallback_("assets/media_sites.json")
+  {
   uint32_t window_width = window_->width();
   ui_height_ = (uint32_t)std::round(UI_HEIGHT * window_->scale());
   base_ui_height_ = ui_height_;
@@ -562,14 +566,15 @@ UI::UI(RefPtr<Window> window, AdBlocker *adblock, AdBlocker *tracker)
     : window_(window), cur_cursor_(Cursor::kCursor_Pointer),
       is_resizing_inspector_(false), is_over_inspector_resize_drag_handle_(false),
       adblock_(adblock), trackerblock_(tracker),
-      drm_settings_(SettingsDirectory() / "drm_settings.json")
-{
+    drm_settings_(SettingsDirectory() / "drm_settings.json"),
+    media_fallback_("assets/media_sites.json")
+  {
   uint32_t window_width = window_->width();
   ui_height_ = (uint32_t)std::round(UI_HEIGHT * window_->scale());
   base_ui_height_ = ui_height_;
   overlay_ = Overlay::Create(window_, window_width, ui_height_, 0, 0);
   g_ui = this;
-
+   
   LoadSuggestionsFaviconsFlag();
   EnsureDataDirectoryExists();
   settings_storage_path_ = SettingsFilePath().string();
@@ -725,6 +730,23 @@ void UI::EnsureDrmManager()
   drm::PrewarmWebViewEnvironment();
 }
 
+bool UI::MaybeOpenMediaTab(uint64_t tab_id, const std::string &url)
+{
+  if (!media_fallback_enabled_)
+    return false;
+
+  // DRM takes precedence: those sites are already routed, they show the DRM
+  // prompt, and re-routing them here would skip that.
+  if (drm_settings_.IsDrmSite(url))
+    return false;
+
+  if (!media_fallback_.IsMediaSite(url))
+    return false;
+
+  AppendDrmLog("Media fallback: opening in the system webview: " + url);
+  return OpenSystemWebViewTab(tab_id, url, "Loading Media Player...");
+}
+
 bool UI::MaybeOpenDrmTab(uint64_t tab_id, const std::string &url, bool user_initiated)
 {
   // Check if URL matches a DRM site (ignores DRMSettings enabled_ flag)
@@ -741,9 +763,13 @@ bool UI::MaybeOpenDrmTab(uint64_t tab_id, const std::string &url, bool user_init
     return false;
   }
 
-  // URL matched a DRM site - open in WebView2
+  // URL matched a DRM site - open it in the system webview.
   AppendDrmLog("Opening DRM tab for: " + url);
+  return OpenSystemWebViewTab(tab_id, url, "Loading DRM System...");
+}
 
+bool UI::OpenSystemWebViewTab(uint64_t tab_id, const std::string &url, const std::string &loading_title)
+{
   EnsureDrmManager();
   if (!drm_manager_)
     return false;
@@ -751,7 +777,7 @@ bool UI::MaybeOpenDrmTab(uint64_t tab_id, const std::string &url, bool user_init
   auto *dependency_manager = drm_manager_->dependency_manager();
   if (dependency_manager && !dependency_manager->IsInstalled())
   {
-    AppendDrmLog("Cannot open DRM tab because " + dependency_manager->GetName() + " is not installed.");
+    AppendDrmLog("Cannot open a system webview tab because " + dependency_manager->GetName() + " is not installed.");
     return false;
   }
 
@@ -796,21 +822,21 @@ bool UI::MaybeOpenDrmTab(uint64_t tab_id, const std::string &url, bool user_init
 
   if (drm_it == drm_tabs_.end() || !drm_it->second)
   {
-    AppendDrmLog("Failed to create DRM WebView tab. Verify the native DRM runtime is installed (WebView2 on Windows).");
+    AppendDrmLog("Failed to create the system webview tab. Verify the native runtime is installed (WebView2 on Windows).");
     return false;
   }
 
   drm_tab_urls_[tab_id] = url;
-  drm_tab_titles_[tab_id] = "Loading DRM System...";
+  drm_tab_titles_[tab_id] = loading_title;
 
-  // Show loading page in Ultralight tab while WebView2 initializes
+  // Show loading page in Ultralight tab while the system webview initializes
   if (ultra_tab)
   {
     ultra_tab->view()->LoadURL("file:///drm_loading.html");
     ultra_tab->Show(); // Keep showing the loading page
   }
-  // DON'T show WebView2 yet - it will be shown when it starts loading
-  // This ensures the loading page is visible while WebView2 initializes
+  // DON'T show the system webview yet - it will be shown when it starts loading.
+  // This ensures the loading page is visible while it initializes.
   drm_it->second->Hide();
   UpdateDrmBadge(tab_id, true);
 
@@ -819,7 +845,7 @@ bool UI::MaybeOpenDrmTab(uint64_t tab_id, const std::string &url, bool user_init
     RefPtr<JSContext> lock(view()->LockJSContext());
     if (updateTab)
     {
-      ultralight::String title_str("Loading DRM System...");
+      ultralight::String title_str(loading_title.c_str());
       ultralight::String url_str(url.c_str());
       updateTab({tab_id, title_str, GetFaviconURL(url_str), true}); // true = loading
     }
@@ -1992,6 +2018,10 @@ void UI::OnRequestChangeURL(const JSObject &obj, const JSArgs &args)
     if (MaybeOpenDrmTab(active_tab_id_, url_utf8, true))
       return;
 
+    // Not DRM, but it may be a video host the engine cannot decode.
+    if (MaybeOpenMediaTab(active_tab_id_, url_utf8))
+      return;
+
     // Not a DRM site - close any existing DRM tab and show Ultralight tab
     HideAllDrmTabs();
     if (!tabs_.empty())
@@ -2569,6 +2599,9 @@ void UI::UpdateTabURL(uint64_t id, const ultralight::String &url)
   if (!url_utf8.empty())
   {
     if (MaybeOpenDrmTab(id, url_utf8, false))
+      return;
+    // Video hosts also go to the system webview when media fallback is on.
+    if (MaybeOpenMediaTab(id, url_utf8))
       return;
     // Only hide DRM tab if we're navigating away from a DRM site
     // (this shouldn't happen since we check above, but keep for safety)
@@ -3904,6 +3937,12 @@ void UI::ApplySettings(bool initial, bool snapshot_is_baseline)
   show_download_badge_ = settings_.show_download_badge;
   auto_open_download_panel_ = settings_.auto_open_download_panel;
   // ask_download_location would be checked when download starts
+
+  // Media fallback. The host list is loaded once at startup; only the toggle is
+  // re-applied here, so toggling the setting does not re-read the asset.
+  media_fallback_enabled_ = settings_.media_fallback_enabled;
+  if (!media_fallback_.loaded())
+    media_fallback_.Load();
 
   // Performance
   // enable_javascript and hardware_acceleration are applied during Tab creation (see CreateNewTab)
@@ -6554,6 +6593,7 @@ bool UI::BrowserSettings::operator==(const BrowserSettings &other) const
          custom_user_agent == other.custom_user_agent &&
          auto_save_settings == other.auto_save_settings &&
          enable_drm_webview == other.enable_drm_webview &&
+      media_fallback_enabled == other.media_fallback_enabled &&
          restore_session_on_startup == other.restore_session_on_startup &&
          save_session_continuously == other.save_session_continuously;
 }
