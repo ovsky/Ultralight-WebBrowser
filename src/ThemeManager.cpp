@@ -1,601 +1,286 @@
 #include "ThemeManager.h"
+
+#include <cstdio>
 #include <fstream>
 #include <sstream>
-#include <algorithm>
-#include <chrono>
 
-// Simple JSON helpers (reusing pattern from BookmarkStore)
-namespace {
-    std::string EscapeJSON(const std::string& s) {
-        std::string result;
-        for (char c : s) {
-            switch (c) {
-                case '"':  result += "\\\""; break;
-                case '\\': result += "\\\\"; break;
-                case '\n': result += "\\n"; break;
-                case '\r': result += "\\r"; break;
-                case '\t': result += "\\t"; break;
-                default: result += c; break;
-            }
-        }
-        return result;
-    }
-
-    std::string UnescapeJSON(const std::string& s) {
-        std::string result;
-        for (size_t i = 0; i < s.length(); ++i) {
-            if (s[i] == '\\' && i + 1 < s.length()) {
-                switch (s[i + 1]) {
-                    case '"':  result += '"'; ++i; break;
-                    case '\\': result += '\\'; ++i; break;
-                    case 'n':  result += '\n'; ++i; break;
-                    case 'r':  result += '\r'; ++i; break;
-                    case 't':  result += '\t'; ++i; break;
-                    default: result += s[i]; break;
-                }
-            } else {
-                result += s[i];
-            }
-        }
-        return result;
-    }
-
-    std::string ExtractJSONString(const std::string& json, const std::string& key) {
-        std::string search = "\"" + key + "\"";
-        size_t pos = json.find(search);
-        if (pos == std::string::npos) return "";
-        
-        pos = json.find(':', pos);
-        if (pos == std::string::npos) return "";
-        
-        pos = json.find('"', pos);
-        if (pos == std::string::npos) return "";
-        
-        size_t end = pos + 1;
-        while (end < json.length()) {
-            if (json[end] == '"' && json[end - 1] != '\\') break;
-            ++end;
-        }
-        
-        return UnescapeJSON(json.substr(pos + 1, end - pos - 1));
-    }
-
-    bool ExtractJSONBool(const std::string& json, const std::string& key) {
-        std::string search = "\"" + key + "\"";
-        size_t pos = json.find(search);
-        if (pos == std::string::npos) return false;
-        
-        pos = json.find(':', pos);
-        if (pos == std::string::npos) return false;
-        
-        // Skip whitespace
-        while (pos < json.length() && (json[pos] == ':' || json[pos] == ' ')) ++pos;
-        
-        return json.substr(pos, 4) == "true";
-    }
-
-    std::map<std::string, std::string> ExtractJSONColorMap(const std::string& json) {
-        std::map<std::string, std::string> colors;
-        
-        size_t colorsPos = json.find("\"colors\"");
-        if (colorsPos == std::string::npos) return colors;
-        
-        size_t start = json.find('{', colorsPos);
-        if (start == std::string::npos) return colors;
-        
-        int depth = 1;
-        size_t end = start + 1;
-        while (end < json.length() && depth > 0) {
-            if (json[end] == '{') ++depth;
-            else if (json[end] == '}') --depth;
-            ++end;
-        }
-        
-        std::string colorsJson = json.substr(start, end - start);
-        
-        // Parse key-value pairs
-        size_t pos = 0;
-        while (pos < colorsJson.length()) {
-            size_t keyStart = colorsJson.find('"', pos);
-            if (keyStart == std::string::npos) break;
-            
-            size_t keyEnd = colorsJson.find('"', keyStart + 1);
-            if (keyEnd == std::string::npos) break;
-            
-            std::string key = colorsJson.substr(keyStart + 1, keyEnd - keyStart - 1);
-            
-            size_t valueStart = colorsJson.find('"', keyEnd + 1);
-            if (valueStart == std::string::npos) break;
-            
-            size_t valueEnd = valueStart + 1;
-            while (valueEnd < colorsJson.length()) {
-                if (colorsJson[valueEnd] == '"' && colorsJson[valueEnd - 1] != '\\') break;
-                ++valueEnd;
-            }
-            
-            std::string value = colorsJson.substr(valueStart + 1, valueEnd - valueStart - 1);
-            colors[key] = value;
-            
-            pos = valueEnd + 1;
-        }
-        
-        return colors;
-    }
-}
-
-ThemeManager::ThemeManager()
-    : active_theme_id_("dark")
+namespace themes
 {
-}
 
-ThemeManager::~ThemeManager()
+namespace
 {
-}
+    // The legacy definition files. Fixed and small: they ship with the app, so
+    // there is no reason to discover them at runtime, and naming them keeps the
+    // set from silently growing if a stray file lands in assets/themes/.
+    constexpr const char *const kSeedStems[] = {"dark", "light", "midnight", "nord", "monokai"};
 
-void ThemeManager::Initialize(const std::filesystem::path& storage_dir)
-{
-    storage_dir_ = storage_dir;
-    themes_file_ = storage_dir / "custom_themes.json";
-    
-    LoadBuiltinThemes();
-    LoadThemes();
-}
-
-void ThemeManager::LoadBuiltinThemes()
-{
-    // Dark theme (default)
-    Theme dark;
-    dark.id = "dark";
-    dark.name = "Dark (Default)";
-    dark.description = "The default dark purple theme";
-    dark.author = "Ultralight Team";
-    dark.version = "1.0.0";
-    dark.is_builtin = true;
-    dark.colors = {
-        {"color-bg-primary", "#16151d"},
-        {"color-bg-secondary", "#1e1e2e"},
-        {"color-bg-tertiary", "#232330"},
-        {"color-bg-elevated", "#282839"},
-        {"color-bg-hover", "#343446"},
-        {"color-text-primary", "#e4e4ef"},
-        {"color-text-secondary", "#c4c2d0"},
-        {"color-text-tertiary", "#9999b3"},
-        {"color-text-muted", "#71718a"},
-        {"color-border-primary", "#313146"},
-        {"color-border-secondary", "#252532"},
-        {"color-accent-primary", "#6C63FF"},
-        {"color-accent-secondary", "#7c6aef"},
-        {"color-accent-hover", "#8a83ff"},
-        {"color-success", "#6aef8a"},
-        {"color-warning", "#f0b866"},
-        {"color-danger", "#ef6a6a"},
-        {"color-info", "#6ac0ef"},
-        {"menu-bg", "#2b2b38"},
-        {"card-bg", "#282839"},
-        {"btn-primary-bg", "#6C63FF"},
-        {"input-bg", "#32324a"}
-    };
-    builtin_themes_["dark"] = dark;
-
-    // Light theme
-    Theme light;
-    light.id = "light";
-    light.name = "Light";
-    light.description = "Clean light theme for daytime use";
-    light.author = "Ultralight Team";
-    light.version = "1.0.0";
-    light.is_builtin = true;
-    light.colors = {
-        {"color-bg-primary", "#ffffff"},
-        {"color-bg-secondary", "#f6f8fa"},
-        {"color-bg-tertiary", "#eaeef2"},
-        {"color-bg-elevated", "#ffffff"},
-        {"color-bg-hover", "#e8ebef"},
-        {"color-text-primary", "#1f2328"},
-        {"color-text-secondary", "#424a53"},
-        {"color-text-tertiary", "#656d76"},
-        {"color-text-muted", "#8c959f"},
-        {"color-border-primary", "#d0d7de"},
-        {"color-border-secondary", "#e1e4e8"},
-        {"color-accent-primary", "#0969da"},
-        {"color-accent-secondary", "#218bff"},
-        {"color-accent-hover", "#54aeff"},
-        {"color-success", "#1a7f37"},
-        {"color-warning", "#9a6700"},
-        {"color-danger", "#cf222e"},
-        {"color-info", "#0969da"},
-        {"menu-bg", "#ffffff"},
-        {"card-bg", "#ffffff"},
-        {"btn-primary-bg", "#0969da"},
-        {"input-bg", "#ffffff"}
-    };
-    builtin_themes_["light"] = light;
-
-    // Midnight theme
-    Theme midnight;
-    midnight.id = "midnight";
-    midnight.name = "Midnight Blue";
-    midnight.description = "Deep blue night theme";
-    midnight.author = "Ultralight Team";
-    midnight.version = "1.0.0";
-    midnight.is_builtin = true;
-    midnight.colors = {
-        {"color-bg-primary", "#0d1117"},
-        {"color-bg-secondary", "#161b22"},
-        {"color-bg-tertiary", "#21262d"},
-        {"color-bg-elevated", "#30363d"},
-        {"color-bg-hover", "#3d444d"},
-        {"color-text-primary", "#e6edf3"},
-        {"color-text-secondary", "#c9d1d9"},
-        {"color-text-tertiary", "#8b949e"},
-        {"color-text-muted", "#6e7681"},
-        {"color-border-primary", "#30363d"},
-        {"color-border-secondary", "#21262d"},
-        {"color-accent-primary", "#58a6ff"},
-        {"color-accent-secondary", "#79c0ff"},
-        {"color-accent-hover", "#a5d6ff"},
-        {"color-success", "#3fb950"},
-        {"color-warning", "#d29922"},
-        {"color-danger", "#f85149"},
-        {"color-info", "#58a6ff"},
-        {"menu-bg", "#21262d"},
-        {"card-bg", "#21262d"},
-        {"btn-primary-bg", "#238636"},
-        {"input-bg", "#0d1117"}
-    };
-    builtin_themes_["midnight"] = midnight;
-
-    // Nord theme
-    Theme nord;
-    nord.id = "nord";
-    nord.name = "Nord";
-    nord.description = "Arctic, north-bluish color palette";
-    nord.author = "Ultralight Team";
-    nord.version = "1.0.0";
-    nord.is_builtin = true;
-    nord.colors = {
-        {"color-bg-primary", "#2e3440"},
-        {"color-bg-secondary", "#3b4252"},
-        {"color-bg-tertiary", "#434c5e"},
-        {"color-bg-elevated", "#4c566a"},
-        {"color-bg-hover", "#5e6779"},
-        {"color-text-primary", "#eceff4"},
-        {"color-text-secondary", "#e5e9f0"},
-        {"color-text-tertiary", "#d8dee9"},
-        {"color-text-muted", "#a5adba"},
-        {"color-border-primary", "#4c566a"},
-        {"color-border-secondary", "#3b4252"},
-        {"color-accent-primary", "#88c0d0"},
-        {"color-accent-secondary", "#81a1c1"},
-        {"color-accent-hover", "#5e81ac"},
-        {"color-success", "#a3be8c"},
-        {"color-warning", "#ebcb8b"},
-        {"color-danger", "#bf616a"},
-        {"color-info", "#88c0d0"},
-        {"menu-bg", "#3b4252"},
-        {"card-bg", "#3b4252"},
-        {"btn-primary-bg", "#5e81ac"},
-        {"input-bg", "#2e3440"}
-    };
-    builtin_themes_["nord"] = nord;
-
-    // Monokai theme
-    Theme monokai;
-    monokai.id = "monokai";
-    monokai.name = "Monokai Pro";
-    monokai.description = "Classic Monokai color scheme";
-    monokai.author = "Ultralight Team";
-    monokai.version = "1.0.0";
-    monokai.is_builtin = true;
-    monokai.colors = {
-        {"color-bg-primary", "#2d2a2e"},
-        {"color-bg-secondary", "#353236"},
-        {"color-bg-tertiary", "#403e41"},
-        {"color-bg-elevated", "#4a474c"},
-        {"color-bg-hover", "#555158"},
-        {"color-text-primary", "#fcfcfa"},
-        {"color-text-secondary", "#c1c0c0"},
-        {"color-text-tertiary", "#939293"},
-        {"color-text-muted", "#727072"},
-        {"color-border-primary", "#4a474c"},
-        {"color-border-secondary", "#353236"},
-        {"color-accent-primary", "#ffd866"},
-        {"color-accent-secondary", "#ff6188"},
-        {"color-accent-hover", "#a9dc76"},
-        {"color-success", "#a9dc76"},
-        {"color-warning", "#ffd866"},
-        {"color-danger", "#ff6188"},
-        {"color-info", "#78dce8"},
-        {"menu-bg", "#353236"},
-        {"card-bg", "#353236"},
-        {"btn-primary-bg", "#ffd866"},
-        {"input-bg", "#2d2a2e"}
-    };
-    builtin_themes_["monokai"] = monokai;
-}
-
-void ThemeManager::LoadThemes()
-{
-    if (!std::filesystem::exists(themes_file_))
-        return;
-
-    std::ifstream file(themes_file_);
-    if (!file.is_open())
-        return;
-
-    std::stringstream buffer;
-    buffer << file.rdbuf();
-    std::string json = buffer.str();
-
-    // Parse custom themes JSON array
-    // Simple parsing for array of theme objects
-    size_t pos = json.find('[');
-    if (pos == std::string::npos)
-        return;
-
-    size_t end = json.rfind(']');
-    if (end == std::string::npos || end <= pos)
-        return;
-
-    // Find each theme object
-    size_t objStart = pos;
-    while ((objStart = json.find('{', objStart)) != std::string::npos && objStart < end)
+    std::string Trim(const std::string &text)
     {
-        int depth = 1;
-        size_t objEnd = objStart + 1;
-        while (objEnd < json.length() && depth > 0)
-        {
-            if (json[objEnd] == '{') ++depth;
-            else if (json[objEnd] == '}') --depth;
-            ++objEnd;
-        }
-
-        std::string themeJson = json.substr(objStart, objEnd - objStart);
-        Theme theme = ParseThemeJSON(themeJson);
-        if (!theme.id.empty() && !theme.is_builtin)
-        {
-            custom_themes_[theme.id] = theme;
-        }
-
-        objStart = objEnd;
+        const size_t begin = text.find_first_not_of(" \t\r\n");
+        if (begin == std::string::npos)
+            return std::string();
+        const size_t end = text.find_last_not_of(" \t\r\n");
+        return text.substr(begin, end - begin + 1);
     }
+} // namespace
 
-    // Load active theme preference
-    std::filesystem::path settingsFile = storage_dir_ / "theme_settings.json";
-    if (std::filesystem::exists(settingsFile))
-    {
-        std::ifstream sf(settingsFile);
-        if (sf.is_open())
-        {
-            std::stringstream sb;
-            sb << sf.rdbuf();
-            active_theme_id_ = ExtractJSONString(sb.str(), "active_theme");
-            if (active_theme_id_.empty())
-                active_theme_id_ = "dark";
-        }
-    }
+ThemeManager::ThemeManager(std::filesystem::path settings_dir)
+    : settings_dir_(std::move(settings_dir))
+{
 }
 
-void ThemeManager::SaveThemes()
+bool ThemeManager::Initialize()
 {
-    // Ensure directory exists
-    std::filesystem::create_directories(storage_dir_);
-
-    // Save custom themes
-    std::ofstream file(themes_file_);
-    if (!file.is_open())
-        return;
-
-    file << "[\n";
-    bool first = true;
-    for (const auto& [id, theme] : custom_themes_)
+    std::error_code ec;
+    std::filesystem::create_directories(settings_dir_, ec);
+    if (ec)
     {
-        if (!first) file << ",\n";
-        first = false;
-        file << ThemeToJSON(theme);
+        std::fprintf(stderr, "[ThemeManager] cannot create settings dir '%s': %s\n",
+                     settings_dir_.string().c_str(), ec.message().c_str());
+        return false;
     }
-    file << "\n]";
-    file.close();
-
-    // Save active theme preference
-    std::filesystem::path settingsFile = storage_dir_ / "theme_settings.json";
-    std::ofstream sf(settingsFile);
-    if (sf.is_open())
-    {
-        sf << "{\n  \"active_theme\": \"" << EscapeJSON(active_theme_id_) << "\"\n}";
-    }
+    return true;
 }
 
-ThemeManager::Theme ThemeManager::ParseThemeJSON(const std::string& json) const
-{
-    Theme theme;
-    theme.id = ExtractJSONString(json, "id");
-    theme.name = ExtractJSONString(json, "name");
-    theme.description = ExtractJSONString(json, "description");
-    theme.author = ExtractJSONString(json, "author");
-    theme.version = ExtractJSONString(json, "version");
-    theme.is_builtin = ExtractJSONBool(json, "isBuiltIn");
-    theme.colors = ExtractJSONColorMap(json);
-    return theme;
-}
+// ---------------------------------------------------------------------------
+// Filesystem primitives
+// ---------------------------------------------------------------------------
 
-std::string ThemeManager::ThemeToJSON(const Theme& theme) const
+std::string ThemeManager::ReadWholeFile(const std::filesystem::path &path)
 {
+    std::ifstream in(path, std::ios::in | std::ios::binary);
+    if (!in.is_open())
+        return std::string();
+
     std::ostringstream ss;
-    ss << "  {\n";
-    ss << "    \"id\": \"" << EscapeJSON(theme.id) << "\",\n";
-    ss << "    \"name\": \"" << EscapeJSON(theme.name) << "\",\n";
-    ss << "    \"description\": \"" << EscapeJSON(theme.description) << "\",\n";
-    ss << "    \"author\": \"" << EscapeJSON(theme.author) << "\",\n";
-    ss << "    \"version\": \"" << EscapeJSON(theme.version) << "\",\n";
-    ss << "    \"isBuiltIn\": " << (theme.is_builtin ? "true" : "false") << ",\n";
-    ss << "    \"colors\": {\n";
-    
-    bool first = true;
-    for (const auto& [key, value] : theme.colors)
-    {
-        if (!first) ss << ",\n";
-        first = false;
-        ss << "      \"" << EscapeJSON(key) << "\": \"" << EscapeJSON(value) << "\"";
-    }
-    
-    ss << "\n    }\n";
-    ss << "  }";
+    ss << in.rdbuf();
     return ss.str();
 }
 
-bool ThemeManager::SetActiveTheme(const std::string& theme_id)
+bool ThemeManager::WriteWholeFile(const std::filesystem::path &path, const std::string &contents)
 {
-    // Check if theme exists
-    if (builtin_themes_.find(theme_id) == builtin_themes_.end() &&
-        custom_themes_.find(theme_id) == custom_themes_.end())
+    // Write to a sibling temp file, then rename over the target. A rename within
+    // a directory is atomic on POSIX and on Windows, so a crash or a full disk
+    // part-way through leaves the previous good file intact instead of a
+    // truncated one that would break theme loading on every page.
+    std::filesystem::path tmp = path;
+    tmp += ".tmp";
+
     {
+        std::ofstream out(tmp, std::ios::out | std::ios::binary | std::ios::trunc);
+        if (!out.is_open())
+        {
+            std::fprintf(stderr, "[ThemeManager] cannot open '%s' for writing\n", tmp.string().c_str());
+            return false;
+        }
+
+        out.write(contents.data(), static_cast<std::streamsize>(contents.size()));
+        out.flush();
+        if (!out.good())
+        {
+            std::fprintf(stderr, "[ThemeManager] write failed for '%s'\n", tmp.string().c_str());
+            out.close();
+            std::error_code ignored;
+            std::filesystem::remove(tmp, ignored);
+            return false;
+        }
+    }
+
+    std::error_code ec;
+    std::filesystem::rename(tmp, path, ec);
+    if (ec)
+    {
+        // POSIX rename replaces the destination silently; Windows fails when it
+        // already exists. Removing and retrying is safe because the temp file is
+        // already fully written, so the only window without a file is one
+        // rename wide.
+        std::error_code ignored;
+        std::filesystem::remove(path, ignored);
+        std::filesystem::rename(tmp, path, ec);
+    }
+
+    if (ec)
+    {
+        std::fprintf(stderr, "[ThemeManager] cannot replace '%s': %s\n",
+                     path.string().c_str(), ec.message().c_str());
+        std::error_code ignored;
+        std::filesystem::remove(tmp, ignored);
         return false;
     }
 
-    active_theme_id_ = theme_id;
-    SaveThemes();
     return true;
 }
+
+// ---------------------------------------------------------------------------
+// Validation
+// ---------------------------------------------------------------------------
+
+bool ThemeManager::IsValidThemeId(const std::string &theme_id)
+{
+    if (theme_id.empty() || theme_id.size() > kMaxThemeIdLength)
+        return false;
+
+    for (const char c : theme_id)
+    {
+        const bool ok = (c >= 'a' && c <= 'z') ||
+                        (c >= 'A' && c <= 'Z') ||
+                        (c >= '0' && c <= '9') ||
+                        c == '-' || c == '_';
+        if (!ok)
+            return false;
+    }
+    return true;
+}
+
+bool ThemeManager::IsValidBlob(const std::string &json)
+{
+    if (json.empty() || json.size() > kMaxThemeBlobBytes)
+        return false;
+
+    // Both blobs are produced by JSON.stringify on an object, so they always
+    // look like { ... }. Requiring a non-blank object literal rejects empty
+    // strings, truncated writes and accidental non-object values without
+    // needing a full parser.
+    const std::string trimmed = Trim(json);
+    if (trimmed.size() < 2)
+        return false;
+    return trimmed.front() == '{' && trimmed.back() == '}';
+}
+
+// ---------------------------------------------------------------------------
+// Paths
+// ---------------------------------------------------------------------------
+
+std::filesystem::path ThemeManager::ActiveThemeFilePath() const
+{
+    return settings_dir_ / "active_theme.txt";
+}
+
+std::filesystem::path ThemeManager::CustomThemesFilePath() const
+{
+    return settings_dir_ / "custom_themes.json";
+}
+
+std::filesystem::path ThemeManager::OverridesFilePath() const
+{
+    return settings_dir_ / "theme_overrides.json";
+}
+
+// ---------------------------------------------------------------------------
+// Active theme
+// ---------------------------------------------------------------------------
+
+std::string ThemeManager::GetActiveThemeId() const
+{
+    // Only a file this class wrote can hold a value here, and it only ever writes
+    // ids that passed IsValidThemeId. Trimming anyway costs nothing and means a
+    // hand-edited file degrades to the default instead of to an unusable id.
+    const std::string stored = Trim(ReadWholeFile(ActiveThemeFilePath()));
+    if (IsValidThemeId(stored))
+        return stored;
+
+    return "dark";
+}
+
+bool ThemeManager::SetActiveThemeId(const std::string &theme_id)
+{
+    if (!IsValidThemeId(theme_id))
+    {
+        std::fprintf(stderr, "[ThemeManager] rejected invalid theme id '%s'\n", theme_id.c_str());
+        return false;
+    }
+
+    if (!WriteWholeFile(ActiveThemeFilePath(), theme_id))
+    {
+        // The engine also keeps a localStorage copy, so the selection is not lost
+        // when the disk write fails. Leaving the previous stored id in place is
+        // the right failure mode: a stale id still selects a real theme, whereas
+        // clearing it would discard the user's choice entirely.
+        return false;
+    }
+
+    return true;
+}
+
+// ---------------------------------------------------------------------------
+// Custom themes and overrides
+// ---------------------------------------------------------------------------
 
 std::string ThemeManager::GetCustomThemesJSON() const
 {
-    std::ostringstream ss;
-    ss << "{";
-    
-    bool first = true;
-    for (const auto& [id, theme] : custom_themes_)
-    {
-        if (!first) ss << ",";
-        first = false;
-        ss << "\n  \"" << EscapeJSON(id) << "\": " << ThemeToJSON(theme);
-    }
-    
-    ss << "\n}";
-    return ss.str();
+    const std::string stored = ReadWholeFile(CustomThemesFilePath());
+    if (IsValidBlob(stored))
+        return stored;
+
+    // "{}" rather than an empty string: the engine distinguishes the two and uses
+    // "{}" to mean "nothing stored yet" and fall back to localStorage.
+    return "{}";
 }
 
-bool ThemeManager::SaveCustomThemes(const std::string& json)
+bool ThemeManager::SaveCustomThemesJSON(const std::string &json)
 {
-    // Clear and repopulate from JSON
-    custom_themes_.clear();
-    
-    // Parse the JSON object of themes
-    size_t pos = json.find('{');
-    if (pos == std::string::npos)
+    if (!IsValidBlob(json))
+    {
+        std::fprintf(stderr, "[ThemeManager] rejected malformed custom themes payload (%zu bytes)\n", json.size());
         return false;
-
-    // Find theme objects
-    size_t objStart = pos;
-    while ((objStart = json.find('{', objStart + 1)) != std::string::npos)
-    {
-        int depth = 1;
-        size_t objEnd = objStart + 1;
-        while (objEnd < json.length() && depth > 0)
-        {
-            if (json[objEnd] == '{') ++depth;
-            else if (json[objEnd] == '}') --depth;
-            ++objEnd;
-        }
-
-        std::string themeJson = json.substr(objStart, objEnd - objStart);
-        Theme theme = ParseThemeJSON(themeJson);
-        if (!theme.id.empty() && !theme.is_builtin)
-        {
-            custom_themes_[theme.id] = theme;
-        }
-
-        objStart = objEnd;
     }
 
-    SaveThemes();
-    return true;
+    return WriteWholeFile(CustomThemesFilePath(), json);
 }
 
-std::string ThemeManager::GetThemeJSON(const std::string& theme_id) const
+std::string ThemeManager::GetOverridesJSON() const
 {
-    auto it = builtin_themes_.find(theme_id);
-    if (it != builtin_themes_.end())
-    {
-        return ThemeToJSON(it->second);
-    }
-
-    auto cit = custom_themes_.find(theme_id);
-    if (cit != custom_themes_.end())
-    {
-        return ThemeToJSON(cit->second);
-    }
+    const std::string stored = ReadWholeFile(OverridesFilePath());
+    if (IsValidBlob(stored))
+        return stored;
 
     return "{}";
 }
 
-bool ThemeManager::AddCustomTheme(const std::string& json)
+bool ThemeManager::SaveOverridesJSON(const std::string &json)
 {
-    Theme theme = ParseThemeJSON(json);
-    if (theme.id.empty())
-        return false;
-
-    theme.is_builtin = false;
-    custom_themes_[theme.id] = theme;
-    SaveThemes();
-    return true;
-}
-
-bool ThemeManager::RemoveCustomTheme(const std::string& theme_id)
-{
-    auto it = custom_themes_.find(theme_id);
-    if (it == custom_themes_.end())
-        return false;
-
-    custom_themes_.erase(it);
-
-    // Reset to default if active theme was deleted
-    if (active_theme_id_ == theme_id)
+    if (!IsValidBlob(json))
     {
-        active_theme_id_ = "dark";
+        std::fprintf(stderr, "[ThemeManager] rejected malformed theme overrides payload (%zu bytes)\n", json.size());
+        return false;
     }
 
-    SaveThemes();
-    return true;
+    return WriteWholeFile(OverridesFilePath(), json);
 }
 
-bool ThemeManager::ExportTheme(const std::string& theme_id, const std::filesystem::path& file_path) const
+// ---------------------------------------------------------------------------
+// Legacy seed definitions
+// ---------------------------------------------------------------------------
+
+std::string ThemeManager::GetSeedThemesJSON(const std::filesystem::path &assets_dir) const
 {
-    std::string json = GetThemeJSON(theme_id);
-    if (json == "{}")
-        return false;
+    std::string out = "{";
+    bool wrote_any = false;
 
-    std::ofstream file(file_path);
-    if (!file.is_open())
-        return false;
+    for (const char *stem : kSeedStems)
+    {
+        const std::filesystem::path path =
+            assets_dir / "themes" / (std::string(stem) + ".json");
 
-    file << json;
-    return true;
+        const std::string body = Trim(ReadWholeFile(path));
+        if (!IsValidBlob(body))
+        {
+            std::fprintf(stderr, "[ThemeManager] skipping unreadable seed theme '%s'\n", path.string().c_str());
+            continue;
+        }
+
+        if (wrote_any)
+            out += ",";
+        out += "\"" + std::string(stem) + "\":" + body;
+        wrote_any = true;
+    }
+
+    out += "}";
+
+    // An empty object is still valid input when nothing could be read: the engine
+    // merges it and simply offers no legacy variants.
+    (void)wrote_any;
+    return out;
 }
 
-std::string ThemeManager::ImportTheme(const std::filesystem::path& file_path)
-{
-    if (!std::filesystem::exists(file_path))
-        return "";
-
-    std::ifstream file(file_path);
-    if (!file.is_open())
-        return "";
-
-    std::stringstream buffer;
-    buffer << file.rdbuf();
-    std::string json = buffer.str();
-
-    Theme theme = ParseThemeJSON(json);
-    if (theme.id.empty())
-        return "";
-
-    // Generate new ID for imported theme
-    theme.id = "imported_" + std::to_string(std::chrono::system_clock::now().time_since_epoch().count());
-    theme.is_builtin = false;
-
-    custom_themes_[theme.id] = theme;
-    SaveThemes();
-
-    return theme.id;
-}
+} // namespace themes

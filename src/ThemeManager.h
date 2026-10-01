@@ -1,70 +1,82 @@
 #pragma once
-#include <string>
-#include <map>
+
 #include <filesystem>
-#include <functional>
+#include <map>
+#include <string>
 
 /**
- * Theme Manager for the browser
- * Handles loading, saving, and applying themes.
+ * Native backing store for the theme engine.
+ *
+ * The theme engine itself is JavaScript (assets/themes/theme.js). It owns the
+ * theme objects, the CSS-variable generation, and applying a theme to a page.
+ * This class owns everything that has to survive a restart and that JavaScript
+ * cannot be trusted with: where the data lives, whether it is well-formed, and
+ * how it is written.
+ *
+ * An earlier revision shipped a second, complete theme engine in C++ that was
+ * never constructed anywhere, so it duplicated theme.js while doing nothing.
+ * That duplication is gone. What remains is the part theme.js genuinely cannot
+ * do for itself — disk access with validation — exposed over a small surface
+ * that the engine binds as a handful of JavaScript globals.
+ *
+ * Storage (under the browser settings directory):
+ *   active_theme.txt     - the selected theme id
+ *   custom_themes.json   - user-created themes
+ *   theme_overrides.json - user edits layered on the shipped palettes
+ *
+ * assets/themes/*.json are legacy definitions that no code used to read. They
+ * are surfaced as selectable themes instead of being discarded; see
+ * GetSeedThemesJSON().
  */
-class ThemeManager
+namespace themes
 {
-public:
-    struct Theme
+
+    // Bounds for untrusted values crossing the JavaScript bridge.
+    constexpr size_t kMaxThemeIdLength = 64;
+    constexpr size_t kMaxThemeBlobBytes = 4u * 1024u * 1024u;
+
+    class ThemeManager
     {
-        std::string id;
-        std::string name;
-        std::string description;
-        std::string author;
-        std::string version;
-        bool is_builtin;
-        std::map<std::string, std::string> colors;
+    public:
+        explicit ThemeManager(std::filesystem::path settings_dir);
+
+        // Creates the settings directory if needed. Safe to call more than once.
+        bool Initialize();
+
+        // Active theme id. Returns "dark" when nothing valid is stored, which is
+        // the engine's own default, so callers never have to special-case it.
+        std::string GetActiveThemeId() const;
+        bool SetActiveThemeId(const std::string &theme_id);
+
+        // Opaque JSON blobs for the custom-theme and override layers. They are
+        // stored and returned verbatim: the engine builds them with
+        // JSON.stringify and expects them back unchanged, so re-serialising here
+        // would need a parser this class has no other use for.
+        std::string GetCustomThemesJSON() const;
+        bool SaveCustomThemesJSON(const std::string &json);
+
+        std::string GetOverridesJSON() const;
+        bool SaveOverridesJSON(const std::string &json);
+
+        // Returns the legacy assets/themes/*.json definitions as a single JSON
+        // object keyed by file stem, or "{}" when none can be read.
+        std::string GetSeedThemesJSON(const std::filesystem::path &assets_dir) const;
+
+        // Validation helpers, exposed because the UI layer logs the reason a
+        // value was refused and the tests exercise them directly.
+        static bool IsValidThemeId(const std::string &theme_id);
+        static bool IsValidBlob(const std::string &json);
+
+        // Filesystem primitives, exposed for the same reason.
+        static std::string ReadWholeFile(const std::filesystem::path &path);
+        static bool WriteWholeFile(const std::filesystem::path &path, const std::string &contents);
+
+    private:
+        std::filesystem::path ActiveThemeFilePath() const;
+        std::filesystem::path CustomThemesFilePath() const;
+        std::filesystem::path OverridesFilePath() const;
+
+        std::filesystem::path settings_dir_;
     };
 
-    ThemeManager();
-    ~ThemeManager();
-
-    // Initialize with storage directory path
-    void Initialize(const std::filesystem::path& storage_dir);
-
-    // Get the currently active theme ID
-    std::string GetActiveThemeId() const { return active_theme_id_; }
-
-    // Set the active theme
-    bool SetActiveTheme(const std::string& theme_id);
-
-    // Get all custom themes as JSON
-    std::string GetCustomThemesJSON() const;
-
-    // Save custom themes from JSON
-    bool SaveCustomThemes(const std::string& json);
-
-    // Get a specific theme by ID (returns JSON)
-    std::string GetThemeJSON(const std::string& theme_id) const;
-
-    // Add or update a custom theme
-    bool AddCustomTheme(const std::string& json);
-
-    // Remove a custom theme
-    bool RemoveCustomTheme(const std::string& theme_id);
-
-    // Export a theme to file
-    bool ExportTheme(const std::string& theme_id, const std::filesystem::path& file_path) const;
-
-    // Import a theme from file
-    std::string ImportTheme(const std::filesystem::path& file_path);
-
-private:
-    void LoadThemes();
-    void SaveThemes();
-    void LoadBuiltinThemes();
-    Theme ParseThemeJSON(const std::string& json) const;
-    std::string ThemeToJSON(const Theme& theme) const;
-
-    std::filesystem::path storage_dir_;
-    std::filesystem::path themes_file_;
-    std::string active_theme_id_;
-    std::map<std::string, Theme> builtin_themes_;
-    std::map<std::string, Theme> custom_themes_;
-};
+} // namespace themes
