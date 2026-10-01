@@ -1102,6 +1102,8 @@ void UI::LoadCachedInternalPages()
       "assets/passwords.html",
       "assets/extensions.html",
       "assets/about.html",
+      "assets/themes.html",
+      "assets/bookmarks.html",
       "assets/new_tab_page.html"};
 
   static const char *urls[] = {
@@ -1111,6 +1113,8 @@ void UI::LoadCachedInternalPages()
       "file:///passwords.html",
       "file:///extensions.html",
       "file:///about.html",
+      "file:///themes.html",
+      "file:///bookmarks.html",
       "file:///new_tab_page.html"};
 
   // Get current working directory to construct absolute paths
@@ -1447,6 +1451,45 @@ bool UI::OnMouseEvent(const ultralight::MouseEvent &evt)
     return !over_drag_handle;
   }
 
+  return true;
+}
+
+bool UI::OnScrollEvent(const ultralight::ScrollEvent &evt)
+{
+  // The mouse wheel is delivered as a ScrollEvent, so it never passes through
+  // OnMouseEvent and therefore never reaches the modal overlays that
+  // unconditionally consume mouse input. Without this, opening the menu and then
+  // scrolling scrolls the page behind the menu.
+  //
+  // ScrollEvent carries only deltas, no cursor position, so hit-testing against
+  // an overlay's rectangle is not possible. These three overlays are modal and
+  // consume every mouse event regardless of position (see OnMouseEvent), so
+  // routing the wheel to them is exactly consistent with their mouse behaviour.
+  // The overlay view receives the event directly, so a long menu or suggestion
+  // list can still scroll itself instead of the wheel being swallowed.
+  //
+  // The downloads panel is deliberately excluded: it is a non-modal panel that
+  // only consumes mouse events inside its own bounds, and without cursor
+  // coordinates we cannot tell where the wheel was, so leaving it alone
+  // preserves the existing page-scrolling behaviour.
+  if (menu_overlay_ && menu_overlay_->view())
+  {
+    menu_overlay_->view()->FireScrollEvent(evt);
+    return false;
+  }
+  if (context_menu_overlay_ && context_menu_overlay_->view())
+  {
+    context_menu_overlay_->view()->FireScrollEvent(evt);
+    return false;
+  }
+  if (suggestions_overlay_ && suggestions_overlay_->view())
+  {
+    suggestions_overlay_->view()->FireScrollEvent(evt);
+    return false;
+  }
+
+  // Not over an overlay: let AppCore forward the scroll to the focused view,
+  // which is the page for any content-area scrolling.
   return true;
 }
 
@@ -3754,32 +3797,27 @@ void UI::ApplySettings(bool initial, bool snapshot_is_baseline)
 
   // Performance
   // enable_javascript and hardware_acceleration are applied during Tab creation (see CreateNewTab)
-  // Smooth scrolling - apply CSS to all tab views
-  bool was_smooth = smooth_scrolling_enabled_;
   smooth_scrolling_enabled_ = settings_.smooth_scrolling;
-  if (was_smooth != smooth_scrolling_enabled_ || initial)
-  {
-    for (auto &entry : tabs_)
-    {
-      if (entry.second)
-      {
-        if (smooth_scrolling_enabled_)
-          ApplySmoothScrollingToView(entry.second->view());
-        else
-          RemoveSmoothScrollingFromView(entry.second->view());
-      }
-    }
-  }
 
-  // Accessibility
+  // Accessibility flags must be resolved before the smooth-scrolling decision
+  // below, because reduce-motion overrides the smooth-scrolling toggle.
   reduce_motion_enabled_ = settings_.reduce_motion;
   high_contrast_ui_enabled_ = settings_.high_contrast_ui;
 
-  // Apply accessibility CSS to all views
-  auto apply_accessibility = [&](RefPtr<View> v)
+  // Apply the smooth-scrolling and accessibility stylesheets to every view in one
+  // pass. These two settings both inject a `scroll-behavior` rule marked
+  // !important, so applying them independently let whichever ran last decide the
+  // outcome. Reduce-motion used to be injected after smooth scrolling, which
+  // meant smooth scrolling was silently dead whenever both were enabled even
+  // though the toggle was on.
+  auto apply_scroll_and_accessibility = [&](RefPtr<View> v)
   {
     if (!v)
       return;
+    if (ShouldUseSmoothScrolling())
+      ApplySmoothScrollingToView(v);
+    else
+      RemoveSmoothScrollingFromView(v);
     if (reduce_motion_enabled_)
       ApplyReduceMotionToView(v);
     else
@@ -3790,11 +3828,11 @@ void UI::ApplySettings(bool initial, bool snapshot_is_baseline)
       RemoveHighContrastFromView(v);
   };
 
-  apply_accessibility(view());
+  apply_scroll_and_accessibility(view());
   for (auto &entry : tabs_)
   {
     if (entry.second)
-      apply_accessibility(entry.second->view());
+      apply_scroll_and_accessibility(entry.second->view());
   }
   // enable_caret_browsing would require page-level script injection
 
@@ -4568,6 +4606,13 @@ bool UI::IsBrowserInternalPage(const std::string &url)
       "about.html",
       "new_tab_page.html",
       "release_notes.html",
+      // These two load assets/themes/theme.js and style themselves from the
+      // active theme's CSS variables. They were missing here, so
+      // ApplyDarkModeToView was applying the invert-filter dark-mode hack on
+      // top of an already-correctly-themed page, which visibly corrupts their
+      // colours.
+      "themes.html",
+      "bookmarks.html",
       "static-sties/"};
 
   for (const char *page : internal_pages)
@@ -4789,16 +4834,31 @@ void UI::ApplyVibrantWindowTheme(bool enabled)
   (void)enabled; // Suppress unused parameter warning on non-Windows
 }
 
+bool UI::ShouldUseSmoothScrolling() const
+{
+  // Reduce-motion wins. It already forces `scroll-behavior: auto !important`, so
+  // honouring both at once would be incoherent; the user asking for less motion
+  // should not also get an animated scroll.
+  return smooth_scrolling_enabled_ && !reduce_motion_enabled_;
+}
+
 void UI::ApplySmoothScrollingToView(RefPtr<View> v)
 {
   if (!v)
     return;
+  // Scoped to the document scroller on purpose. A `*` rule also forces smooth
+  // behaviour onto every scrollable element inside the page, including code
+  // editors, virtualised lists and carousels, and it turns ordinary
+  // `scrollTop`/`scrollIntoView` assignments into animations. That breaks
+  // infinite-scroll and jump-to-anchor behaviour on real sites. Chrome's own
+  // smooth-scrolling only affects the document scroller, so this matches.
   const char *js = R"JS((function(){
     try{
       if(document.getElementById('__ul_smooth_scroll')) return true;
       var s=document.createElement('style');
       s.id='__ul_smooth_scroll';
-      s.textContent='html, body { scroll-behavior: smooth !important; } * { scroll-behavior: smooth !important; }';
+      s.type='text/css';
+      s.appendChild(document.createTextNode('html { scroll-behavior: smooth !important; }'));
       (document.head||document.documentElement).appendChild(s);
       return true;
     }catch(e){return false;}
@@ -5466,6 +5526,10 @@ bool UI::IsInternalBrowserPage(const std::string &url) const
       "file:///contextmenu.html",
       "file:///suggestions.html",
       "file:///downloads-panel.html",
+      // Local pages that are browser UI, not web content. Restoring these would
+      // resurrect an internal page as if it were a real session tab.
+      "file:///themes.html",
+      "file:///bookmarks.html",
       "about:blank"};
 
   for (const auto &page : internal_pages)

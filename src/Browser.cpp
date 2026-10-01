@@ -3,6 +3,8 @@
 #include <Ultralight/platform/Platform.h>
 #include <Ultralight/platform/Config.h>
 #include <Ultralight/Renderer.h>
+#include <cstdlib>
+#include <cstring>
 #include <memory>
 
 #include "AdBlocker.h"
@@ -74,8 +76,22 @@ Browser::Browser()
   adblock_->Clear();
   adblock_->LoadBlocklist("assets/blocklist.txt", true);
   adblock_->LoadBlocklistsInDirectory("assets/filters");
-  // Enable debug logging to diagnose login issues
-  adblock_->set_log_all_requests(true);
+
+  // Per-request logging used to be hardcoded on. OnNetworkRequest is called for
+  // every subresource on every page load, and each one wrote a line to stderr.
+  // When stderr is a pipe (a terminal, an IDE console, a CI log) that is a
+  // blocking write on the network thread for every single request, which
+  // serialises request handling and measurably slows page loads. It was left in
+  // from debugging a login problem and became a permanent tax on every user.
+  //
+  // The capability is still useful, so it is opt-in via an environment
+  // variable rather than deleted.
+  if (const char *env = std::getenv("ULTRALIGHT_LOG_REQUESTS"))
+  {
+    const bool enabled = std::strcmp(env, "0") != 0 && std::string(env) != "false";
+    adblock_->set_log_all_requests(enabled);
+  }
+
   ui_ = std::make_unique<UI>(window_, adblock_.get(), adblock_.get());
   window_->set_listener(ui_.get());
 }

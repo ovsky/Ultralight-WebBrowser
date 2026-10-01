@@ -1215,7 +1215,13 @@ void Tab::OnDOMReady(View *caller, uint64_t frame_id, bool is_main_frame, const 
       ui_->ApplyReduceMotionToView(caller);
     if (ui_->high_contrast_ui_enabled_)
       ui_->ApplyHighContrastToView(caller);
-    if (ui_->smooth_scrolling_enabled_)
+
+    // Use the shared decision rather than the raw toggle, so a freshly loaded
+    // page gets exactly the same stylesheet as an already-open one. Testing
+    // smooth_scrolling_enabled_ directly would re-inject the smooth rule even
+    // when reduce-motion is on and the settings pass has deliberately removed
+    // it, leaving the page in a state the user cannot change.
+    if (ui_->ShouldUseSmoothScrolling())
       ui_->ApplySmoothScrollingToView(caller);
   }
 }

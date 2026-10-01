@@ -127,6 +127,11 @@ public:
   // Inherited from WindowListener
   virtual bool OnKeyEvent(const ultralight::KeyEvent &evt) override;
   virtual bool OnMouseEvent(const ultralight::MouseEvent &evt) override;
+  // Mouse wheel arrives as a ScrollEvent, not a MouseEvent, so it bypasses the
+  // overlay routing in OnMouseEvent. Without this override, wheel input scrolls
+  // the page *behind* an open menu/context menu/suggestions list, because those
+  // overlays consume mouse events but never see the wheel.
+  virtual bool OnScrollEvent(const ultralight::ScrollEvent &evt) override;
   virtual void OnClose(ultralight::Window *window) override;
   virtual void OnResize(ultralight::Window *window, uint32_t width, uint32_t height) override;
 
@@ -536,6 +541,13 @@ protected:
   // Performance CSS injections
   void ApplySmoothScrollingToView(RefPtr<View> v);
   void RemoveSmoothScrollingFromView(RefPtr<View> v);
+  // True when smooth scrolling should actually be in effect. Reduce-motion takes
+  // precedence over the smooth-scrolling toggle, so this is the single place
+  // that decides. The two settings must never be applied independently: each
+  // injects a competing `scroll-behavior` rule marked !important, so whichever
+  // was injected last would silently win and the effective behaviour would
+  // depend on injection order rather than on what the user asked for.
+  bool ShouldUseSmoothScrolling() const;
 
   // Window appearance
   void ApplyVibrantWindowTheme(bool enabled);
