@@ -58,7 +58,7 @@ src/
 ├── ExtensionManager.h/cpp # Browser extensions
 ├── PasswordManager.h/cpp  # Password storage (encrypted)
 ├── Settings.h/cpp         # User settings management
-├── ThemeManager.h/cpp     # Theme application and storage
+├── ThemeManager.h/cpp     # Theme persistence: validation and atomic writes
 │
 ├── # Utilities
 ├── Utils.h/cpp            # General utility functions
@@ -79,7 +79,7 @@ src/
 | `AdBlocker` | Blocks ads and trackers using filter lists |
 | `BookmarkStore` | SQLite-based bookmark storage |
 | `DownloadManager` | Handles file downloads |
-| `ThemeManager` | Applies and persists themes |
+| `ThemeManager` | Native persistence for themes (validation + atomic writes) |
 
 ---
 
@@ -330,6 +330,7 @@ CSS Variables (:root { --color-*: ... })
 ui.css / chrome-tabs.css (use var(--*))
     ↓
 ThemeManager.cpp (persists to settings)
+UI.cpp (active_theme.txt / custom_themes.json)
 ```
 
 ---

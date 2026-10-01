@@ -36,11 +36,12 @@ The theme system provides:
 assets/
 ├── themes/
 │   ├── theme-variables.css   # Central CSS variables
-│   ├── theme.js              # JavaScript theme manager (15 built-in themes)
-│   ├── dark.json             # Dark theme definition
-│   ├── light.json            # Light theme definition
-│   ├── midnight.json         # Midnight Blue theme
-│   └── ...                   # Additional theme files
+│   ├── theme.js              # JavaScript theme engine (9 built-in themes)
+│   ├── dark.json             # Legacy palette, surfaced as "Dark (Classic)"
+│   ├── light.json            # Legacy palette, surfaced as "Light (Classic)"
+│   ├── midnight.json         # Legacy palette, surfaced as "Midnight (Classic)"
+│   ├── nord.json             # Legacy palette, surfaced as "Nord (Classic)"
+│   └── monokai.json          # Legacy palette, surfaced as "Monokai (Classic)"
 ├── themes.html               # Theme management page
 ├── ui.html                   # Browser UI (imports theme system)
 ├── ui.css                    # Browser chrome styling (uses CSS variables)
@@ -48,10 +49,26 @@ assets/
 └── ...
 
 src/
-├── ThemeManager.h            # C++ theme manager header
-├── ThemeManager.cpp          # C++ theme manager implementation
-└── ...
+├── ThemeManager.h/cpp        # Native persistence: validation + atomic writes
+└── UI.cpp                    # Binds the bridges, delegates to ThemeManager
 ```
+
+### Where the split is
+
+`theme.js` is the engine. It owns the theme objects, the CSS-variable
+generation, applying a theme to a page, and the editing logic.
+
+`src/ThemeManager.cpp` is the native backing store. It owns nothing about how a
+theme looks; it owns where the data lives, whether it is well-formed, and how it
+is written. Those are things JavaScript cannot be trusted with — every value
+arriving over the bridge comes from a settings UI or an imported file.
+
+An earlier revision shipped a *complete second engine* in C++ — theme objects,
+JSON parsing and serialisation, add/remove/import/export — that was never
+constructed anywhere in the project, while `theme.js` defined its own
+`ThemeManager` class. Two full implementations, one of them dead. That
+duplication is resolved: the engine stays in JavaScript, and the C++ side is
+narrowed to persistence and validation.
 
 ---
 
@@ -303,39 +320,113 @@ window.addEventListener('themeChanged', (e) => {
 
 ---
 
-## C++ Backend
+## Native persistence
 
-The `ThemeManager` class handles theme persistence and provides native bindings.
+`theme.js` is the entire theme engine — it owns the theme objects, the CSS
+variable generation, and applying a theme. Persistence is the only part that
+reaches native code.
 
-### Header (ThemeManager.h)
+It probes for four globals on every page that loads it:
 
-```cpp
-class ThemeManager {
-public:
-    struct Theme {
-        std::string id;
-        std::string name;
-        std::string description;
-        std::string author;
-        std::string version;
-        bool is_builtin;
-        std::map<std::string, std::string> colors;
-    };
+| Global | Purpose |
+|--------|---------|
+| `NativeGetSetting('theme')` | Returns the saved theme id, or `""` if none is stored |
+| `NativeSetSetting('theme', id)` | Saves the active theme id |
+| `NativeGetThemes()` | Returns the custom-themes JSON object, or `"{}"` |
+| `NativeSaveThemes(json)` | Saves the custom-themes object verbatim |
+| `NativeGetThemeOverrides()` | Returns the built-in override object, or `"{}"` |
+| `NativeSaveThemeOverrides(json)` | Saves the override object verbatim |
+| `NativeGetSeedThemes()` | Returns the legacy `assets/themes/*.json` definitions, keyed by file stem |
 
-    void Initialize(const std::filesystem::path& storage_dir);
-    std::string GetActiveThemeId() const;
-    bool SetActiveTheme(const std::string& theme_id);
-    std::string GetCustomThemesJSON() const;
-    bool SaveCustomThemes(const std::string& json);
-    // ... more methods
-};
-```
+These are bound on **every** UI-owned view in `UI::OnDOMReady`. That matters
+because `theme.js` is loaded by nine separate pages and each one checks for the
+globals independently — binding them only on the chrome overlay would leave
+every internal page on the `localStorage` fallback and the theme would differ
+between pages.
 
 ### Storage
 
-Themes are stored in the browser's settings directory:
-- `custom_themes.json` - Array of custom theme objects
-- `theme_settings.json` - Active theme preference
+Three files in the browser's settings directory:
+
+- `active_theme.txt` — the active theme id as a bare string
+- `custom_themes.json` — user-created themes
+- `theme_overrides.json` — user edits layered on the shipped palettes
+
+The two blobs are stored and returned verbatim: the engine builds them with
+`JSON.stringify` and expects them back unchanged, so re-serialising them here
+would need a parser this class has no other use for.
+
+Writes go through a temporary file and a rename, so an interrupted write cannot
+leave a truncated file that would break theme loading on every page.
+
+### Validation
+
+Both bridges take untrusted input — theme ids come from the settings UI and from
+imported JSON — so values are checked before they reach disk:
+
+- Theme ids must be 1–64 characters of `[A-Za-z0-9_-]`. No quote, newline or path
+  separator can reach the file.
+- The custom-themes blob must be a non-blank `{...}` object within 4 MB. It is
+  produced by `JSON.stringify`, so requiring an object catches empty strings and
+  truncated writes without a full parser.
+
+Rejected values are logged to stderr and discarded; the previous stored value is
+left intact rather than being cleared.
+
+### Migration from `localStorage`
+
+`theme.js` still writes to `localStorage` as a backup, but reads prefer native
+storage **only when it actually holds a value**:
+
+- `getSavedThemeId()` returns the native id if present, otherwise falls back to
+  `localStorage`, otherwise `'dark'`.
+- `loadCustomThemes()` parses the native blob unless it is `"{}"`, and only then
+  falls back to `localStorage`.
+
+An earlier revision returned `NativeGetSetting('theme') || 'dark'` directly,
+which would have reset every existing user's theme selection to dark the first
+time an updated page loaded. The fall-through avoids that.
+
+---
+
+## Editing themes
+
+Every theme is editable, including the built-ins. Open the theme management page
+and use **Edit** on any card.
+
+The editor builds its inputs from the theme's own colour keys rather than a
+hardcoded list, so built-in, legacy and user themes all get an editor without a
+separate key list per palette. Values matching `#rrggbb` get a native colour
+picker; `rgba()`, `hsl()` and non-colour tokens such as radii are edited as text,
+because a picker cannot represent them.
+
+### Built-ins: override, never mutate
+
+Editing a built-in does **not** modify `DEFAULT_THEMES`. The change is stored as
+an entry in `theme_overrides.json`, and `getAllThemes()` merges it on top:
+
+```
+built-ins  <  legacy variants  <  overrides  <  custom themes
+```
+
+Keeping the shipped object untouched is what makes **Reset** reliable: dropping
+the override restores the original palette exactly, with no need to keep a
+backup copy of the defaults. A modified built-in shows an *Edited* badge.
+
+### Legacy variants
+
+The five `assets/themes/*.json` files predate the engine and were never read by
+any code. They are close to, but not identical to, the five built-ins they share
+names with — and for `nord` and `monokai` the JSON is actually **richer** (54
+colour keys against 38 in `theme.js`).
+
+They are therefore surfaced as selectable `* (Classic)` variants under
+`classic_*` ids rather than being discarded. The ids are namespaced on purpose:
+the file stems collide with built-in ids, so an un-namespaced load would silently
+replace the in-engine palettes in the merge and make Reset meaningless.
+
+Editing a variant promotes it to one of your own themes; it then behaves like any
+other custom theme.
 
 ---
 
@@ -397,11 +488,19 @@ Before sharing a theme:
 
 To add a new built-in theme:
 
-1. Create a theme JSON file in `assets/themes/`
-2. Add the theme definition to `ThemeManager::LoadBuiltinThemes()` in `ThemeManager.cpp`
-3. Add the theme to the `DEFAULT_THEMES` object in `theme.js`
-4. Test thoroughly on all pages
-5. Submit a pull request with screenshots
+1. Add the theme definition to the `DEFAULT_THEMES` object in
+   `assets/themes/theme.js`. That object is the single source of truth — there is
+   no C++ registry and no separate theme file to keep in sync.
+2. Confirm the theme exposes the colour keys the engine reads. `applyTheme()`
+   derives most of the ~40 CSS variables from a small set of base keys and falls
+   back to hardcoded values for the rest.
+3. Register `assets/themes.html` and `assets/bookmarks.html` awareness if you add
+   a *new* internal page that loads `theme.js`, so it is listed in
+   `IsBrowserInternalPage()` and `IsInternalBrowserPage()` in `UI.cpp`. Skipping
+   this applies the invert-filter dark-mode hack on top of a correctly themed
+   page.
+4. Test on all pages, including the ones with their own dark styling.
+5. Submit a pull request with screenshots.
 
 ---
 

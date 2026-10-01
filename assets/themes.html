@@ -528,6 +528,18 @@
             border-color: var(--color-danger);
         }
 
+        /* Colour Editor Modal */
+        .edit-modal { width: 640px; max-width: 92vw; max-height: 86vh; display: flex; flex-direction: column; }
+        .edit-modal-note { font-size: 12px; color: var(--color-text-tertiary); margin: 0 0 14px 0; line-height: 1.5; }
+        .edit-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px 16px; overflow-y: auto; flex: 1; min-height: 0; padding-right: 4px; }
+        .edit-row { display: flex; align-items: center; gap: 8px; }
+        .edit-row label { flex: 1; font-size: 11px; color: var(--color-text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .edit-row input[type="color"] { width: 34px; height: 26px; padding: 0; border: 1px solid var(--color-border-secondary); border-radius: 6px; background: none; cursor: pointer; flex-shrink: 0; }
+        .edit-row input[type="text"] { width: 118px; padding: 4px 7px; border: 1px solid var(--color-border-secondary); border-radius: 6px; background: var(--color-bg-primary); color: var(--color-text-primary); font-family: Consolas, 'Courier New', monospace; font-size: 11px; flex-shrink: 0; }
+        /* Marks a built-in that carries user edits and can be reset. */
+        .theme-modified-badge { display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 999px; font-size: 10px; background: var(--color-accent-primary); color: #fff; vertical-align: middle; }
+        .theme-action-btn.reset:hover { background: var(--color-accent-primary); color: #fff; border-color: var(--color-accent-primary); }
+
         /* JSON Modal */
         .json-modal {
             max-width: 700px;
@@ -734,6 +746,24 @@
         </div>
     </div>
 
+    <!-- Colour Editor Modal: edit any theme, including built-ins -->
+    <div class="modal-overlay" id="edit-modal">
+        <div class="modal edit-modal">
+            <div class="modal-header">
+                <h3 id="edit-modal-title">Edit Theme</h3>
+                <button class="modal-close-btn" id="btn-edit-x" title="Close">
+                    <span class="icon icon-close" style="width:18px;height:18px"></span>
+                </button>
+            </div>
+            <p class="edit-modal-note" id="edit-modal-note"></p>
+            <div class="edit-grid" id="edit-color-grid"></div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="btn-edit-cancel">Cancel</button>
+                <button class="btn btn-primary" id="btn-edit-save">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
     <!-- JSON View Modal -->
     <div class="modal-overlay" id="json-modal">
         <div class="modal json-modal">
@@ -792,8 +822,12 @@
 
             // Initialize - wait for ThemeManager to be ready
             function init() {
-                // Ensure ThemeManager has loaded custom themes
+                // Load every layer before the first render. Only reloading the
+                // custom themes would leave built-in overrides and the legacy
+                // variants unset, so their edits and cards would not appear.
                 if (window.ThemeManager) {
+                    window.ThemeManager.loadThemeOverrides();
+                    window.ThemeManager.loadSeedThemes();
                     window.ThemeManager.loadCustomThemes();
                 }
                 renderThemes();
@@ -803,6 +837,8 @@
                 window.addEventListener('storage', (e) => {
                     if (e.key === 'ultralight_custom_themes' || e.key === 'ultralight_active_theme') {
                         if (window.ThemeManager) {
+                            window.ThemeManager.loadThemeOverrides();
+                            window.ThemeManager.loadSeedThemes();
                             window.ThemeManager.loadCustomThemes();
                         }
                         renderThemes();
@@ -853,56 +889,114 @@
                 }
             }
 
-            // Create theme card element
-            function createThemeCard(theme, isActive) {
+            // Theme names, descriptions and colour values are interpolated into innerHTML
+                // below, and all of them can originate from an imported theme file.
+                // Without escaping, a file containing a name of
+                // `<img src=x onerror=...>` would execute script in this page, and
+                // a colour of `red" onclick="...` would break out of the style
+                // attribute. Both are reachable by simply importing a theme.
+                function escapeHtml(value) {
+                    return String(value == null ? '' : value)
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/'/g, '&#39;');
+                }
+
+                // Restrict a colour to tokens that are safe to place inside a
+                // style attribute. Anything else (including a value carrying a
+                // quote) falls back rather than being emitted.
+                function safeColor(value, fallback) {
+                    const v = String(value == null ? '' : value).trim();
+                    if (/^#[0-9a-fA-F]{3,8}$/.test(v)) return v;
+                    if (/^rgba?\(\s*[\d.%,\s/]+\)$/.test(v)) return v;
+                    if (/^hsla?\(\s*[\d.%,\sdegra/]+\)$/.test(v)) return v;
+                    if (/^[a-zA-Z]{3,20}$/.test(v)) return v;
+                    return fallback;
+                }
+
+                // Create theme card element
+            // Category feeds a CSS class as well as text, so it gets its own whitelist
+                // rather than the colour validator: an unknown value falls back
+                // to 'dark' instead of emitting an arbitrary class name.
+                function safeCategory(value) {
+                    return (value === 'light') ? 'light' : 'dark';
+                }
+
+                function createThemeCard(theme, isActive) {
                 const card = document.createElement('div');
                 card.className = 'theme-card' + (isActive ? ' active' : '');
                 card.dataset.themeId = theme.id;
 
                 const colors = theme.colors;
                 const category = theme.category || 'dark';
+                const categoryClass = safeCategory(category);
 
-                let actionsHtml = '';
-                if (!theme.isBuiltIn) {
-                    actionsHtml = `
-                        <div class="theme-actions">
-                            <button class="theme-action-btn view-json" data-theme-id="${theme.id}" title="View/Export JSON">
-                                <span class="icon icon-code"></span>
-                                JSON
-                            </button>
-                            <button class="theme-action-btn duplicate" data-theme-id="${theme.id}" title="Duplicate theme">
-                                <span class="icon icon-copy"></span>
-                                Copy
-                            </button>
-                            <button class="theme-action-btn delete" data-theme-id="${theme.id}" title="Delete theme">
-                                <span class="icon icon-delete"></span>
-                            </button>
-                        </div>
-                    `;
+                // Every theme is editable, including the built-ins. Built-ins keep their shipped
+                // palette: the edit is stored as an override, so "Reset" can always
+                // restore the original exactly.
+                const isModified = window.ThemeManager.isThemeModified(theme.id);
+                const modifiedBadge = isModified && theme.isBuiltIn
+                    ? '<span class="theme-modified-badge">Edited</span>'
+                    : '';
+
+                let actionsHtml = `
+                    <div class="theme-actions">
+                        <button class="theme-action-btn edit-theme" data-theme-id="${theme.id}" title="Edit colors">
+                            <span class="icon icon-code"></span>
+                            Edit
+                        </button>
+                        <button class="theme-action-btn duplicate" data-theme-id="${theme.id}" title="Duplicate theme">
+                            <span class="icon icon-copy"></span>
+                            Copy
+                        </button>
+                `;
+
+                if (isModified) {
+                    actionsHtml += `
+                        <button class="theme-action-btn reset" data-theme-id="${theme.id}" title="Discard edits and restore the default">
+                            <span class="icon icon-close"></span>
+                            Reset
+                        </button>`;
                 }
 
+                // Only a user-created theme can be deleted outright. A built-in is
+                // shipped with the app, and a legacy variant returns to its
+                // original once any edit promotes it back out of customThemes.
+                if (!theme.isBuiltIn && !theme.isSeed) {
+                    actionsHtml += `
+                        <button class="theme-action-btn delete" data-theme-id="${theme.id}" title="Delete theme">
+                            <span class="icon icon-delete"></span>
+                        </button>`;
+                }
+
+                actionsHtml += '</div>';
+
                 card.innerHTML = `
-                    <div class="theme-preview" style="background: ${colors['color-bg-primary']}">
-                        <div class="preview-toolbar" style="background: ${colors['color-bg-tertiary']}">
-                            <div class="preview-dot" style="background: ${colors['color-danger'] || '#ff5555'}"></div>
-                            <div class="preview-dot" style="background: ${colors['color-warning'] || '#ffcc00'}"></div>
-                            <div class="preview-dot" style="background: ${colors['color-success'] || '#55ff55'}"></div>
-                            <div class="preview-address" style="background: ${colors['color-bg-primary']}"></div>
+                    <div class="theme-preview" style="background: ${safeColor(colors['color-bg-primary'], '#16151d')}">
+                        <div class="preview-toolbar" style="background: ${safeColor(colors['color-bg-tertiary'], '#232330')}">
+                            <div class="preview-dot" style="background: ${safeColor(colors['color-danger'], '#ff5555')}"></div>
+                            <div class="preview-dot" style="background: ${safeColor(colors['color-warning'], '#ffcc00')}"></div>
+                            <div class="preview-dot" style="background: ${safeColor(colors['color-success'], '#55ff55')}"></div>
+                            <div class="preview-address" style="background: ${safeColor(colors['color-bg-primary'], '#16151d')}"></div>
                         </div>
                         <div class="preview-content">
-                            <div class="preview-sidebar" style="background: ${colors['color-bg-secondary']}"></div>
-                            <div class="preview-main" style="background: ${colors['card-bg'] || colors['color-bg-elevated']}"></div>
+                            <div class="preview-sidebar" style="background: ${safeColor(colors['color-bg-secondary'], '#1e1e2e')}"></div>
+                            <div class="preview-main" style="background: ${safeColor(colors['card-bg'] || colors['color-bg-elevated'], '#282839')}"></div>
                         </div>
                     </div>
                     <div class="theme-info">
                         <div class="theme-name">
-                            ${theme.name}
+                            ${escapeHtml(theme.name)}
                             ${isActive ? '<span class="theme-badge">Active</span>' : ''}
+                            ${modifiedBadge}
                         </div>
-                        <div class="theme-description">${theme.description || ''}</div>
+                        <div class="theme-description">${escapeHtml(theme.description || '')}</div>
                         <div class="theme-meta">
-                            <span class="category-badge ${category}">${category}</span>
-                            ${!theme.isBuiltIn ? ' • Custom' : ''}
+                            <span class="category-badge ${categoryClass}">${escapeHtml(category)}</span>
+                            ${theme.isSeed ? ' • Classic' : ''}
+                            ${(!theme.isBuiltIn && !theme.isSeed) ? ' • Custom' : ''}
                         </div>
                         ${actionsHtml}
                     </div>
@@ -928,6 +1022,22 @@
                         e.preventDefault();
                         const themeId = e.target.closest('.duplicate').dataset.themeId;
                         duplicateTheme(themeId);
+                        return;
+                    }
+
+                    if (e.target.closest('.edit-theme')) {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        const themeId = e.target.closest('.edit-theme').dataset.themeId;
+                        showEditModal(themeId);
+                        return;
+                    }
+
+                    if (e.target.closest('.theme-action-btn.reset')) {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        const themeId = e.target.closest('.theme-action-btn.reset').dataset.themeId;
+                        resetThemeToDefault(themeId);
                         return;
                     }
 
@@ -999,6 +1109,21 @@
                         // Auto-show JSON modal for the new theme
                         setTimeout(() => showJsonModal(newTheme.id), 300);
                     }
+                });
+
+                // Colour editor: close, cancel, save
+                const editModal = document.getElementById('edit-modal');
+                document.getElementById('btn-edit-x').addEventListener('click', () => {
+                    editModal.classList.remove('visible');
+                });
+                document.getElementById('btn-edit-cancel').addEventListener('click', () => {
+                    editModal.classList.remove('visible');
+                });
+                document.getElementById('btn-edit-save').addEventListener('click', () => {
+                    saveThemeEdits();
+                });
+                editModal.addEventListener('click', (e) => {
+                    if (e.target === editModal) editModal.classList.remove('visible');
                 });
 
                 // Close modal on overlay click
@@ -1162,6 +1287,104 @@
                 });
 
                 return processedLines.join('\n');
+            }
+
+            // Open the colour editor for any theme.
+            function showEditModal(themeId) {
+                const theme = window.ThemeManager.getTheme(themeId);
+                if (!theme || !theme.colors) return;
+
+                const editModal = document.getElementById('edit-modal');
+                const grid = document.getElementById('edit-color-grid');
+                const note = document.getElementById('edit-modal-note');
+
+                document.getElementById('edit-modal-title').textContent = 'Edit "' + (theme.name || themeId) + '"';
+                grid.innerHTML = '';
+
+                // The grid is built from the theme's own colour keys rather than a
+                // hardcoded list, so legacy variants and user themes get editors
+                // without maintaining a separate key list per palette.
+                Object.keys(theme.colors).sort().forEach((key) => {
+                    const value = String(theme.colors[key]);
+
+                    const row = document.createElement('div');
+                    row.className = 'edit-row';
+
+                    const label = document.createElement('label');
+                    label.textContent = key;
+                    label.title = key;
+
+                    let input;
+                    if (/^#[0-9a-fA-F]{6}$/.test(value)) {
+                        // A native colour picker, with the hex kept in sync.
+                        input = document.createElement('input');
+                        input.type = 'color';
+                        input.value = value;
+                    } else {
+                        // rgba()/hsl() and non-colour tokens (radii, sizes) are
+                        // round-tripped as text rather than forced into a picker
+                        // that cannot represent them.
+                        input = document.createElement('input');
+                        input.type = 'text';
+                        input.value = value;
+                    }
+                    input.dataset.colorKey = key;
+
+                    row.appendChild(label);
+                    row.appendChild(input);
+                    grid.appendChild(row);
+                });
+
+                if (theme.isBuiltIn) {
+                    note.textContent = 'This is a built-in theme. Your changes are saved as an override, so the original palette stays available via Reset.';
+                } else if (theme.isSeed) {
+                    note.textContent = 'This is a legacy palette. Saving promotes it to one of your own themes.';
+                } else {
+                    note.textContent = 'Changes are saved to your custom themes.';
+                }
+
+                editModal.dataset.themeId = themeId;
+                editModal.classList.add('visible');
+            }
+
+            // Persist the colour editor's inputs as a partial update. Only the
+            // keys actually present in the grid are sent, so updateTheme() merges
+            // rather than replaces and untouched colours are preserved.
+            function saveThemeEdits() {
+                const editModal = document.getElementById('edit-modal');
+                const themeId = editModal.dataset.themeId;
+                if (!themeId) return;
+
+                const colors = {};
+                document.querySelectorAll('#edit-color-grid input[data-color-key]').forEach((input) => {
+                    colors[input.dataset.colorKey] = input.value;
+                });
+
+                if (Object.keys(colors).length === 0) {
+                    showToast('Nothing to save', 'error');
+                    return;
+                }
+
+                const result = window.ThemeManager.updateTheme(themeId, { colors: colors });
+                if (!result) {
+                    showToast('Failed to save theme changes', 'error');
+                    return;
+                }
+
+                editModal.classList.remove('visible');
+                showToast('Theme updated!', 'success');
+                renderThemes();
+            }
+
+            // Discard edits. For a built-in this restores the shipped palette.
+            function resetThemeToDefault(themeId) {
+                const success = window.ThemeManager.resetTheme(themeId);
+                if (success) {
+                    showToast('Theme reset to default', 'success');
+                    renderThemes();
+                } else {
+                    showToast('Theme has no changes to reset', 'error');
+                }
             }
 
             // Duplicate a theme

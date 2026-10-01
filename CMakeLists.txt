@@ -243,8 +243,15 @@ endif()
 	 if(WIN32)
 	 	target_link_libraries(MemoryMonitorTest PRIVATE psapi)
 	 endif()
-	 add_test(NAME MemoryMonitorTest COMMAND MemoryMonitorTest)
- else()
+add_test(NAME MemoryMonitorTest COMMAND MemoryMonitorTest)
+
+	 # ThemeManagerTest doesn't need Ultralight libraries - it's standalone
+	 add_executable(ThemeManagerTest
+	 	tests/ThemeManagerTest.cpp
+	 	src/ThemeManager.cpp)
+	 target_link_libraries(ThemeManagerTest PRIVATE GTest::gtest_main)
+	 add_test(NAME ThemeManagerTest COMMAND ThemeManagerTest)
+ 	else()
 	 message(STATUS "Skipping tests on Windows when not using MSVC (to avoid linking MSVC .lib with MinGW)")
  endif()
 

@@ -254,6 +254,12 @@ tar -xzf Ultralight-WebBrowser-*.tar.gz -C ~/.local/opt
 ### User Interface & Experience
 - **Modern Glassmorphic Design** – Semi-transparent overlays with backdrop blur
 - **Dark Mode** – Global theme toggle with persistent preferences
+- **Theme Engine** – 9 built-in themes with live CSS-variable injection, a theme
+  management page, import/export, and native persistence
+  - Active theme and custom themes are stored in the settings directory, not
+    `localStorage`, so a theme selection survives clearing site data and applies
+    consistently across all nine pages that load the theme engine
+  - See [docs/Theme-System.md](docs/Theme-System.md)
 - **Compact Tabs Mode** – Space-saving layout (60px UI height, 12em tab width)
 - **Toolbar Icons** – Quick access to Inspector, Downloads, AdBlock, Menu
 - **Bookmark System** – Save favorite sites with toolbar star icon and bookmarks bar
