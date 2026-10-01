@@ -14,9 +14,9 @@
 #include <mach/task.h>
 #include <sys/resource.h>
 #else
-#include <cstdio>
+// Linux/Android/BSD. Android needs no separate branch: Bionic provides
+// /proc/self/statm, getrusage (with ru_maxrss in kilobytes) and malloc_trim.
 #include <cstdlib>
-#include <fstream>
 #include <malloc.h>
 #include <sys/resource.h>
 #include <unistd.h>
