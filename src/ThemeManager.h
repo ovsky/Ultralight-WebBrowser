@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <filesystem>
 #include <map>
 #include <string>
@@ -32,8 +33,8 @@ namespace themes
 {
 
     // Bounds for untrusted values crossing the JavaScript bridge.
-    constexpr size_t kMaxThemeIdLength = 64;
-    constexpr size_t kMaxThemeBlobBytes = 4u * 1024u * 1024u;
+    constexpr std::size_t kMaxThemeIdLength = 64;
+    constexpr std::size_t kMaxThemeBlobBytes = 4u * 1024u * 1024u;
 
     class ThemeManager
     {
