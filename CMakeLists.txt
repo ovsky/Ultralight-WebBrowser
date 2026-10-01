@@ -78,6 +78,8 @@ set(SOURCES
 	"src/BookmarkStore.cpp"
 	"src/ThemeManager.h"
 	"src/ThemeManager.cpp"
+	"src/MediaFallback.h"
+	"src/MediaFallback.cpp"
 	"src/DownloadManager.h"
 	"src/DownloadManager.cpp"
 	"src/ExtensionManager.h"
@@ -251,6 +253,13 @@ add_test(NAME MemoryMonitorTest COMMAND MemoryMonitorTest)
 	 	src/ThemeManager.cpp)
 	 target_link_libraries(ThemeManagerTest PRIVATE GTest::gtest_main)
 	 add_test(NAME ThemeManagerTest COMMAND ThemeManagerTest)
+
+	 # MediaFallbackTest doesn't need Ultralight libraries - it's standalone
+	 add_executable(MediaFallbackTest
+	 	tests/MediaFallbackTest.cpp
+	 	src/MediaFallback.cpp)
+	 target_link_libraries(MediaFallbackTest PRIVATE GTest::gtest_main)
+	 add_test(NAME MediaFallbackTest COMMAND MediaFallbackTest)
  	else()
 	 message(STATUS "Skipping tests on Windows when not using MSVC (to avoid linking MSVC .lib with MinGW)")
  endif()

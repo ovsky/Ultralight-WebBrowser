@@ -339,6 +339,11 @@ choose, by closing the least-recently-used background tabs. See
   - Added to `build-all.yml` and `build-all-arm.yml`
   - Produces a TGZ of cross-compiled binaries, not an installable APK
   - DRM is stubbed out (no embeddable system WebView in the NDK)
+- **Media Fallback** – Opt-in redirect of known video hosts to the platform webview
+  - The bundled engine has no media pipeline or codecs, so `<video>` renders as an
+    empty box. This hands YouTube, Vimeo, Twitch and similar to WebView2 / WKWebView /
+    WebKit2GTK instead
+  - See [docs/Media-Fallback.md](docs/Media-Fallback.md)
 - **WebP to PNG Conversion** – Automatic conversion of downloaded WebP images
   - Windows Imaging Component (WIC) based conversion
   - Toggle in Settings → Downloads
