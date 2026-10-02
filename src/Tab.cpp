@@ -839,44 +839,38 @@ void Tab::OnDOMReady(View *caller, uint64_t frame_id, bool is_main_frame, const 
               faviconUrl = origin + '/favicon.ico';
             }
 
-            // Fetch and convert to data URL
-            var img = new Image();
-            img.crossOrigin = 'anonymous';
-            img.onload = function() {
+            // Hand the favicon URL straight back instead of rasterising it
+            // through a canvas.
+            //
+            // The canvas approach cannot work for favicons: drawing a
+            // cross-origin image taints the canvas, so toDataURL throws, and
+            // setting crossOrigin='anonymous' to avoid that only works if the
+            // server sends Access-Control-Allow-Origin, which favicon hosts
+            // almost never do. That combination meant onload essentially never
+            // fired and every site's favicon silently failed.
+            //
+            // The tab chrome renders the favicon in an <img>, which loads a
+            // plain URL natively, so no rasterisation is needed at all.
+            function report(href) {
+              if (!href) return;
               try {
-                var canvas = document.createElement('canvas');
-                canvas.width = 16;
-                canvas.height = 16;
-                var ctx = canvas.getContext('2d');
-                ctx.imageSmoothingEnabled = true;
-                ctx.drawImage(img, 0, 0, 16, 16);
-                var dataUrl = canvas.toDataURL('image/png');
                 if (window.NativeFaviconFetched) {
-                  window.NativeFaviconFetched(pageUrl, dataUrl);
+                  window.NativeFaviconFetched(pageUrl, href);
                 }
-              } catch(e) {
-                // Canvas tainted by cross-origin image
-              }
-            };
+              } catch (e) {}
+            }
+
+            // Verify the icon actually resolves before reporting it, so a broken
+            // <link rel="icon"> falls back to /favicon.ico instead of caching a
+            // URL that renders as a broken image.
+            var img = new Image();
+            img.onload = function() { report(faviconUrl); };
             img.onerror = function() {
               // Try fallback to /favicon.ico if we tried a different icon
               if (faviconUrl !== origin + '/favicon.ico') {
                 var fallbackImg = new Image();
-                fallbackImg.crossOrigin = 'anonymous';
-                fallbackImg.onload = function() {
-                  try {
-                    var canvas = document.createElement('canvas');
-                    canvas.width = 16;
-                    canvas.height = 16;
-                    var ctx = canvas.getContext('2d');
-                    ctx.imageSmoothingEnabled = true;
-                    ctx.drawImage(fallbackImg, 0, 0, 16, 16);
-                    var dataUrl = canvas.toDataURL('image/png');
-                    if (window.NativeFaviconFetched) {
-                      window.NativeFaviconFetched(pageUrl, dataUrl);
-                    }
-                  } catch(e) {}
-                };
+                fallbackImg.onload = function() { report(origin + '/favicon.ico'); };
+                fallbackImg.onerror = function() {};
                 fallbackImg.src = origin + '/favicon.ico';
               }
             };

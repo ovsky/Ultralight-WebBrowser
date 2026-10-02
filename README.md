@@ -532,6 +532,23 @@ Major feature sync bringing all development improvements to the stable branch.
 | `PACKAGE_GENERATORS` | CPack generators (`TGZ;DEB;RPM`) |
 | `CREATE_INSTALLER` | Build NSIS installer (Windows) |
 | `ULTRALIGHT_LOG_REQUESTS` | Runtime opt-in. `1` logs every network request to stderr; `0`/`false` disables. Off by default |
+| `ULTRALIGHT_VERBOSE` | Runtime opt-in. `1` enables the UI-thread diagnostic logging (settings changes, tab restore, input diagnostics). Unconditional stderr writes block the UI thread when stderr is a pipe, so these are off by default |
+
+### Engine Resource Files (ICU + CA bundle)
+
+The engine loads `icudt*.dat` and `cacert.pem` through the FileSystem API relative to
+`Config::resource_path_prefix`. This project keeps them with the rest of the `file://`
+assets under `assets/resources/`, and the build stages them next to the executable.
+
+`Browser.cpp` only overrides the prefix when `assets/resources/` actually resolves
+from the current working directory. If it does not, the SDK default (`resources/`) is
+left in place — a prefix pointing at a missing directory is worse than the default,
+because *every* resource lookup then fails rather than falling back.
+
+This matters beyond TLS. With no `icudt*.dat` found, the engine falls back to
+per-glyph Unicode handling for text layout, which makes text-heavy internal pages
+(Settings, Downloads, History) visibly sluggish. Run the browser from the build output
+directory, or otherwise ensure `assets/resources/` is present, to get the fast path.
 
 ---
 
@@ -767,6 +784,7 @@ Shortcuts are customizable via `assets/shortcuts.json`:
 | `PACKAGE_GENERATORS` | CPack generators (`TGZ;DEB;RPM`) |
 | `CREATE_INSTALLER` | Build NSIS installer (Windows) |
 | `ULTRALIGHT_LOG_REQUESTS` | Runtime opt-in. `1` logs every network request to stderr; `0`/`false` disables. Off by default |
+| `ULTRALIGHT_VERBOSE` | Runtime opt-in. `1` enables the UI-thread diagnostic logging (settings changes, tab restore, input diagnostics). Unconditional stderr writes block the UI thread when stderr is a pipe, so these are off by default |
 
 ---
 

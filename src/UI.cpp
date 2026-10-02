@@ -48,6 +48,59 @@ namespace
 {
   constexpr int kDownloadsOverlaySpacing = 8;
 
+  // Input-dispatch diagnostic, active only with ULTRALIGHT_VERBOSE=1.
+  //
+  // Reports how many events the window listener actually receives and how long
+  // the handler spends. This is what separates the two failure modes that look
+  // identical from the outside: a handler that is genuinely slow, versus an
+  // engine that is delivering the events late because it is not presenting
+  // frames. The latter shows up as few events with a fast handler.
+  class InputDiagScope
+  {
+  public:
+    explicit InputDiagScope(const char *label) : label_(label)
+    {
+      if (!UI::VerboseLogging())
+        return;
+      enabled_ = true;
+      start_ = std::chrono::steady_clock::now();
+
+      const auto now_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                              start_.time_since_epoch())
+                              .count();
+      if (now_ms - last_report_ms_ >= 2000)
+      {
+        if (count_ > 0)
+        {
+          std::fprintf(stderr, "[diag] %s: %llu events, %.2f ms avg in handler\n",
+                       label_, (unsigned long long)count_, total_ms_ / (double)count_);
+        }
+        count_ = 0;
+        total_ms_ = 0.0;
+        last_report_ms_ = now_ms;
+      }
+    }
+
+    ~InputDiagScope()
+    {
+      if (!enabled_)
+        return;
+      const auto end = std::chrono::steady_clock::now();
+      total_ms_ += std::chrono::duration<double, std::milli>(end - start_).count();
+      count_++;
+    }
+
+  private:
+    const char *label_;
+    bool enabled_ = false;
+    std::chrono::steady_clock::time_point start_;
+    // Shared across instances of this label only in spirit; static per-type is
+    // good enough for a diagnostic and avoids allocating a map on the hot path.
+    static inline uint64_t count_ = 0;
+    static inline double total_ms_ = 0.0;
+    static inline uint64_t last_report_ms_ = 0;
+  };
+
   // ultralight::JSString only offers an implicit conversion to ultralight::String,
   // and ultralight::String is the type that owns the UTF-8 buffer. String::utf8()
   // hands back a reference into the receiver, so the intermediate String has to be
@@ -999,6 +1052,16 @@ void UI::OnAddressBarFocus(const JSObject &obj, const JSArgs &args)
   address_bar_is_focused_ = true;
 }
 
+bool UI::VerboseLogging()
+{
+  static const bool enabled = []()
+  {
+    const char *env = std::getenv("ULTRALIGHT_VERBOSE");
+    return env && std::strcmp(env, "0") != 0 && std::string(env) != "false";
+  }();
+  return enabled;
+}
+
 bool UI::OnKeyEvent(const ultralight::KeyEvent &evt)
 {
   // If menu overlay is active, route all key events to it and consume
@@ -1324,6 +1387,7 @@ bool UI::RunShortcutAction(const std::string &action)
 
 bool UI::OnMouseEvent(const ultralight::MouseEvent &evt)
 {
+  InputDiagScope diag("mouse");
   // CRITICAL: If clicking in UI area (toolbar) on a DRM tab, detach WebView2 immediately
   // This prevents WebView2 from intercepting keyboard input to address bar
   if (evt.type == MouseEvent::kType_MouseDown && evt.y <= ui_height_)
@@ -1491,6 +1555,7 @@ bool UI::OnMouseEvent(const ultralight::MouseEvent &evt)
 
 bool UI::OnScrollEvent(const ultralight::ScrollEvent &evt)
 {
+  InputDiagScope diag("scroll");
   // The mouse wheel is delivered as a ScrollEvent, so it never passes through
   // OnMouseEvent and therefore never reaches the modal overlays that
   // unconditionally consume mouse input. Without this, opening the menu and then
@@ -1953,8 +2018,11 @@ void UI::OnActiveTabChange(const JSObject &obj, const JSArgs &args)
     if (id == active_tab_id_)
       return;
 
-    auto &tab = tabs_[id];
-    if (!tab)
+    // Use find() rather than operator[]. `tabs_[id]` default-inserts a null
+    // entry for an unknown id, which then sits in the map as a live-looking but
+    // empty tab and is dereferenced unguarded further down.
+    auto incoming_it = tabs_.find(id);
+    if (incoming_it == tabs_.end() || !incoming_it->second)
       return;
 
     NoteTabActivated(id);
@@ -1962,21 +2030,29 @@ void UI::OnActiveTabChange(const JSObject &obj, const JSArgs &args)
     // Always hide all DRM tabs first to ensure clean state
     HideAllDrmTabs();
 
-    // Hide the previous Ultralight tab if it wasn't DRM
-    if (tabs_.count(active_tab_id_) && tabs_[active_tab_id_])
-      tabs_[active_tab_id_]->Hide();
-
-    if (tabs_[active_tab_id_]->ready_to_close())
+    // Hide the previous Ultralight tab if it wasn't DRM. This used to guard with
+    // count() but then dereferenced tabs_[active_tab_id_] again on the very next
+    // line without any check, so an unknown active id crashed the process.
+    auto previous_it = tabs_.find(active_tab_id_);
+    if (previous_it != tabs_.end() && previous_it->second)
     {
-      tabs_[active_tab_id_].reset();
-      tabs_.erase(active_tab_id_);
+      previous_it->second->Hide();
+
+      if (previous_it->second->ready_to_close())
+      {
+        tabs_.erase(previous_it);
+      }
     }
 
     active_tab_id_ = id;
+    auto active_it = tabs_.find(active_tab_id_);
+    if (active_it == tabs_.end() || !active_it->second)
+      return;
+
     // If the newly active tab is NOT the settings page, mark it as the
     // last non-settings active tab so reloads requested from the settings
     // page will target a meaningful browsing tab.
-    auto tabView = tabs_[active_tab_id_]->view();
+    auto tabView = active_it->second->view();
     if (tabView)
     {
       auto tab_url = tabView->url().utf8();
@@ -1999,12 +2075,13 @@ void UI::OnActiveTabChange(const JSObject &obj, const JSArgs &args)
     }
     else
     {
-      tabs_[active_tab_id_]->Show();
-      tabs_[active_tab_id_]->view()->Focus(); // Give focus to Ultralight tab
-      auto tab_view = tabs_[active_tab_id_]->view();
+      active_it->second->Show();
+      active_it->second->view()->Focus(); // Give focus to Ultralight tab
+      auto tab_view = active_it->second->view();
       SetLoading(tab_view->is_loading());
       SetCanGoBack(tab_view->CanGoBack());
-      SetCanGoForward(tab_view->CanGoBack());
+      // Was CanGoBack(), so the forward arrow always mirrored the back arrow.
+      SetCanGoForward(tab_view->CanGoForward());
       SetURL(tab_view->url());
     }
 
@@ -2823,9 +2900,13 @@ String UI::GetFaviconURL(const String &page_url)
     return String(it->second.c_str());
   }
 
-  // Return empty to use default favicon - the /favicon.ico URLs don't work in CSS
-  // The favicon will be fetched and cached when user interacts with suggestions
-  return String("");
+  // Fall back to the conventional path. Returning "" here (the old behaviour)
+  // meant an origin could only ever get a favicon if the suggestions page had
+  // already cached it, so any site visited without typing it into the address
+  // bar showed no icon at all. The tab chrome renders this in an <img>, which
+  // loads an http(s) URL directly, and the async probe in Tab.cpp replaces it
+  // with the real <link rel="icon"> when the page publishes one.
+  return String((origin_str + "/favicon.ico").c_str());
 }
 
 // --- History helpers ---
@@ -3253,6 +3334,7 @@ void UI::OnReloadActiveNonSettingsTab(const JSObject &, const JSArgs &)
 
 void UI::ReloadActiveNonSettingsTab()
 {
+  if (VerboseLogging())
   std::fprintf(stderr, "[UI] ReloadActiveNonSettingsTab invoked: active_tab_id=%llu last_non_settings_tab_id=%llu\n", (unsigned long long)active_tab_id_, (unsigned long long)last_non_settings_tab_id_);
   // Prefer reloading the active browsing tab if it is NOT the settings page.
   if (active_tab() && active_tab()->view())
@@ -3262,6 +3344,7 @@ void UI::ReloadActiveNonSettingsTab()
     const char *u = url.data() ? url.data() : "";
     if (std::strstr(u, "settings.html") == nullptr)
     {
+      if (VerboseLogging())
       std::fprintf(stderr, "[UI] Reloading active tab id=%llu url=%s\n", (unsigned long long)active_tab_id_, u);
       v->Reload();
       return;
@@ -3283,6 +3366,7 @@ void UI::ReloadActiveNonSettingsTab()
         RefPtr<View> newView = CreateNewTabForChildView(String(urlstr.c_str()));
         if (newView)
         {
+          if (VerboseLogging())
           std::fprintf(stderr, "[UI] Recreated tab for last_non_settings_tab_id=%llu, new view created\n", (unsigned long long)last_non_settings_tab_id_);
           newView->LoadURL(String(urlstr.c_str()));
           uint64_t new_id = 0;
@@ -3313,6 +3397,7 @@ void UI::ReloadActiveNonSettingsTab()
           }
           if (tabs_.count(old_id))
           {
+            if (VerboseLogging())
             std::fprintf(stderr, "[UI] Closing old tab id=%llu (replaced by id=%llu)\n", (unsigned long long)old_id, (unsigned long long)new_id);
             tabs_[old_id].reset();
             tabs_.erase(old_id);
@@ -3340,6 +3425,7 @@ void UI::ReloadActiveNonSettingsTab()
       RefPtr<View> newView = CreateNewTabForChildView(String(urlstr.c_str()));
       if (newView)
       {
+        if (VerboseLogging())
         std::fprintf(stderr, "[UI] Recreated fallback tab id=%llu new view created\n", (unsigned long long)entry.first);
         newView->LoadURL(String(urlstr.c_str()));
         uint64_t new_id = 0;
@@ -3370,6 +3456,7 @@ void UI::ReloadActiveNonSettingsTab()
         }
         if (tabs_.count(old_id))
         {
+          if (VerboseLogging())
           std::fprintf(stderr, "[UI] Closing old tab id=%llu (replaced by id=%llu)\n", (unsigned long long)old_id, (unsigned long long)new_id);
           tabs_[old_id].reset();
           tabs_.erase(old_id);
@@ -3460,7 +3547,46 @@ void UI::OnNativeSetThemeSetting(const JSObject &, const JSArgs &args)
 
   // The manager logs why a value was refused. It also keeps a localStorage copy
   // via the engine, so a refused write is not a lost selection.
-  theme_store()->SetActiveThemeId(theme_id);
+  if (!theme_store()->SetActiveThemeId(theme_id))
+    return;
+
+  // Only push when the manager actually accepted the id, so a refused write does
+  // not leave views disagreeing with the persisted theme.
+  BroadcastThemeToViews(theme_store()->GetActiveThemeId());
+}
+
+void UI::BroadcastThemeToViews(const std::string &theme_id)
+{
+  if (theme_id.empty())
+    return;
+
+  // The id is a validated theme key (alphanumeric plus '_' and '-'), so it needs
+  // no escaping here. The guard is deliberate: never build a script from an
+  // unvalidated string.
+  const std::string script =
+      "if (window.__ulApplyTheme) window.__ulApplyTheme(\"" + theme_id + "\");";
+
+  // theme.js only defines the hook once its IIFE has run, so a view that is
+  // mid-load simply misses this push and picks the theme up from storage when it
+  // initializes. That is why no error handling is needed here.
+  auto push = [&script](const RefPtr<View> &v) {
+    if (v)
+      v->EvaluateScript(script.c_str(), nullptr);
+  };
+
+  push(view());
+
+  for (const auto &entry : tabs_)
+    if (entry.second)
+      push(entry.second->view());
+
+  // DRM tabs are native WebView2 surfaces rather than Ultralight views, so they
+  // have no script context to push into and are deliberately skipped.
+
+  push(menu_overlay_ ? menu_overlay_->view() : RefPtr<View>());
+  push(context_menu_overlay_ ? context_menu_overlay_->view() : RefPtr<View>());
+  push(suggestions_overlay_ ? suggestions_overlay_->view() : RefPtr<View>());
+  push(downloads_overlay_ ? downloads_overlay_->view() : RefPtr<View>());
 }
 
 ultralight::JSValue UI::OnNativeGetCustomThemes(const JSObject &, const JSArgs &)
@@ -3962,7 +4088,7 @@ void UI::ApplySettings(bool initial, bool snapshot_is_baseline)
   reduce_motion_enabled_ = settings_.reduce_motion;
   high_contrast_ui_enabled_ = settings_.high_contrast_ui;
 
-  // Apply the smooth-scrolling and accessibility stylesheets to every view in one
+// Apply the smooth-scrolling and accessibility stylesheets to every view in one
   // pass. These two settings both inject a `scroll-behavior` rule marked
   // !important, so applying them independently let whichever ran last decide the
   // outcome. Reduce-motion used to be injected after smooth scrolling, which
@@ -4209,6 +4335,7 @@ void UI::HandleSettingMutation(const std::string &key, bool value)
 
   bool &field = settings_.*(descriptor->member);
   bool old_value = field;
+  if (VerboseLogging())
   std::fprintf(stderr, "[UI] HandleSettingMutation invoked: key='%s' old=%s new=%s\n", key.c_str(), (old_value ? "true" : "false"), (value ? "true" : "false"));
   if (field == value)
     return;
@@ -4228,6 +4355,7 @@ void UI::HandleSettingMutation(const std::string &key, bool value)
   // immediately regardless of whether the settings page's JS requested it.
   if (key == "experimental_compact_tabs")
   {
+    if (VerboseLogging())
     std::fprintf(stderr, "[UI] experimental_compact_tabs changed -> ReloadChromeUI + ReloadActiveNonSettingsTab\n");
     ReloadChromeUI();
     ReloadActiveNonSettingsTab();
@@ -4253,6 +4381,11 @@ void UI::AdjustUIHeight(uint32_t new_height)
   overlay_->Resize(window_->width(), ui_height_);
 
   // Note: Do NOT move or resize tabs here; we only enlarge the UI overlay canvas.
+  // Re-anchoring the tabs from here was tried and broke tab geometry: Tab::MoveTo
+  // re-runs Tab::Resize, which repositions the inspector overlay relative to the
+  // content overlay's absolute y, and the combination left the content area
+  // unusable. The compact-tabs toggle still routes through OnResize, which is
+  // the only place that owns tab geometry.
   if (downloads_overlay_)
     LayoutDownloadsOverlay();
 }
@@ -6252,7 +6385,12 @@ void UI::SaveFaviconDiskCache()
 
 void UI::OnFaviconReady(const JSObject &obj, const JSArgs &args)
 {
-  // args: url, dataUrl (data:image/png;base64,....)
+  // args: url, favicon
+  //
+  // The favicon arrives as a plain http(s) URL, not a data URL. It used to be
+  // rasterised to a data URL in-page via canvas, which cannot work for
+  // cross-origin images (see Tab.cpp), so the data-URL-only cache below now
+  // sees a URL, fails the ',' check, and discards every favicon.
   if (args.size() < 2 || !args[0].IsString() || !args[1].IsString())
     return;
   if (!suggestion_favicons_enabled_)
@@ -6316,44 +6454,62 @@ void UI::OnFaviconReady(const JSObject &obj, const JSArgs &args)
     }
   }
 
-  // Expect data URL like data:image/png;base64,....
-  size_t comma = data.find(",");
-  if (comma == std::string::npos)
-    return;
-  std::string b64 = data.substr(comma + 1);
-  std::string bytes = Base64Decode(b64);
-  if (bytes.size() < 8)
-    return;
-
-  std::string dir = EnsureFaviconCacheDir();
-  // Hash filename from origin
-  std::hash<std::string> hasher;
-  size_t h = hasher(origin);
-  std::ostringstream path;
-  path << dir << "/" << std::hex << h << ".png";
-  std::string file = path.str();
-  // Write file
-  std::ofstream f(file, std::ios::out | std::ios::binary | std::ios::trunc);
-  if (!f.is_open())
-    return;
-  f.write(bytes.data(), (std::streamsize)bytes.size());
-  f.close();
-  // Store as file:/// absolute URL
-  char cwd_buf[1024] = {0};
-#ifdef _WIN32
-  _getcwd(cwd_buf, sizeof(cwd_buf));
-  std::string abs = std::string("file:///") + std::string(cwd_buf) + "/" + file;
-  // replace backslashes
-  for (auto &ch : abs)
+// Cache the plain URL.
+  //
+  // A data URL is also accepted so previously cached entries keep working:
+  // those get written to the favicon cache dir and referenced as file:///.
+  if (data.rfind("data:", 0) == 0)
   {
-    if (ch == '\\')
-      ch = '/';
-  }
+    size_t comma = data.find(",");
+    if (comma == std::string::npos)
+      return;
+    std::string b64 = data.substr(comma + 1);
+    std::string bytes = Base64Decode(b64);
+    if (bytes.size() < 8)
+      return;
+
+    std::string dir = EnsureFaviconCacheDir();
+    // Hash filename from origin
+    std::hash<std::string> hasher;
+    size_t h = hasher(origin);
+    std::ostringstream path;
+    path << dir << "/" << std::hex << h << ".png";
+    std::string file = path.str();
+    // Write file
+    std::ofstream f(file, std::ios::out | std::ios::binary | std::ios::trunc);
+    if (!f.is_open())
+      return;
+    f.write(bytes.data(), (std::streamsize)bytes.size());
+    f.close();
+    // Store as file:/// absolute URL
+    char cwd_buf[1024] = {0};
+#ifdef _WIN32
+    _getcwd(cwd_buf, sizeof(cwd_buf));
+    std::string abs = std::string("file:///") + std::string(cwd_buf) + "/" + file;
+    // replace backslashes
+    for (auto &ch : abs)
+    {
+      if (ch == '\\')
+        ch = '/';
+    }
 #else
-  getcwd(cwd_buf, sizeof(cwd_buf));
-  std::string abs = std::string("file://") + std::string(cwd_buf) + "/" + file;
+    getcwd(cwd_buf, sizeof(cwd_buf));
+    std::string abs = std::string("file://") + std::string(cwd_buf) + "/" + file;
 #endif
-  favicon_file_cache_[origin] = abs;
+    favicon_file_cache_[origin] = abs;
+  }
+  else if (data.rfind("http://", 0) == 0 || data.rfind("https://", 0) == 0)
+  {
+    favicon_file_cache_[origin] = data;
+  }
+  else
+  {
+    return;
+  }
+
+  // Keep the in-memory cache in step so a tab redraw picks the favicon up
+  // immediately instead of waiting for the next page load.
+  favicon_cache_[origin] = data;
   SaveFaviconDiskCache();
 }
 

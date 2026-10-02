@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <memory>
+#include <filesystem>
 
 #include "AdBlocker.h"
 
@@ -20,7 +21,18 @@ Browser::Browser()
 {
   Settings settings;
   Config config;
-  config.scroll_timer_delay = 1.0 / 90.0;
+  config.scroll_timer_delay = 1.0 / 60.0;
+
+  // The engine loads ICU data and the CA bundle through the FileSystem API,
+  // relative to this prefix (Config::resource_path_prefix). The SDK default is
+  // "resources/", but this project ships those files with the rest of its
+  // file:// assets under "assets/resources" (see the install rule in
+  // CMakeLists.txt). Only override when that folder is actually present:
+  // pointing the engine at a missing prefix is worse than leaving the default,
+  // because every resource lookup then fails instead of falling back.
+  if (std::filesystem::exists("assets/resources"))
+    config.resource_path_prefix = "assets/resources/";
+
   app_ = App::Create(settings, config);
 
   window_ = Window::Create(app_->main_monitor(), 1024, 768, false,

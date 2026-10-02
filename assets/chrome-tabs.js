@@ -263,8 +263,14 @@
     updateTab(tabEl, tabProperties) {
       const titleEl = tabEl.querySelector('.chrome-tab-title-text') || tabEl.querySelector('.chrome-tab-title')
       if (titleEl) titleEl.textContent = tabProperties.title
-      tabEl.querySelector('.chrome-tab-favicon').style.backgroundImage = `url(${tabProperties.favicon})`
-      tabEl.querySelector('.chrome-tab-favicon').style.display = tabProperties.loading ? 'none' : 'inline-block'
+      const faviconEl = tabEl.querySelector('.chrome-tab-favicon')
+      // url() is quoted: data URLs contain characters like ';' and ',' that are
+      // not valid unquoted, and a bare URL could otherwise break the declaration.
+      // An empty favicon clears the image rather than setting url(), which would
+      // request the current document and show a broken icon.
+      const favicon = tabProperties.favicon ? String(tabProperties.favicon).trim() : ''
+      faviconEl.style.backgroundImage = favicon ? `url("${favicon.replace(/"/g, '\\"')}")` : ''
+      faviconEl.style.display = tabProperties.loading ? 'none' : 'inline-block'
       tabEl.querySelector('.chrome-tab-spinner').style.display = tabProperties.loading ? 'inline-block' : 'none'
     }
 

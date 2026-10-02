@@ -1013,23 +1013,40 @@
                 this.applyTheme('dark');
             }
 
-            // Listen for theme changes from other pages/tabs via localStorage
             const self = this;
+            this._lastThemeId = savedThemeId || 'dark';
+
+            // Single entry point for applying a theme that came from somewhere
+            // other than this view's own UI, so _lastThemeId stays authoritative
+            // no matter how the change arrived.
+            window.__ulApplyTheme = function(themeId) {
+                if (!themeId || themeId === self._lastThemeId) return;
+                self._lastThemeId = themeId;
+                self.applyTheme(themeId);
+            };
+
+            // Listens for theme changes from other pages/tabs via localStorage.
             window.addEventListener('storage', function(e) {
                 if (e.key === 'ultralight_active_theme' && e.newValue) {
-                    self.applyTheme(e.newValue);
+                    window.__ulApplyTheme(e.newValue);
                 }
             });
 
-            // Also poll for changes periodically (backup for same-origin frames)
-            this._lastThemeId = savedThemeId || 'dark';
+            // Native pushes the new id into every live view when the user picks a
+            // theme (see UI::BroadcastThemeToViews), which is what makes a switch
+            // instant across all tabs and overlays. That handles the common case, so
+            // this timer is only a safety net for a view created after the broadcast
+            // (restored session, page loaded from cache).
+            //
+            // It was 2s, which meant a synchronous localStorage read twice a second
+            // in each of the nine pages that load theme.js, multiplied by every open
+            // view. 8s is still far below the point where a stale theme is
+            // noticeable, and the hidden-document check keeps background tabs from
+            // paying at all.
             setInterval(function() {
-                const currentThemeId = self.getSavedThemeId();
-                if (currentThemeId !== self._lastThemeId) {
-                    self._lastThemeId = currentThemeId;
-                    self.applyTheme(currentThemeId);
-                }
-            }, 500);
+                if (document.hidden) return;
+                window.__ulApplyTheme(self.getSavedThemeId());
+            }, 8000);
         }
 
         /**

@@ -129,6 +129,12 @@ public:
     bool operator!=(const BrowserSettings &other) const { return !(*this == other); }
   };
 
+  // Unconditional stderr writes on the UI thread are a real cost when stderr is
+  // a pipe (terminal, IDE console, CI log): each write blocks until the reader
+  // drains it. Gate the diagnostics behind an environment variable instead of
+  // paying that on every settings change and tab restore in normal use.
+  static bool VerboseLogging();
+
   // Inherited from WindowListener
   virtual bool OnKeyEvent(const ultralight::KeyEvent &evt) override;
   virtual bool OnMouseEvent(const ultralight::MouseEvent &evt) override;
@@ -199,6 +205,12 @@ public:
   // Returns the legacy assets/themes/*.json definitions as one JSON object
   // keyed by file stem, so the theme engine can offer them as selectable themes.
   ultralight::JSValue OnNativeGetSeedThemes(const JSObject &obj, const JSArgs &args);
+  // Push the active theme id into every live view (chrome, tabs, overlays).
+  // assets/themes/theme.js gives each view its own JS context, so a `storage`
+  // event cannot cross views and a theme switch used to rely on every page
+  // polling on a timer. Calling the JS hook directly makes the switch instant
+  // and removes that recurring cost from nine pages.
+  void BroadcastThemeToViews(const std::string &theme_id);
   void OnToggleAdblock(const JSObject &obj, const JSArgs &args);
   ultralight::JSValue OnGetAdblockEnabled(const JSObject &obj, const JSArgs &args);
   void OnOpenSettingsPanel(const JSObject &obj, const JSArgs &args);
