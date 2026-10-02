@@ -741,19 +741,40 @@ Toggle via toolbar icon or Settings → Privacy → Enable AdBlock
 <details>
 <summary><b>⌨️ Keyboard Shortcuts</b></summary>
 
-Shortcuts are customizable via `assets/shortcuts.json`:
+Shortcuts are customizable via `assets/shortcuts.json`. Every binding below is
+live — the table reflects what the code actually binds, not just what the JSON
+declares.
 
 | Action | Default Shortcut |
 |--------|------------------|
 | New Tab | `Ctrl+T` |
 | Close Tab | `Ctrl+W` |
 | Reload | `Ctrl+R` / `F5` |
+| Hard Reload | `Ctrl+Shift+R` |
 | Back | `Alt+Left` |
 | Forward | `Alt+Right` |
 | Address Bar | `Ctrl+L` |
-| Find | `Ctrl+F` |
-| Settings | `Ctrl+,` |
+| Find in Page | `Ctrl+F` |
+| Tab Search | `Ctrl+Shift+A` |
+| Next / Previous Tab | `Ctrl+Tab` / `Ctrl+Shift+Tab` |
+| Jump to Tab 1–8 | `Ctrl+1` … `Ctrl+8` |
+| Jump to Last Tab | `Ctrl+9` |
+| Zoom In / Out / Reset | `Ctrl+Plus` / `Ctrl+Minus` / `Ctrl+0` |
+| Fullscreen | `F11` |
 | Developer Tools | `F12` |
+| Settings | `Ctrl+,` |
+| History | `Ctrl+H` |
+| Bookmarks | `Ctrl+B` |
+| Downloads | `Ctrl+J` |
+| Extensions | `Ctrl+E` |
+| Passwords | `Ctrl+P` |
+| Themes | `Ctrl+Shift+T` |
+
+Zoom is per tab: each tab remembers its own level, and the badge beside the
+address bar shows it and resets to 100% when clicked.
+
+Tab Search lists open tabs by title and URL with Up/Down and Enter; Escape or a
+click outside dismisses it.
 
 </details>
 

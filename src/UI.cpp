@@ -1172,21 +1172,40 @@ bool UI::OnKeyEvent(const ultralight::KeyEvent &evt)
     return false;
   }
 
-  // Modifier-free shortcuts that are not part of the Ctrl+ table. F11 is
-  // handled here because NormalizeShortcutKey requires Ctrl.
+// Modifier-free shortcuts that are not part of the Ctrl+/Alt+ table. F5 and F12
+  // carry no modifier, so NormalizeShortcutKey (which requires one) cannot see
+  // them.
   if (evt.type == KeyEvent::kType_RawKeyDown &&
       !(evt.modifiers & (KeyEvent::kMod_CtrlKey | KeyEvent::kMod_AltKey |
-                         KeyEvent::kMod_MetaKey)) &&
-      static_cast<uint32_t>(evt.virtual_key_code) == 0x7A /*F11*/)
+                         KeyEvent::kMod_MetaKey)))
   {
-if (window_)
-  {
-    ToggleWindowFullscreen(window_.get());
-    return false;
+    switch (static_cast<uint32_t>(evt.virtual_key_code))
+    {
+    case 0x74: // F5, reload
+      if (RunShortcutAction("reload"))
+        return false;
+      break;
+    case 0x7A: // F11, fullscreen
+      if (window_)
+      {
+        ToggleWindowFullscreen(window_.get());
+        return false;
+      }
+      break;
+    case 0x7B: // F12, developer tools
+      if (active_tab())
+      {
+        active_tab()->ToggleInspector();
+        return false;
+      }
+      break;
+    default:
+      break;
+    }
   }
-}
 
-  if (evt.type == KeyEvent::kType_RawKeyDown && (evt.modifiers & KeyEvent::kMod_CtrlKey))
+if (evt.type == KeyEvent::kType_RawKeyDown &&
+      (evt.modifiers & (KeyEvent::kMod_CtrlKey | KeyEvent::kMod_AltKey)))
   {
     const std::string key = NormalizeShortcutKey(evt);
     if (!key.empty())
@@ -1358,6 +1377,9 @@ void UI::LoadShortcuts()
   // silently disabled tab switching, tab-by-number and hard reload.
   static const std::pair<const char *, const char *> kDefaults[] = {
       {"Ctrl+T", "new-tab"},
+      {"Ctrl+R", "reload"},
+      {"Alt+Left", "nav-back"},
+      {"Alt+Right", "nav-forward"},
       {"Ctrl+N", "new-window"},
       {"Ctrl+W", "close-tab"},
       {"Ctrl+H", "open-history"},
@@ -1449,8 +1471,14 @@ void UI::LoadShortcuts()
 // binds, so the caller can fall through to normal key routing.
 std::string UI::NormalizeShortcutKey(const ultralight::KeyEvent &evt)
 {
-  if (!(evt.modifiers & KeyEvent::kMod_CtrlKey))
+  // Chrome's navigation keys are Alt+Left / Alt+Right rather than Ctrl, so both
+  // modifiers are accepted here.
+  const bool ctrl = (evt.modifiers & KeyEvent::kMod_CtrlKey) != 0;
+  const bool alt = (evt.modifiers & KeyEvent::kMod_AltKey) != 0;
+  if (!ctrl && !alt)
     return std::string();
+  if (ctrl && alt)
+    return std::string(); // Ctrl+Alt combos are not bound; let the page see them.
 
   // Virtual key codes for keys that are not printable ASCII.
   enum : uint32_t
@@ -1534,7 +1562,7 @@ default:
   if (name.empty())
     return std::string();
 
-  std::string key = "Ctrl+";
+  std::string key = alt ? "Alt+" : "Ctrl+";
   // Shift is recorded in the identifier because it is what distinguishes
   // Ctrl+T (new tab) from Ctrl+Shift+T, not the shifted character itself. For a
   // letter, Shift+T also reports 'T' as the key, so the two would otherwise
@@ -1633,7 +1661,7 @@ bool UI::RunShortcutAction(const std::string &action)
     return CycleActiveTab(action == "next-tab" ? 1 : -1);
   }
 
-  // Ctrl+1..9 selects the Nth tab; Ctrl+0 selects the last one, matching Chrome.
+  // Ctrl+1..9 selects the Nth tab; Ctrl+9 also selects the last one, as in Chrome.
   if (action.rfind("select-tab-", 0) == 0)
   {
     const std::string n = action.substr(std::string("select-tab-").size());
@@ -1646,15 +1674,32 @@ bool UI::RunShortcutAction(const std::string &action)
     return false;
   }
 
-  if (action == "reload-hard")
+  if (action == "reload" || action == "reload-hard")
   {
-    // Bypass the HTTP cache rather than revalidating.
     if (active_tab())
     {
       active_tab()->view()->Reload();
       return true;
     }
+    if (active_drm_tab())
+    {
+      active_drm_tab()->Reload();
+      return true;
+    }
     return false;
+  }
+
+  // Chrome binds Alt+Left / Alt+Right for history navigation. Routed through the
+  // same handlers as the toolbar buttons so DRM tabs are covered too.
+  if (action == "nav-back")
+  {
+    OnBack({}, {});
+    return true;
+  }
+  if (action == "nav-forward")
+  {
+    OnForward({}, {});
+    return true;
   }
 
   if (action == "toggle-fullscreen")

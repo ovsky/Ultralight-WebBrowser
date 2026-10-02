@@ -1,5 +1,8 @@
 {
   "Ctrl+T": "new-tab",
+  "Ctrl+R": "reload",
+  "Alt+Left": "nav-back",
+  "Alt+Right": "nav-forward",
   "Ctrl+N": "new-window",
   "Ctrl+W": "close-tab",
   "Ctrl+H": "open-history",
