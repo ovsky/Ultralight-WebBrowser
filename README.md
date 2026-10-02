@@ -350,11 +350,60 @@ choose, by closing the least-recently-used background tabs. See
   - Preserves original filename with PNG extension
 - **Session Restore** – Restore tabs and state from previous browsing session
 - **Password Manager** – Secure credential storage and autofill
+- **Search in History, Bookmarks, and Downloads** – All three long-running lists can be
+  filtered as you type
+  - Matches title and URL (and filename), filtering before rows are built so only
+    matches are constructed
+  - Filtering is debounced and runs against a cached payload, so typing never
+    crosses the JS bridge
+  - Each page distinguishes "nothing here yet" from "nothing matched"
+- **About Page** – Build details, feature list, and keyboard shortcut reference
+  - Reachable from the browser menu
+  - Detail values come from the host so they cannot drift from the build
 
 #### Improvements
-- Enhanced download manager with format conversion support
-- Expanded settings catalog (30+ options)
-- Improved privacy controls with geolocation override
+- **Startup URL override** – Set `UL_START_URL` to open a specific page in the first
+  tab instead of the session or home page. Useful for kiosk builds and for the page
+  smoke test below
+- **Automated page smoke test** – `scripts/verify-pages.ps1` loads every internal page
+  and fails on any JavaScript console error
+  - These pages have no build step and no JS runtime is required; the browser already
+    forwards page console output to stderr, so this turns manual inspection into a
+    gate
+  - Also mirrors the post-build asset copy, so editing a page without touching C++
+    still checks the current file
+- Smoother internal pages: row hover no longer animates a transform, transitions name
+  the properties they animate instead of `all`, and the 1-second fade-in that every
+  page started with is now 120ms
+- Long list pages scroll as a single page with a sticky header instead of a nested
+  scroller, which removes the ambiguous second scrollbar
+- Download progress notifications are coalesced instead of rewriting the download
+  history and re-serializing every tab on each network chunk
+- History and session are no longer rewritten in full on every navigation; a clean
+  shutdown still persists everything
+- Fixed wheel scrolling over the tab switcher and the downloads panel, which
+  scrolled the page behind them instead
+
+#### Bug Fixes
+- **Cancelling an in-progress download never worked, and removing one could write
+  through a dangling record pointer.** The download manager keyed its open file
+  streams by the SDK's download id while `records_`, and therefore the UI, used an
+  internal id. Every cancel and remove missed. Remove additionally skipped closing
+  the stream and erased the record while a raw pointer to it stayed live, and left
+  the partial file on disk. Covered by `tests/DownloadManagerTest.cpp`
+- **The address bar never reported focus or blur to the host.** `ui.js` loads from
+  `<head>`, so registering those listeners dereferenced `null`; the uncaught error
+  aborted the rest of the script, leaving `address_bar_is_focused_` stuck true after
+  clicking any chrome control. Arrow keys and PageDown then edited the address bar
+  instead of scrolling the page
+- **`about.html` was a zero-byte file**, registered in the internal-page tables but
+  never opened by anything. It now has real content and a menu entry
+- **Wheel scrolling over the tab switcher was not routed at all**, and the downloads
+  panel was excluded on the mistaken belief that cursor coordinates were unavailable
+  even though they had been recorded
+- Tab title and navigation callbacks indexed `tabs_` without checking existence, so
+  a callback arriving after a tab closed dereferenced a null entry
+- `AdBlocker::Clear()` left glob rules loaded, which kept matching after a clear
 
 ### v0.9.5 (Previous Release)
 
@@ -533,6 +582,34 @@ Major feature sync bringing all development improvements to the stable branch.
 | `CREATE_INSTALLER` | Build NSIS installer (Windows) |
 | `ULTRALIGHT_LOG_REQUESTS` | Runtime opt-in. `1` logs every network request to stderr; `0`/`false` disables. Off by default |
 | `ULTRALIGHT_VERBOSE` | Runtime opt-in. `1` enables the UI-thread diagnostic logging (settings changes, tab restore, input diagnostics). Unconditional stderr writes block the UI thread when stderr is a pipe, so these are off by default |
+| `UL_START_URL` | Runtime opt-in. Opens this URL in the first tab instead of restoring the session or loading the home page. Bypasses session restore, which intentionally ignores `file:///` pages |
+
+### Local Verification
+
+Two scripts cover what a compile cannot.
+
+```powershell
+# Build, run every unit test suite, then confirm the app stays alive across
+# repeated cold launches.
+powershell -NoProfile -File scripts\verify.ps1 -Launches 3 -SettleSeconds 10
+
+# Load every page under assets/ and fail on any JavaScript console error.
+powershell -NoProfile -File scripts\verify-pages.ps1
+```
+
+The internal pages are plain HTML and JS with no build step, so a syntax error or a
+bad null dereference otherwise shows up only as a blank page in the GUI. The browser
+forwards page console output to stderr as `[CONSOLE:LEVEL] message (line N, source)`,
+which `verify-pages.ps1` uses as a gate. It loads each page with `UL_START_URL`
+because session restore deliberately filters `file:///` pages out.
+
+Two things to know when editing pages:
+
+- The browser loads `<build>/assets`, which CMake only refreshes as a post-build step
+  of relinking the executable. Editing a page without touching C++ leaves that copy
+  stale; `verify-pages.ps1` mirrors the copy for you.
+- Page-level failures surface as a blank page, so run the page check after any change
+  to `assets/*.html` or `assets/*.js`.
 
 ### Engine Resource Files (ICU + CA bundle)
 
