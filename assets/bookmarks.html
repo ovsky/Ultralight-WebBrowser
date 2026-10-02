@@ -33,7 +33,6 @@
             background: var(--bg, #f6f7f9);
             color: var(--fg, #111);
             min-height: 100vh;
-            opacity: 0;
             animation: ul_fade_in 0.12s ease forwards;
             -webkit-animation: ul_fade_in 0.12s ease forwards;
         }
@@ -180,17 +179,17 @@
         .actions {
             display: flex;
             gap: 8px;
-            opacity: 0;
+            /* Was hidden until row hover. In a long list that made the open and
+               delete buttons undiscoverable, unreachable by keyboard, and
+               unclickable on any touch input that does not synthesize hover.
+               They are always present now and rely on the muted icon colour,
+               with full contrast on hover and focus. */
             transition: opacity 0.15s ease;
         }
 
-        li.item:hover .actions {
-            opacity: 1;
-        }
-
         .action-btn {
-            width: 28px;
-            height: 28px;
+            width: 32px;
+            height: 32px;
             border-radius: 6px;
             border: none;
             background: transparent;
@@ -202,9 +201,15 @@
             transition: background-color 0.15s ease, color 0.15s ease;
         }
 
-        .action-btn:hover {
+        .action-btn:hover,
+        .action-btn:focus-visible {
             background: rgba(0, 0, 0, 0.08);
             color: #333;
+        }
+
+        .action-btn:focus-visible {
+            outline: 2px solid var(--accent-color, #6C63FF);
+            outline-offset: 1px;
         }
 
         .action-btn.delete:hover {
