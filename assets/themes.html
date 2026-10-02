@@ -124,7 +124,7 @@
             font-size: var(--font-size-md);
             font-weight: var(--font-weight-medium);
             cursor: pointer;
-            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .btn:hover { color: var(--btn-hover-icon-color, #fff); }
@@ -398,7 +398,7 @@
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
             transform: translateY(100px);
             opacity: 0;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             z-index: 10000;
         }
 
@@ -429,7 +429,7 @@
             z-index: 9999;
             opacity: 0;
             visibility: hidden;
-            transition: all 0.2s ease;
+            transition: opacity 0.2s ease;
         }
 
         .modal-overlay.visible {
@@ -470,7 +470,7 @@
             background: var(--color-bg-tertiary);
             color: var(--color-text-primary);
             font-size: var(--font-size-md);
-            transition: all 0.2s ease;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
         }
 
         .form-input:focus {
@@ -508,7 +508,7 @@
             color: var(--color-text-secondary);
             font-size: 11px;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
         }
 
         .theme-action-btn:hover {
@@ -571,7 +571,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: all 0.2s ease;
+            transition: background-color 0.2s ease, color 0.2s ease;
         }
 
         .modal-close-btn:hover {

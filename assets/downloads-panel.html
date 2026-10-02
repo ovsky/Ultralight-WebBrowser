@@ -41,9 +41,10 @@
             box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5);
             display: flex;
             flex-direction: column;
-            overflow: hidden;
-            backdrop-filter: blur(12px);
-            transform: translateY(-12px);
+overflow: hidden;
+     /* The surface is 96% opaque, so a blur behind it is barely visible but
+        costs a software blur pass on every panel open. Removed deliberately. */
+     transform: translateY(-12px);
             opacity: 0;
             pointer-events: none;
             transition: transform 0.18s ease, opacity 0.18s ease;
@@ -183,7 +184,7 @@
             font-size: 12px;
             padding: 4px 8px;
             border-radius: 8px;
-            transition: all 0.2s ease;
+            transition: background-color 0.2s ease, color 0.2s ease;
         }
 
         .link-btn:hover {

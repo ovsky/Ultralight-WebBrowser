@@ -171,7 +171,7 @@
             border-radius: 12px;
             margin-bottom: 16px;
             overflow: visible; /* allow hover shadow to be visible */
-            transition: all 0.2s;
+            transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.2s;
             box-shadow: var(--card-shadow);
         }
 
@@ -264,7 +264,7 @@
             border: 1px solid var(--border-soft);
             border-radius: 11px;
             cursor: pointer;
-            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
             flex-shrink: 0;
         }
 
@@ -294,7 +294,7 @@
             background: linear-gradient(180deg, #ffffff, #f5f5f5);
             border-radius: 50%;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
-            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .toggle-switch.active::after {
@@ -377,7 +377,7 @@
             font-size: 14px;
             font-weight: 500;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: background-color 0.2s, border-color 0.2s, color 0.2s;
             font-family: inherit;
         }
 
@@ -406,7 +406,7 @@
             color: var(--text-tertiary);
             padding: 6px;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: background-color 0.2s, color 0.2s;
             border-radius: 4px;
         }
 
@@ -437,7 +437,7 @@
             z-index: 1000;
             opacity: 0;
             visibility: hidden;
-            transition: all 0.2s;
+            transition: opacity 0.2s;
         }
 
         .modal-overlay.visible {
