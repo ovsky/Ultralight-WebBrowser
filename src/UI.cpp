@@ -2369,6 +2369,7 @@ void UI::OnDOMReady(View *caller, uint64_t frame_id, bool is_main_frame, const S
   global["ClearDownloadsSnapshot"] = BindJSCallback(&UI::OnDownloadsOverlayClear);
   global["OnAddressBarBlur"] = BindJSCallback(&UI::OnAddressBarBlur);
   global["OnAddressBarFocus"] = BindJSCallback(&UI::OnAddressBarFocus);
+  global["OnOpenAboutNewTab"] = BindJSCallback(&UI::OnOpenAboutNewTab);
   global["GetSuggestions"] = BindJSCallbackWithRetval(&UI::OnGetSuggestions);
   global["OpenSuggestionsOverlay"] = BindJSCallback(&UI::OnOpenSuggestionsOverlay);
   global["CloseSuggestionsOverlay"] = BindJSCallback(&UI::OnCloseSuggestionsOverlay);
@@ -2414,6 +2415,17 @@ void UI::OnDOMReady(View *caller, uint64_t frame_id, bool is_main_frame, const S
     global["OnLoadExtension"] = BindJSCallbackWithRetval(&UI::OnLoadExtension);
     global["OnCreateExtension"] = BindJSCallback(&UI::OnCreateExtension);
     global["OnOpenExtensionsFolder"] = BindJSCallback(&UI::OnOpenExtensionsFolder);
+  }
+
+  // About page bindings. The page loads in a tab, so it needs its own block
+  // rather than the chrome-wide bindings above.
+  bool is_about_page_view = url_utf8.data() && std::strstr(url_utf8.data(), "about.html") != nullptr;
+  if (is_about_page_view)
+  {
+    global["OnGetAboutVersion"] = BindJSCallbackWithRetval(&UI::OnGetAboutVersion);
+    global["OnGetRendererType"] = BindJSCallbackWithRetval(&UI::OnGetRendererType);
+    global["OnGetBuildArch"] = BindJSCallbackWithRetval(&UI::OnGetBuildArch);
+    global["OnGetPlatform"] = BindJSCallbackWithRetval(&UI::OnGetPlatform);
   }
 
   // Passwords page bindings
@@ -2983,6 +2995,51 @@ void UI::OnOpenExtensionsNewTab(const JSObject &obj, const JSArgs &args)
 void UI::OnOpenThemesNewTab(const JSObject &obj, const JSArgs &args)
 {
   CreateNewTabForChildView(String("file:///themes.html"));
+}
+
+void UI::OnOpenAboutNewTab(const JSObject &obj, const JSArgs &args)
+{
+  CreateNewTabForChildView(String("file:///about.html"));
+}
+
+JSValue UI::OnGetAboutVersion(const JSObject &obj, const JSArgs &args)
+{
+  // Left empty rather than a hardcoded string that can silently drift from the
+  // build. The About page renders a dash for any value the host does not supply.
+  return JSValue();
+}
+
+JSValue UI::OnGetRendererType(const JSObject &obj, const JSArgs &args)
+{
+#if defined(ULTRALIGHT_GPU)
+  return JSValue("GPU");
+#else
+  return JSValue("CPU");
+#endif
+}
+
+JSValue UI::OnGetBuildArch(const JSObject &obj, const JSArgs &args)
+{
+#if defined(_WIN64) || defined(__x86_64__) || defined(__aarch64__)
+  return JSValue("64-bit");
+#elif defined(_WIN32) || defined(__i386__) || defined(__arm__)
+  return JSValue("32-bit");
+#else
+  return JSValue("unknown");
+#endif
+}
+
+JSValue UI::OnGetPlatform(const JSObject &obj, const JSArgs &args)
+{
+#if defined(_WIN32)
+  return JSValue("Windows");
+#elif defined(__APPLE__)
+  return JSValue("macOS");
+#elif defined(__linux__)
+  return JSValue("Linux");
+#else
+  return JSValue("Unknown");
+#endif
 }
 
 void UI::OnOpenThemesDirectory(const JSObject &obj, const JSArgs &args)

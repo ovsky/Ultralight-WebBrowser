@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About</title>
+    <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23c2bce8'%3E%3Cpath d='M12 2a10 10 0 100 20 10 10 0 000-20zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="themes/theme-variables.css">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: var(--color-bg-primary, #1e1e2e);
+            color: var(--color-text-primary, #e4e4ef);
+            line-height: 1.5;
+            min-height: 100vh;
+            padding: 24px;
+            animation: about-fade 0.12s ease forwards;
+            -webkit-animation: about-fade 0.12s ease forwards;
+        }
+
+        /* The from-state lives here rather than on body, so if the animation
+           never runs the content is visible instead of invisible. */
+        @keyframes about-fade {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        @-webkit-keyframes about-fade {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        .container {
+            max-width: 760px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding-bottom: 20px;
+            margin-bottom: 24px;
+            border-bottom: 1px solid var(--color-border-primary, #404060);
+        }
+
+        header svg {
+            width: 56px;
+            height: 56px;
+            flex-shrink: 0;
+            color: var(--color-accent-primary, #7c6aef);
+        }
+
+        h1 {
+            font-size: 26px;
+            font-weight: 600;
+        }
+
+        .subtitle {
+            color: var(--color-text-secondary, #9999b3);
+            font-size: 14px;
+        }
+
+        section {
+            background: var(--color-bg-secondary, #282839);
+            border: 1px solid var(--color-border-primary, #404060);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+
+        h2 {
+            font-size: 15px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--color-text-secondary, #9999b3);
+            margin-bottom: 14px;
+        }
+
+        dl {
+            display: grid;
+            grid-template-columns: minmax(140px, auto) 1fr;
+            gap: 8px 20px;
+            font-size: 14px;
+        }
+
+        dt {
+            color: var(--color-text-secondary, #9999b3);
+        }
+
+        dd {
+            overflow-wrap: anywhere;
+        }
+
+        ul.features {
+            list-style: none;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+            gap: 6px 20px;
+            font-size: 14px;
+        }
+
+        ul.features li {
+            padding-left: 18px;
+            position: relative;
+        }
+
+        ul.features li::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 8px;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--color-accent-primary, #7c6aef);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+            gap: 6px 20px;
+            font-size: 14px;
+        }
+
+        .shortcut {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 3px 0;
+        }
+
+        kbd {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 12px;
+            background: var(--color-bg-tertiary, #32324a);
+            border: 1px solid var(--color-border-primary, #404060);
+            border-radius: 5px;
+            padding: 1px 7px;
+            white-space: nowrap;
+        }
+
+        footer {
+            text-align: center;
+            color: var(--color-text-tertiary, #71718a);
+            font-size: 12px;
+            padding-top: 8px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path
+                    d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 18a8 8 0 110-16 8 8 0 010 16zm-1-13h2v2h-2V7zm0 4h2v6h-2v-6z" />
+            </svg>
+            <div>
+                <h1>Ultralight Browser</h1>
+                <div class="subtitle">A lightweight browser built on the Ultralight SDK</div>
+            </div>
+        </header>
+
+        <section>
+            <h2>Details</h2>
+            <dl>
+                <dt>Version</dt>
+                <dd id="app-version">&mdash;</dd>
+                <dt>Engine</dt>
+                <dd>Ultralight (WebKit)</dd>
+                <dt>Renderer</dt>
+                <dd id="renderer-type">&mdash;</dd>
+                <dt>Build</dt>
+                <dd id="build-arch">&mdash;</dd>
+                <dt>Platform</dt>
+                <dd id="platform">&mdash;</dd>
+            </dl>
+        </section>
+
+        <section>
+            <h2>Features</h2>
+            <ul class="features">
+                <li>Tabbed browsing with drag reordering</li>
+                <li>Per-tab find, zoom, and reload</li>
+                <li>Session restore and closed-tab recovery</li>
+                <li>History, bookmarks, and downloads pages</li>
+                <li>Search across each of those lists</li>
+                <li>Encrypted password manager</li>
+                <li>Theme manager with import and export</li>
+                <li>Built-in ad blocker</li>
+                <li>Extension manager</li>
+                <li>Per-site DRM playback via WebView2</li>
+                <li>Reader-friendly internal pages</li>
+                <li>Reduced-motion and high-contrast modes</li>
+                <li>Find in page across every tab</li>
+                <li>Keyboard shortcut customization set</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Shortcuts</h2>
+            <div class="grid">
+                <div class="shortcut"><span>New tab</span> <kbd>Ctrl+T</kbd></div>
+                <div class="shortcut"><span>Close tab</span> <kbd>Ctrl+W</kbd></div>
+                <div class="shortcut"><span>Reopen closed tab</span> <kbd>Ctrl+Shift+T</kbd></div>
+                <div class="shortcut"><span>Next / previous tab</span> <kbd>Ctrl+Tab</kbd></div>
+                <div class="shortcut"><span>Back / forward</span> <kbd>Alt+&larr; / Alt+&rarr;</kbd></div>
+                <div class="shortcut"><span>Reload</span> <kbd>Ctrl+R</kbd></div>
+                <div class="shortcut"><span>Hard reload</span> <kbd>Ctrl+Shift+R</kbd></div>
+                <div class="shortcut"><span>Address bar</span> <kbd>Ctrl+L</kbd></div>
+                <div class="shortcut"><span>Find in page</span> <kbd>Ctrl+F</kbd></div>
+                <div class="shortcut"><span>Zoom in / out</span> <kbd>Ctrl++ / Ctrl+-</kbd></div>
+                <div class="shortcut"><span>Reset zoom</span> <kbd>Ctrl+0</kbd></div>
+                <div class="shortcut"><span>Fullscreen</span> <kbd>F11</kbd></div>
+                <div class="shortcut"><span>Settings</span> <kbd>Ctrl+,</kbd></div>
+            </div>
+        </section>
+
+        <footer>
+            <span id="footer-note"></span>
+        </footer>
+    </div>
+
+    <script>
+        // These bindings are optional: the page renders fully without them, it
+        // just shows an em dash where a value would go. Nothing here is allowed
+        // to throw, because an uncaught error in this file would be the only
+        // thing a reader of the console sees.
+        function setText(id, value) {
+            const el = document.getElementById(id);
+            if (el && value) el.textContent = String(value);
+        }
+
+        function call(name) {
+            if (typeof window[name] === 'function') {
+                try {
+                    return window[name]();
+                } catch (e) {
+                    return null;
+                }
+            }
+            return null;
+        }
+
+        function hydrate() {
+            setText('app-version', call('OnGetAboutVersion'));
+            setText('renderer-type', call('OnGetRendererType'));
+            setText('build-arch', call('OnGetBuildArch'));
+            setText('platform', call('OnGetPlatform'));
+
+            const note = document.getElementById('footer-note');
+            if (note) {
+                note.textContent = 'Ultralight Browser - powered by the Ultralight SDK';
+            }
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', hydrate, { once: true });
+        } else {
+            hydrate();
+        }
+    </script>
+</body>
+
+</html>

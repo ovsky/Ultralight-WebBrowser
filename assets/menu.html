@@ -129,6 +129,9 @@
                 <span class="menu-label">Settings</span>
                 <span class="shortcut-badge">Ctrl+,</span>
             </div>
+            <div class="menu-item" data-action="about">
+                <span class="menu-label">About</span>
+            </div>
         </div>
     </div>
 
@@ -218,6 +221,9 @@
                         break;
                     case 'settings':
                         if (window.OnOpenSettingsPanel) OnOpenSettingsPanel();
+                        break;
+                    case 'about':
+                        if (window.OnOpenAboutNewTab) OnOpenAboutNewTab();
                         break;
                 }
                 closeMenu();

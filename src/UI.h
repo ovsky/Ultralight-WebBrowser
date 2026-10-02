@@ -187,6 +187,11 @@ public:
   void OnOpenDownloadsNewTab(const JSObject &obj, const JSArgs &args);
   void OnOpenPasswordsNewTab(const JSObject &obj, const JSArgs &args);
   void OnOpenThemesNewTab(const JSObject &obj, const JSArgs &args);
+  void OnOpenAboutNewTab(const JSObject &obj, const JSArgs &args);
+  JSValue OnGetAboutVersion(const JSObject &obj, const JSArgs &args);
+  JSValue OnGetRendererType(const JSObject &obj, const JSArgs &args);
+  JSValue OnGetBuildArch(const JSObject &obj, const JSArgs &args);
+  JSValue OnGetPlatform(const JSObject &obj, const JSArgs &args);
   void OnOpenThemesDirectory(const JSObject &obj, const JSArgs &args);
   void OnAddressBarBlur(const JSObject &obj, const JSArgs &args);
   void OnAddressBarFocus(const JSObject &obj, const JSArgs &args);
