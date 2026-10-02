@@ -208,6 +208,13 @@ namespace drm
 
         void Close() override
         {
+            // Invalidate pending WebView2 completion handlers before anything
+            // else. Close() is called from the destructor while `this` is still
+            // valid, so the handlers that may fire later will see this and
+            // return without touching the object.
+            if (lifetime_)
+                lifetime_->alive = false;
+
             // CRITICAL: Hide the WebView2 immediately and forcefully before closing
             desired_visible_ = false;
             if (controller_)
@@ -278,8 +285,12 @@ namespace drm
                 return;
             env->CreateCoreWebView2Controller(parent_hwnd_,
                 Microsoft::WRL::Callback<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>(
-                    [this](HRESULT controller_result, ICoreWebView2Controller *controller) -> HRESULT
+                    [this, token = lifetime_](HRESULT controller_result, ICoreWebView2Controller *controller) -> HRESULT
                     {
+                        // The tab may have been closed while WebView2 was still
+                        // creating the controller. See LifetimeToken.
+                        if (!token->alive)
+                            return E_ABORT;
                         if (FAILED(controller_result) || !controller)
                             return controller_result;
                         controller_ = controller;
@@ -341,8 +352,15 @@ namespace drm
                 userDataFolder.empty() ? nullptr : userDataFolder.c_str(),
                 nullptr,
                 Microsoft::WRL::Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>(
-                    [this](HRESULT result, ICoreWebView2Environment *env) -> HRESULT
+                    [this, token = lifetime_](HRESULT result, ICoreWebView2Environment *env) -> HRESULT
                     {
+                        // The tab may have been closed while WebView2 was still
+                        // creating the environment. See LifetimeToken. Note the
+                        // shared environment cache is deliberately still
+                        // populated above this check's counterpart in the
+                        // caller, since it outlives any single tab.
+                        if (!token->alive)
+                            return E_ABORT;
                         if (FAILED(result) || !env)
                             return result;
                         
@@ -464,6 +482,22 @@ namespace drm
         std::string current_title_ = "DRM WebView";
         std::string current_url_;
         std::string pending_url_;  // URL to navigate when webview becomes ready
+
+        // WebView2 creation is asynchronous and cannot be cancelled, so its
+        // completion handlers can still run after Close(). They captured raw
+        // `this`, so a tab closed while the environment or controller was being
+        // created had both handlers write to freed memory.
+        //
+        // The flag lives outside `this` on purpose: a flag stored in the object
+        // would itself be read after the object is gone. The token is captured
+        // by shared_ptr, which keeps it alive for as long as any handler can
+        // still reference it. Close() runs from the destructor while `this` is
+        // still valid, so it clears the flag before any memory is released.
+        struct LifetimeToken
+        {
+            std::atomic<bool> alive{true};
+        };
+        std::shared_ptr<LifetimeToken> lifetime_ = std::make_shared<LifetimeToken>();
     };
 #else
 
