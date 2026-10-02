@@ -838,11 +838,11 @@ console.log('Extension loaded!');"></textarea>
                             ${ext.author ? `<div class="extension-author">by <span>${escapeHtml(ext.author)}</span></div>` : ''}
                         </div>
                         <div class="extension-controls">
-                            <div class="toggle-switch ${isEnabled ? 'active' : ''}" 
-                                 onclick="toggleExtension('${ext.id}')" 
+                            <div class="toggle-switch ${isEnabled ? 'active' : ''}"
+                                 data-act="toggle-extension" data-id="${escapeHtml(ext.id)}"
                                  title="${isEnabled ? 'Click to disable' : 'Click to enable'}">
                             </div>
-                            <button class="btn-expand" onclick="toggleDetails('${ext.id}')">
+                            <button class="btn-expand" data-act="toggle-details" data-id="${escapeHtml(ext.id)}">
                                 <span class="chevron">▼</span>
                             </button>
                         </div>
@@ -875,10 +875,10 @@ console.log('Extension loaded!');"></textarea>
                         </div>
                         ` : ''}
                         <div class="extension-actions">
-                            <button class="btn btn-secondary btn-small" onclick="reloadExtension('${ext.id}')">
+                            <button class="btn btn-secondary btn-small" data-act="reload-extension" data-id="${escapeHtml(ext.id)}">
                                 ↻ Reload
                             </button>
-                            <button class="btn btn-danger btn-small" onclick="deleteExtension('${ext.id}')">
+                            <button class="btn btn-danger btn-small" data-act="delete-extension" data-id="${escapeHtml(ext.id)}">
                                 🗑 Remove
                             </button>
                         </div>
@@ -907,6 +907,30 @@ console.log('Extension loaded!');"></textarea>
                 countEl.style.display = 'none';
             }
         }
+
+        // Extension controls carry their target in data- attributes rather than an
+        // inline onclick. An extension's id comes from its manifest.json, so a
+        // maliciously packaged extension could otherwise put a quote in the id
+        // and terminate the JS string literal inside the handler attribute.
+        document.addEventListener('click', (e) => {
+            const el = e.target.closest('[data-act]');
+            if (!el) return;
+            const id = el.getAttribute('data-id');
+            switch (el.getAttribute('data-act')) {
+                case 'toggle-extension':
+                    toggleExtension(id);
+                    break;
+                case 'toggle-details':
+                    toggleDetails(id);
+                    break;
+                case 'reload-extension':
+                    reloadExtension(id);
+                    break;
+                case 'delete-extension':
+                    deleteExtension(id);
+                    break;
+            }
+        });
 
         // Toggle extension enabled/disabled
         function toggleExtension(id) {
