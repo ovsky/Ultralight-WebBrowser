@@ -588,6 +588,11 @@ protected:
   // was injected last would silently win and the effective behaviour would
   // depend on injection order rather than on what the user asked for.
   bool ShouldUseSmoothScrolling() const;
+  // True for the browser's own file:// pages (Settings, History, new tab...).
+  bool IsInternalPageURL(const String &url);
+  // Applies smooth scrolling only where it belongs: real web content. Chrome
+  // pages scroll instantly even when the toggle is on.
+  void SyncScrollModeForView(const RefPtr<View> &v);
 
   // Window appearance
   void ApplyVibrantWindowTheme(bool enabled);

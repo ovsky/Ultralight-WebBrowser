@@ -1874,11 +1874,19 @@ void UI::OnDOMReady(View *caller, uint64_t frame_id, bool is_main_frame, const S
         auto tab_view = tabs_[active_tab_id_]->view();
         SetLoading(tab_view->is_loading());
         SetCanGoBack(tab_view->CanGoBack());
-        SetCanGoForward(tab_view->CanGoBack());
+        // Was CanGoBack(), which made the forward arrow mirror the back arrow:
+        // a tab with history ahead but none behind showed forward as disabled.
+        SetCanGoForward(tab_view->CanGoForward());
         SetURL(tab_view->url());
       }
     }
   }
+
+  // Apply the scroll mode to the view that just loaded. Settings and the other
+  // chrome pages must scroll instantly even when smooth scrolling is on, and a
+  // view can navigate from a web page to a chrome page (or back) without any
+  // settings change to piggyback on.
+  SyncScrollModeForView(RefPtr<View>(caller));
 }
 
 void UI::OnBack(const JSObject &obj, const JSArgs &args)
@@ -4093,20 +4101,15 @@ void UI::ApplySettings(bool initial, bool snapshot_is_baseline)
   reduce_motion_enabled_ = settings_.reduce_motion;
   high_contrast_ui_enabled_ = settings_.high_contrast_ui;
 
-// Apply the smooth-scrolling and accessibility stylesheets to every view in one
-  // pass. These two settings both inject a `scroll-behavior` rule marked
-  // !important, so applying them independently let whichever ran last decide the
-  // outcome. Reduce-motion used to be injected after smooth scrolling, which
-  // meant smooth scrolling was silently dead whenever both were enabled even
-  // though the toggle was on.
+// Accessibility applies to every view, but smooth scrolling only to web
+  // content -- see SyncScrollModeForView. Chrome does not animate its own UI
+  // surfaces, and Settings is a long scrolling form where an animated scroller
+  // reads as sluggish.
   auto apply_scroll_and_accessibility = [&](RefPtr<View> v)
   {
     if (!v)
       return;
-    if (ShouldUseSmoothScrolling())
-      ApplySmoothScrollingToView(v);
-    else
-      RemoveSmoothScrollingFromView(v);
+    SyncScrollModeForView(v);
     if (reduce_motion_enabled_)
       ApplyReduceMotionToView(v);
     else
@@ -5153,6 +5156,53 @@ bool UI::ShouldUseSmoothScrolling() const
   // honouring both at once would be incoherent; the user asking for less motion
   // should not also get an animated scroll.
   return smooth_scrolling_enabled_ && !reduce_motion_enabled_;
+}
+
+bool UI::IsInternalPageURL(const String &url)
+{
+  auto u8 = url.utf8();
+  if (!u8.data())
+    return false;
+  const std::string_view v(u8.data());
+
+  // Only the browser's own file:// pages. A remote site that happens to contain
+  // one of these substrings in its URL must not be treated as chrome.
+  if (v.rfind("file:///", 0) != 0)
+    return false;
+
+  static const char *kInternalPages[] = {
+      "ui.html",         "settings.html",   "newtab.html",   "history.html",
+      "bookmarks.html",  "downloads.html",  "passwords.html", "themes.html",
+      "extensions.html", "suggestions.html", "menu.html",    "contextmenu.html",
+      "downloads-panel.html", "quick-inspector.html", "permissions.html",
+  };
+
+  for (const char *page : kInternalPages)
+  {
+    if (v.find(page) != std::string_view::npos)
+      return true;
+  }
+  return false;
+}
+
+void UI::SyncScrollModeForView(const RefPtr<View> &v)
+{
+  if (!v)
+    return;
+
+  // Smooth scrolling belongs on real web content only.
+  //
+  // It was applied to every view, including the browser's own pages. Settings is
+  // a long scrolling form, and animating its document scroller is what made it
+  // feel sluggish and "stuck": each wheel notch started an animation the engine
+  // had to keep composing. Chrome animates scrolling for web content but not for
+  // its own UI surfaces, so chrome pages use instant scrolling regardless of the
+  // toggle.
+  const bool smooth = ShouldUseSmoothScrolling() && !IsInternalPageURL(v->url());
+  if (smooth)
+    ApplySmoothScrollingToView(v);
+  else
+    RemoveSmoothScrollingFromView(v);
 }
 
 void UI::ApplySmoothScrollingToView(RefPtr<View> v)
