@@ -188,11 +188,26 @@
             }
         }
 
+        let lastHistorySignature = null;
+
+        function historySignature(data) {
+            const items = (data && data.items) || [];
+            // Cheap O(1) fingerprint. Rebuilding 200 rows on every window focus
+            // was most of the cost of switching back to this tab.
+            const first = items[0];
+            const last = items[items.length - 1];
+            return items.length + '|' + (first ? first.url : '') + '|' +
+                (last ? last.url + '#' + last.time : '');
+        }
+
         function refresh() {
             try {
                 if (window.NativeGetHistory) {
                     const json = NativeGetHistory();
                     const data = JSON.parse(json || '{}');
+                    const signature = historySignature(data);
+                    if (signature === lastHistorySignature) return;
+                    lastHistorySignature = signature;
                     render(data);
                     return;
                 }

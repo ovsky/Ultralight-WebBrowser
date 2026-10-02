@@ -388,11 +388,30 @@
             }
         }
 
+        let lastDownloadsSignature = null;
+
+        function downloadsSignature(data) {
+            const items = (data && data.items) || [];
+            // Cheap scalar fingerprint. An active download always changes it so
+            // progress keeps updating, but when nothing is in flight, regaining
+            // window focus no longer rebuilds the whole list.
+            const parts = [];
+            for (let i = 0; i < items.length; i++) {
+                const it = items[i];
+                parts.push((it.filename || '') + '|' + (it.status || '') + '|' +
+                    (it.received || 0) + '|' + (it.total || 0));
+            }
+            return parts.join('~');
+        }
+
         function refresh() {
             try {
                 if (window.NativeGetDownloads) {
                     const json = NativeGetDownloads();
                     const data = JSON.parse(json || '{"items":[]}');
+                    const signature = downloadsSignature(data);
+                    if (signature === lastDownloadsSignature) return;
+                    lastDownloadsSignature = signature;
                     render(data);
                     return;
                 }
