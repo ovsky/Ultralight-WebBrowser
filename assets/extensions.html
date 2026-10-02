@@ -740,14 +740,20 @@ console.log('Extension loaded!');"></textarea>
 
     <script>
         // Debug logging
-        function log(msg) {
-            console.log('[Extensions]', msg);
-            const debug = document.getElementById('debug-info');
-            if (debug) {
-                debug.textContent += new Date().toLocaleTimeString() + ': ' + msg + '\n';
-                debug.scrollTop = debug.scrollHeight;
-            }
-        }
+function log(msg) {
+    console.log('[Extensions]', msg);
+    const debug = document.getElementById('debug-info');
+    if (!debug) return;
+    // textContent += re-creates the whole text node each call, so this got
+    // slower as the buffer grew and never shed anything. Fixed 200-line window.
+    let lines = debug.textContent ? debug.textContent.split('\n') : [];
+    lines.push(new Date().toLocaleTimeString() + ': ' + msg);
+    if (lines.length > MAX_DEBUG_LINES) {
+        lines = lines.slice(lines.length - MAX_DEBUG_LINES);
+    }
+    debug.textContent = lines.join('\n');
+    debug.scrollTop = debug.scrollHeight;
+    }
 
         // Extensions data
         let extensions = [];
@@ -768,15 +774,30 @@ console.log('Extension loaded!');"></textarea>
         });
 
         // Load extensions from native
+        const MAX_DEBUG_LINES = 200;
+        // 50 attempts at 100ms is 5s for the bridge to appear.
+        const MAX_BRIDGE_RETRIES = 50;
+        let extensionsRetryCount = 0;
         function loadExtensions() {
             if (typeof window.GetExtensions !== 'function') {
-                log('Bridge not ready, retrying...');
-                setTimeout(loadExtensions, 100);
+                // The bridge lands shortly after the view is created. Without a
+                // cap this retries forever at 10Hz, logging and rewriting the
+                // debug panel on every attempt.
+                extensionsRetryCount++;
+                if (extensionsRetryCount <= MAX_BRIDGE_RETRIES) {
+                    if (extensionsRetryCount === 1)
+                        log('Bridge not ready, retrying...');
+                    setTimeout(loadExtensions, 100);
+                    return;
+                }
+                log('Extensions bridge unavailable after ' + MAX_BRIDGE_RETRIES +
+                    ' retries; the list will not load.');
                 return;
             }
 
             try {
                 const payload = window.GetExtensions();
+                extensionsRetryCount = 0;
                 log('Got payload: ' + (typeof payload));
                 const data = typeof payload === 'string' ? JSON.parse(payload) : payload;
                 
