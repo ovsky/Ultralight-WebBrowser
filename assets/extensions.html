@@ -134,11 +134,21 @@
             50% { opacity: 0.5; }
         }
 
-        /* Extensions container */
-        #extensions-container {
-            max-height: calc(100vh - 280px);
-            overflow-y: auto;
-        }
+/* Single page scroller. A nested list scroller gave the window two
+   scrollbars and made wheel routing ambiguous, now that scrolling is
+   dispatched by pointer position. The header sticks so the actions stay
+   reachable in a long list. */
+#extensions-container {
+    padding-bottom: 24px;
+}
+
+header {
+    position: sticky;
+    top: -24px;
+    z-index: 5;
+    background: var(--bg-primary);
+    padding-top: 24px;
+}
 
         /* Empty state */
         .empty-state {
