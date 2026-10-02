@@ -51,6 +51,15 @@ public:
   // Move the tab's overlay to a new position (x, y)
   void MoveTo(uint32_t x, uint32_t y);
 
+  // Reposition the content and inspector overlays without touching their size.
+  //
+  // Overlay::MoveTo and Overlay::Resize are independent in the SDK, so this is
+  // strictly a geometry update. Tab::MoveTo used to call Resize afterwards,
+  // which reflowed the page and reset scroll position -- that is why moving
+  // tabs from UI::AdjustUIHeight was previously abandoned. Only call Resize
+  // when the tab's width or height has genuinely changed.
+  void Reposition(uint32_t x, uint32_t y);
+
   // Inherited from Listener::View
   virtual void OnChangeTitle(View *caller, const String &title) override;
   virtual void OnChangeURL(View *caller, const String &url) override;

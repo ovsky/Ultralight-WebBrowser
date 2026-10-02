@@ -200,9 +200,22 @@ void Tab::Resize(uint32_t width, uint32_t height)
 
 void Tab::MoveTo(uint32_t x, uint32_t y)
 {
-  overlay_->MoveTo(x, y);
-  // Re-layout any inspector overlay relative to new content position
-  Resize(container_width_, container_height_);
+  Reposition(x, y);
+}
+
+void Tab::Reposition(uint32_t x, uint32_t y)
+{
+  // Position only. Deliberately does not call Resize: a resize reflows the
+  // page and resets its scroll position, which is what made moving tabs on a
+  // UI-height change break the content area before.
+  if (overlay_->x() != (int)x || overlay_->y() != (int)y)
+    overlay_->MoveTo((int)x, (int)y);
+
+  // Keep the inspector docked directly below the content, which also moved.
+  if (inspector_overlay_ && !inspector_overlay_->is_hidden())
+  {
+    inspector_overlay_->MoveTo((int)x, overlay_->y() + (int)overlay_->height());
+  }
 }
 
 void Tab::OnChangeTitle(View *caller, const String &title)

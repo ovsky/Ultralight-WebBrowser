@@ -1617,6 +1617,11 @@ void UI::OnResize(ultralight::Window *window, uint32_t width, uint32_t height)
   for (auto &entry : tabs_)
   {
     if (entry.second)
+      entry.second->Reposition(0, (uint32_t)ui_height_);
+  }
+  for (auto &entry : tabs_)
+  {
+    if (entry.second)
       entry.second->Resize(window->width(), (uint32_t)tab_height);
   }
   for (auto &entry : drm_tabs_)
@@ -4380,12 +4385,29 @@ void UI::AdjustUIHeight(uint32_t new_height)
   // Resize top UI overlay
   overlay_->Resize(window_->width(), ui_height_);
 
-  // Note: Do NOT move or resize tabs here; we only enlarge the UI overlay canvas.
-  // Re-anchoring the tabs from here was tried and broke tab geometry: Tab::MoveTo
-  // re-runs Tab::Resize, which repositions the inspector overlay relative to the
-  // content overlay's absolute y, and the combination left the content area
-  // unusable. The compact-tabs toggle still routes through OnResize, which is
-  // the only place that owns tab geometry.
+  // The content area starts below the chrome, so every tab has to move down
+  // (or up) with it. Leaving them at the old y left a band of stale page
+  // content sitting under the toolbar after a compact-tabs toggle.
+  //
+  // This uses Tab::Reposition rather than MoveTo because Reposition is
+  // position-only. MoveTo re-ran Tab::Resize, which reflowed the page and reset
+  // scroll; that is why this was previously left as a no-op.
+  for (auto &entry : tabs_)
+  {
+    if (entry.second)
+      entry.second->Reposition(0, (uint32_t)ui_height_);
+  }
+  // DRM tabs are native child windows rather than Overlays, and they already
+  // take an explicit offset, so they are moved here for the same reason.
+  int drm_height = (int)window_->height() - ui_height_;
+  if (drm_height < 1)
+    drm_height = 1;
+  for (auto &entry : drm_tabs_)
+  {
+    if (entry.second)
+      entry.second->Resize(window_->width(), (uint32_t)drm_height, 0, (uint32_t)ui_height_);
+  }
+
   if (downloads_overlay_)
     LayoutDownloadsOverlay();
 }
