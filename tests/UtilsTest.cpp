@@ -245,6 +245,106 @@ static void TestAttributeBreakoutEscaping()
             "EscapeJsonString leaves quotes and angle brackets for the JS path");
 }
 
+// The JSON scanners parse every persisted file (settings, history, session,
+// closed tabs). They were private to UI.cpp with no coverage until this
+// extraction; these cases pin the behaviour the callers depend on.
+static void TestFindMatchingBrace()
+{
+    using namespace util;
+
+    const std::string doc = "{\"a\":{\"b\":1},\"c\":2}";
+    const auto open = doc.find('{');
+    Check(FindMatchingBrace(doc, open) == doc.size() - 1,
+          "FindMatchingBrace balances nested objects");
+
+    const std::string nested = "{\"a\":{\"b\":{\"c\":1}},\"d\":2}";
+    const auto nested_open = nested.find('{');
+    CheckEq(std::to_string(FindMatchingBrace(nested, nested_open)), "24",
+            "FindMatchingBrace balances nested objects");
+
+    // Braces inside a string must not affect the depth count.
+    const std::string in_string = "{\"a\":\"}{\",\"b\":1}";
+    Check(FindMatchingBrace(in_string, 0) == in_string.size() - 1,
+          "FindMatchingBrace ignores braces inside a string");
+
+    // Escaped quote inside a string must not end the string early.
+    const std::string escaped = "{\"a\":\"\\\"}\",\"b\":1}";
+    Check(FindMatchingBrace(escaped, 0) == escaped.size() - 1,
+          "FindMatchingBrace handles an escaped quote");
+
+    Check(FindMatchingBrace("{", 0) == std::string::npos,
+          "FindMatchingBrace reports an unterminated object");
+    Check(FindMatchingBrace("no braces here", 0) == std::string::npos,
+          "FindMatchingBrace reports a missing opener");
+}
+
+static void TestExtractJsonStringField()
+{
+    using namespace util;
+
+    std::string out;
+    Check(ExtractJsonStringField("{\"url\":\"https://x/\"}", "url", out) &&
+              out == "https://x/",
+          "ExtractJsonStringField reads a string field");
+
+    // The documents these parse are written by EscapeJsonString, so the escape
+    // sequences have to be decoded rather than returned verbatim.
+    out.clear();
+    Check(ExtractJsonStringField("{\"t\":\"a\\\"b\\\\c\\nd\"}", "t", out) &&
+              out == "a\"b\\c\nd",
+          "ExtractJsonStringField decodes escapes");
+
+    Check(!ExtractJsonStringField("{\"url\":\"x\"}", "title", out),
+          "ExtractJsonStringField reports a missing field");
+    Check(!ExtractJsonStringField("{\"url\":null}", "url", out),
+          "ExtractJsonStringField treats null as absent");
+    Check(!ExtractJsonStringField("{\"url\":42}", "url", out),
+          "ExtractJsonStringField rejects a non-string value");
+    Check(!ExtractJsonStringField("{\"url\":\"unterminated", "url", out),
+          "ExtractJsonStringField survives a truncated document");
+    Check(!ExtractJsonStringField("{\"url\":\"x\"}", nullptr, out),
+          "ExtractJsonStringField rejects a null field name");
+
+    // A quoted field name cannot appear inside a value, because EscapeJsonString
+    // escapes the quotes there. This is why searching for the quoted name is
+    // safe; assert the property the search relies on.
+    Check(EscapeJsonString("he said \"url\": \"evil\"") ==
+              "he said \\\"url\\\": \\\"evil\\\"",
+          "EscapeJsonString prevents a value from looking like a field");
+}
+
+static void TestExtractJsonBoolField()
+{
+    using namespace util;
+
+    bool out = false;
+    Check(ExtractJsonBoolField("{\"default\":true}", "default", out) && out,
+          "ExtractJsonBoolField reads true");
+
+    out = true;
+    Check(ExtractJsonBoolField("{\"default\":false}", "default", out) && !out,
+          "ExtractJsonBoolField reads false");
+
+    // Compact form with no space after the colon.
+    out = false;
+    Check(ExtractJsonBoolField("{\"x\":true}", "x", out) && out,
+          "ExtractJsonBoolField handles no space after the colon");
+
+    Check(!ExtractJsonBoolField("{\"x\":null}", "x", out),
+          "ExtractJsonBoolField reports null as absent");
+    Check(!ExtractJsonBoolField("{\"x\":\"maybe\"}", "x", out),
+          "ExtractJsonBoolField rejects a non-boolean value");
+    // A truncated document whose boolean value is still complete parses fine -- the
+    // value itself was not cut off, unlike the string case above.
+    Check(ExtractJsonBoolField("{\"x\":true", "x", out),
+          "ExtractJsonBoolField accepts a complete value in a truncated document");
+    // A value cut off mid-token is not a boolean.
+    Check(!ExtractJsonBoolField("{\"x\":tru", "x", out),
+          "ExtractJsonBoolField rejects a partial boolean");
+    Check(!ExtractJsonBoolField("{\"x\":true}", nullptr, out),
+          "ExtractJsonBoolField rejects a null field name");
+}
+
 int main()
 {
     TestEscapeJsonString();
@@ -256,6 +356,9 @@ int main()
     TestGetEnvVar();
     TestTabSearchPayloadEscaping();
     TestAttributeBreakoutEscaping();
+    TestFindMatchingBrace();
+    TestExtractJsonStringField();
+    TestExtractJsonBoolField();
 
     if (g_failures > 0)
     {

@@ -189,4 +189,157 @@ std::string GetEnvVar(const char *name)
 #endif
 }
 
+  std::string::size_type FindMatchingBrace(const std::string &text, std::string::size_type open_pos)
+  {
+    size_t depth = 0;
+    for (size_t i = open_pos; i < text.size(); ++i)
+    {
+      char c = text[i];
+      if (c == '{')
+        ++depth;
+      else if (c == '}')
+      {
+        if (depth == 0)
+          return std::string::npos;
+        --depth;
+        if (depth == 0)
+          return i;
+      }
+      else if (c == '"')
+      {
+        // Skip quoted strings entirely (handle escapes)
+        ++i;
+        bool escape = false;
+        for (; i < text.size(); ++i)
+        {
+          char qc = text[i];
+          if (escape)
+          {
+            escape = false;
+            continue;
+          }
+          if (qc == '\\')
+          {
+            escape = true;
+            continue;
+          }
+          if (qc == '"')
+            break;
+        }
+      }
+    }
+    return std::string::npos;
+  }
+
+  bool ExtractJsonStringField(const std::string &object, const char *field, std::string &out)
+  {
+    if (!field)
+      return false;
+    std::string needle = std::string("\"") + field + "\"";
+    size_t pos = object.find(needle);
+    if (pos == std::string::npos)
+      return false;
+    pos = object.find(':', pos + needle.size());
+    if (pos == std::string::npos)
+      return false;
+    ++pos;
+    while (pos < object.size() && std::isspace(static_cast<unsigned char>(object[pos])))
+      ++pos;
+    if (pos >= object.size())
+      return false;
+    if (object[pos] == 'n' || object[pos] == 'N')
+    {
+      // Treat explicit null as absence
+      if (object.compare(pos, 4, "null") == 0 || object.compare(pos, 4, "NULL") == 0)
+        return false;
+    }
+    if (object[pos] != '"')
+      return false;
+++pos;
+    std::string value;
+    bool escape = false;
+    bool terminated = false;
+    while (pos < object.size())
+    {
+      char c = object[pos++];
+      if (escape)
+      {
+        escape = false;
+        switch (c)
+        {
+        case '"':
+          value.push_back('"');
+          break;
+        case '\\':
+          value.push_back('\\');
+          break;
+        case 'n':
+          value.push_back('\n');
+          break;
+        case 'r':
+          value.push_back('\r');
+          break;
+        case 't':
+          value.push_back('\t');
+          break;
+        default:
+          value.push_back(c);
+          break;
+        }
+        continue;
+      }
+      if (c == '\\')
+      {
+        escape = true;
+        continue;
+      }
+      if (c == '"')
+      {
+        terminated = true;
+        break;
+      }
+      value.push_back(c);
+    }
+    // Running out of input without a closing quote means the file was
+    // truncated -- a crash part-way through a write produces exactly this.
+    // Returning the
+    // partial value would hand callers a silently corrupted string and report
+    // success, so a truncated document is treated as a failed parse and the
+    // caller falls back to its default.
+    if (!terminated)
+      return false;
+
+    out = std::move(value);
+    return true;
+  }
+
+  bool ExtractJsonBoolField(const std::string &object, const char *field, bool &out)
+  {
+    if (!field)
+      return false;
+    std::string needle = std::string("\"") + field + "\"";
+    size_t pos = object.find(needle);
+    if (pos == std::string::npos)
+      return false;
+    pos = object.find(':', pos + needle.size());
+    if (pos == std::string::npos)
+      return false;
+    ++pos;
+    while (pos < object.size() && std::isspace(static_cast<unsigned char>(object[pos])))
+      ++pos;
+    if (pos >= object.size())
+      return false;
+    if (object.compare(pos, 4, "true") == 0 || object[pos] == '1')
+    {
+      out = true;
+      return true;
+    }
+    if (object.compare(pos, 5, "false") == 0 || object[pos] == '0')
+    {
+      out = false;
+      return true;
+    }
+    return false;
+  }
+
 } // namespace util
