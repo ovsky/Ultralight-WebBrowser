@@ -124,6 +124,22 @@
             color: #666;
         }
 
+        .search-box {
+            flex: 1;
+            min-width: 0;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(0, 0, 0, 0.15);
+            background: var(--bg, #fff);
+            color: var(--fg, #111);
+            font-size: 13px;
+        }
+
+        .search-box:focus {
+            outline: none;
+            border-color: var(--accent-color, #6C63FF);
+        }
+
         /* No toggle anymore */
     @keyframes ul_fade_in { from { opacity: 0; } to { opacity: 1; } }
     @-webkit-keyframes ul_fade_in { from { opacity: 0; } to { opacity: 1; } }
@@ -136,6 +152,8 @@
         <header>
             <h1>History</h1>
             <div class="controls">
+                <input id="search" class="search-box" type="search" placeholder="Search history"
+                    aria-label="Search history" autocomplete="off">
                 <button id="clear-btn" class="btn btn-primary">Clear history</button>
             </div>
         </header>
@@ -143,21 +161,37 @@
         <section id="content">
             <ul id="history-list" class="list"></ul>
             <div id="empty" class="empty" style="display:none">No history yet.</div>
+            <div id="no-match" class="empty" style="display:none">No entries match your search.</div>
         </section>
     </div>
 
 
     <script>
+        let historyCache = null;
+        let searchTerm = '';
+        let searchTimer = 0;
+
         function render(data) {
             const list = document.getElementById('history-list');
             const empty = document.getElementById('empty');
+            const noMatch = document.getElementById('no-match');
             list.innerHTML = '';
-            const items = (data && data.items) || [];
-            if (!items.length) {
+            const all = (data && data.items) || [];
+            // Filter up front so only matching rows are ever constructed.
+            const items = searchTerm
+                ? all.filter(it => ((it.title || '') + ' ' + (it.url || '')).toLowerCase().indexOf(searchTerm) !== -1)
+                : all;
+            if (!all.length) {
                 empty.style.display = 'block';
+                noMatch.style.display = 'none';
                 return;
             }
             empty.style.display = 'none';
+            if (!items.length) {
+                noMatch.style.display = 'block';
+                return;
+            }
+            noMatch.style.display = 'none';
             for (const it of items) {
                 const li = document.createElement('li');
                 li.className = 'item';
@@ -204,6 +238,7 @@
                 if (window.NativeGetHistory) {
                     const json = NativeGetHistory();
                     const data = JSON.parse(json || '{}');
+                    historyCache = data;
                     const signature = historySignature(data);
                     if (signature === lastHistorySignature) return;
                     lastHistorySignature = signature;
@@ -214,6 +249,25 @@
             // Fallback empty state
             render({ items: [] });
         }
+
+        // Re-filter from the cached payload instead of asking the host again,
+        // so typing never crosses the bridge. Debounced so a burst of
+        // keystrokes builds the list once.
+        function onSearchInput(value) {
+            if (searchTimer) clearTimeout(searchTimer);
+            searchTimer = setTimeout(() => {
+                searchTimer = 0;
+                searchTerm = (value || '').trim().toLowerCase();
+                render(historyCache || { items: [] });
+            }, 120);
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const searchEl = document.getElementById('search');
+            if (!searchEl) return;
+            searchEl.addEventListener('input', (e) => onSearchInput(e.target.value));
+            searchEl.addEventListener('search', (e) => onSearchInput(e.target.value));
+        });
 
         // Called by native after JS bridge is bound
         window.__ul_history_ready = function () {

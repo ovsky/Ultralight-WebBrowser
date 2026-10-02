@@ -102,6 +102,23 @@
             margin-bottom: 16px;
         }
 
+        .search-box {
+            flex: 1;
+            min-width: 0;
+            max-width: 320px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(0, 0, 0, 0.15);
+            background: var(--bg, #fff);
+            color: var(--fg, #111);
+            font-size: 13px;
+        }
+
+        .search-box:focus {
+            outline: none;
+            border-color: var(--accent-color, #6C63FF);
+        }
+
         .empty-state h2 {
             margin: 0 0 8px 0;
             font-size: 18px;
@@ -270,6 +287,8 @@
                 Bookmarks
             </h1>
             <div class="controls">
+                <input id="search" class="search-box" type="search" placeholder="Search bookmarks"
+                    aria-label="Search bookmarks" autocomplete="off">
                 <span class="muted" id="count"></span>
                 <button class="btn btn-primary" id="clearAll" style="display: none;">Clear All</button>
             </div>
@@ -281,6 +300,11 @@
             </svg>
             <h2>No bookmarks yet</h2>
             <p>Click the ★ icon in the address bar to bookmark pages</p>
+        </div>
+
+        <div id="noMatchState" class="empty-state" style="display: none;">
+            <h2>No matches</h2>
+            <p>No bookmarks match your search.</p>
         </div>
 
         <ul class="list" id="bookmarksList"></ul>
@@ -395,7 +419,7 @@
                 e.stopPropagation();
                 if (window.removeBookmark) {
                     window.removeBookmark(bookmark.id);
-                    loadBookmarks();
+                    fetchBookmarks();
                 }
             };
             actions.appendChild(deleteBtn);
@@ -410,40 +434,79 @@
             return li;
         }
 
-        function loadBookmarks() {
+        let bookmarkCache = [];
+        let bookmarkSearch = '';
+        let bookmarkSearchTimer = 0;
+
+        // Pull from the host and refresh the cache.
+        function fetchBookmarks() {
+            let bookmarks = [];
+            if (window.getBookmarks) {
+                try {
+                    bookmarks = JSON.parse(window.getBookmarks());
+                } catch (e) {
+                    console.error('Error parsing bookmarks:', e);
+                }
+            }
+            bookmarkCache = bookmarks || [];
+            renderBookmarks();
+        }
+
+        // Render purely from the cache. Search never crosses the bridge.
+        function renderBookmarks() {
             const list = document.getElementById('bookmarksList');
             const emptyState = document.getElementById('emptyState');
+            const noMatchState = document.getElementById('noMatchState');
             const countEl = document.getElementById('count');
             const clearBtn = document.getElementById('clearAll');
 
             list.innerHTML = '';
 
-            let bookmarks = [];
-            if (window.getBookmarks) {
-                try {
-                    const json = window.getBookmarks();
-                    bookmarks = JSON.parse(json);
-                } catch (e) {
-                    console.error('Error parsing bookmarks:', e);
-                }
-            }
-
-            if (bookmarks.length === 0) {
+            if (bookmarkCache.length === 0) {
                 emptyState.style.display = 'block';
+                noMatchState.style.display = 'none';
                 countEl.textContent = '';
                 clearBtn.style.display = 'none';
-            } else {
-                emptyState.style.display = 'none';
-                countEl.textContent = bookmarks.length + ' bookmark' + (bookmarks.length !== 1 ? 's' : '');
-                clearBtn.style.display = 'inline-block';
-
-                // Sort by created_at descending (newest first)
-                bookmarks.sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
-
-                bookmarks.forEach(bm => {
-                    list.appendChild(createBookmarkItem(bm));
-                });
+                return;
             }
+
+            emptyState.style.display = 'none';
+            clearBtn.style.display = 'inline-block';
+
+            // Sort by created_at descending (newest first)
+            bookmarkCache.sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
+
+            // Filter before building rows so only matches are constructed.
+            const visible = bookmarkSearch
+                ? bookmarkCache.filter(bm =>
+                    ((bm.title || '') + ' ' + (bm.url || '')).toLowerCase().indexOf(bookmarkSearch) !== -1)
+                : bookmarkCache;
+
+            if (!visible.length) {
+                noMatchState.style.display = 'block';
+                countEl.textContent = '0 of ' + bookmarkCache.length + ' bookmarks';
+                return;
+            }
+
+            noMatchState.style.display = 'none';
+            countEl.textContent = bookmarkSearch
+                ? visible.length + ' of ' + bookmarkCache.length + ' bookmarks'
+                : bookmarkCache.length + ' bookmark' + (bookmarkCache.length !== 1 ? 's' : '');
+
+            visible.forEach(bm => {
+                list.appendChild(createBookmarkItem(bm));
+            });
+        }
+
+        // Re-filter from cache rather than asking the host again, debounced so
+        // a burst of keystrokes rebuilds the list once.
+        function onBookmarkSearch(value) {
+            if (bookmarkSearchTimer) clearTimeout(bookmarkSearchTimer);
+            bookmarkSearchTimer = setTimeout(() => {
+                bookmarkSearchTimer = 0;
+                bookmarkSearch = (value || '').trim().toLowerCase();
+                renderBookmarks();
+            }, 120);
         }
 
         document.getElementById('clearAll').onclick = function () {
@@ -459,17 +522,22 @@
                         window.removeBookmark(bm.id);
                     }
                 });
-                loadBookmarks();
+                fetchBookmarks();
             }
         };
 
         // Load bookmarks when page is ready
         document.addEventListener('DOMContentLoaded', function () {
-            setTimeout(loadBookmarks, 100);
+            const searchEl = document.getElementById('search');
+            if (searchEl) {
+                searchEl.addEventListener('input', (e) => onBookmarkSearch(e.target.value));
+                searchEl.addEventListener('search', (e) => onBookmarkSearch(e.target.value));
+            }
+            setTimeout(fetchBookmarks, 100);
         });
 
         if (document.readyState === 'complete' || document.readyState === 'interactive') {
-            setTimeout(loadBookmarks, 100);
+            setTimeout(fetchBookmarks, 100);
         }
 
         // Dispatch favicon to host (convert SVG to PNG as host expects PNGs)

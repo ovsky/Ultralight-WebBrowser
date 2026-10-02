@@ -193,10 +193,26 @@
             padding: 10px 20px;
         }
 
-        .empty {
+.empty {
             text-align: center;
-            padding: 80px 20px;
+            padding: 60px 20px;
             color: var(--text-secondary);
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 0;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            font-size: 13px;
+        }
+
+        .search-box:focus {
+            outline: none;
+            border-color: var(--accent-color, #6C63FF);
         }
 
         .empty::before {
@@ -248,6 +264,8 @@
         <header>
             <h1>Downloads</h1>
             <div class="controls">
+                <input id="search" class="search-box" type="search" placeholder="Search downloads"
+                    aria-label="Search downloads" autocomplete="off">
                 <button id="clear-btn" class="btn btn-primary">Clear finished</button>
             </div>
         </header>
@@ -255,6 +273,10 @@
             <div id="empty" class="empty" style="display: none;">
                 <h2>No Downloads Yet</h2>
                 <p>Your downloads will appear here</p>
+            </div>
+            <div id="no-match" class="empty" style="display: none;">
+                <h2>No matches</h2>
+                <p>No downloads match your search.</p>
             </div>
             <div id="list" class="list"></div>
         </section>
@@ -282,16 +304,32 @@
             }
         }
 
+        let downloadsCache = null;
+        let downloadSearch = '';
+        let downloadSearchTimer = 0;
+
         function render(data) {
             const list = document.getElementById('list');
             const empty = document.getElementById('empty');
+            const noMatch = document.getElementById('no-match');
             list.innerHTML = '';
-            const items = (data && data.items) || [];
-            if (!items.length) {
+            const all = (data && data.items) || [];
+            // Filter before building rows so only matches are constructed.
+            const items = downloadSearch
+                ? all.filter(it => ((it.filename || '') + ' ' + (it.url || '')).toLowerCase()
+                    .indexOf(downloadSearch) !== -1)
+                : all;
+            if (!all.length) {
                 empty.style.display = 'block';
+                noMatch.style.display = 'none';
                 return;
             }
             empty.style.display = 'none';
+            if (!items.length) {
+                noMatch.style.display = 'block';
+                return;
+            }
+            noMatch.style.display = 'none';
 
             for (const item of items) {
                 const card = document.createElement('div');
@@ -408,6 +446,7 @@
                 if (window.NativeGetDownloads) {
                     const json = NativeGetDownloads();
                     const data = JSON.parse(json || '{"items":[]}');
+                    downloadsCache = data;
                     const signature = downloadsSignature(data);
                     if (signature === lastDownloadsSignature) return;
                     lastDownloadsSignature = signature;
@@ -428,6 +467,19 @@
         };
 
         document.addEventListener('DOMContentLoaded', () => {
+            const searchEl = document.getElementById('search');
+            if (searchEl) {
+                const onInput = (e) => {
+                    if (downloadSearchTimer) clearTimeout(downloadSearchTimer);
+                    downloadSearchTimer = setTimeout(() => {
+                        downloadSearchTimer = 0;
+                        downloadSearch = (e.target.value || '').trim().toLowerCase();
+                        render(downloadsCache || { items: [] });
+                    }, 120);
+                };
+                searchEl.addEventListener('input', onInput);
+                searchEl.addEventListener('search', onInput);
+            }
             let tries = 0;
             const tick = () => {
                 if (window.NativeGetDownloads) { refresh(); return; }
