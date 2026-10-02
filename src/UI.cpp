@@ -6153,7 +6153,11 @@ void UI::LoadHistoryFromDisk()
     size_t obj_start = content.find('{', pos);
     if (obj_start == std::string::npos)
       break;
-    size_t obj_end = content.find('}', obj_start);
+    // Scan to the brace that actually closes this object. A bare find('}') would
+    // stop at a '}' inside a page title, and titles are not escaped for it: the
+    // writer escapes quotes, backslashes and control characters, but '}' and '['
+    // are legal bare JSON string content.
+    size_t obj_end = util::FindMatchingBrace(content, obj_start);
     if (obj_end == std::string::npos)
       break;
 
@@ -6669,7 +6673,9 @@ void UI::RestoreSavedSession()
 
   while ((pos = tabs_content.find("{", pos)) != std::string::npos)
   {
-    size_t end_obj = tabs_content.find("}", pos);
+    // See the history loader above: a title or URL may contain a bare '}' or '[',
+    // so the object has to be scanned to its matching brace.
+    size_t end_obj = util::FindMatchingBrace(tabs_content, pos);
     if (end_obj == std::string::npos)
       break;
 
@@ -6840,7 +6846,9 @@ int UI::GetMeaningfulSavedTabCount() const
 
   while ((pos = tabs_content.find("{", pos)) != std::string::npos)
   {
-    size_t end_obj = tabs_content.find("}", pos);
+    // See the history loader above: a title or URL may contain a bare '}' or '[',
+    // so the object has to be scanned to its matching brace.
+    size_t end_obj = util::FindMatchingBrace(tabs_content, pos);
     if (end_obj == std::string::npos)
       break;
 

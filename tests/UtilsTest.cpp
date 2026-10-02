@@ -278,6 +278,36 @@ static void TestFindMatchingBrace()
           "FindMatchingBrace reports a missing opener");
 }
 
+// Regression: the history, session and closed-tab loaders in UI.cpp used to find
+// the end of a record with a bare find('}'). A page title containing a brace is
+// written unescaped, because EscapeJsonString escapes quotes, backslashes and
+// control characters but not '}' or '['. The naive scan therefore stopped inside
+// the title and produced a truncated record, which then lost its url and was
+// dropped. This case is the on-disk shape that triggered it.
+static void TestFindMatchingBraceUnescapedTitleBrace()
+{
+    using namespace util;
+
+    const std::string entry =
+        "{\"url\":\"https://example.com/a\",\"title\":\"Fix } in C++ {braces}\",\"time\":100}";
+    const auto open = entry.find('{');
+
+    // The naive scan stops at the '}' inside the title.
+    Check(entry.find('}', open) != entry.size() - 1,
+          "test fixture really does contain a bare '}' mid-object");
+
+    // The correct scan runs to the brace that closes the record.
+    Check(FindMatchingBrace(entry, open) == entry.size() - 1,
+          "FindMatchingBrace survives an unescaped brace in a title");
+
+    // And the record parses, which is the behaviour the loaders depend on.
+    std::string title;
+    Check(ExtractJsonStringField(entry.substr(open), "title", title),
+          "title field is found");
+    CheckEq(title, "Fix } in C++ {braces}",
+            "title round-trips with its braces intact");
+}
+
 static void TestExtractJsonStringField()
 {
     using namespace util;
@@ -357,6 +387,7 @@ int main()
     TestTabSearchPayloadEscaping();
     TestAttributeBreakoutEscaping();
     TestFindMatchingBrace();
+    TestFindMatchingBraceUnescapedTitleBrace();
     TestExtractJsonStringField();
     TestExtractJsonBoolField();
 
