@@ -2279,8 +2279,12 @@ void UI::OnRequestTabClose(const JSObject &obj, const JSArgs &args)
   {
     uint64_t id = args[0];
 
-    auto &tab = tabs_[id];
-    if (!tab)
+    // find(), not operator[]: an unknown id would default-insert a null entry
+    // and the !tab check below would then return, leaving a phantom tab that
+    // inflates tabs_.size() (breaking the "last tab quits" check and any code
+    // that iterates the map).
+    auto tab_it = tabs_.find(id);
+    if (tab_it == tabs_.end() || !tab_it->second)
       return;
 
     if (tabs_.size() == 1 && App::instance())
@@ -2301,7 +2305,7 @@ void UI::OnRequestTabClose(const JSObject &obj, const JSArgs &args)
     }
     else
     {
-      tab->set_ready_to_close(true);
+      tab_it->second->set_ready_to_close(true);
     }
 
     RefPtr<JSContext> lock(view()->LockJSContext());
@@ -2420,14 +2424,17 @@ void UI::OnRequestChangeURL(const JSObject &obj, const JSArgs &args)
 
     // Not a DRM site - close any existing DRM tab and show Ultralight tab
     HideAllDrmTabs();
+    // find(), not operator[]: the active tab can legitimately be absent from
+    // tabs_ (a DRM tab lives in drm_tabs_), and indexing would insert a null
+    // entry that then counts toward tabs_.size().
     if (!tabs_.empty())
     {
-      auto &tab = tabs_[active_tab_id_];
-      if (tab)
+      auto tab_it = tabs_.find(active_tab_id_);
+      if (tab_it != tabs_.end() && tab_it->second)
       {
-        tab->Show();
-        tab->view()->Focus(); // Ensure focus returns to Ultralight
-        tab->view()->LoadURL(url);
+        tab_it->second->Show();
+        tab_it->second->view()->Focus(); // Ensure focus returns to Ultralight
+        tab_it->second->view()->LoadURL(url);
       }
     }
 
@@ -7056,10 +7063,13 @@ void UI::OnSuggestionPick(const JSObject &obj, const JSArgs &args)
     CreateNewTabForChildView(s); // Handles loading internally
     return;
   }
+  // find() plus a null check. operator[] would insert a null entry for a DRM
+  // active tab, and tab->view() on that null entry is a null dereference.
   if (!tabs_.empty())
   {
-    auto &tab = tabs_[active_tab_id_];
-    tab->view()->LoadURL(s);
+    auto tab_it = tabs_.find(active_tab_id_);
+    if (tab_it != tabs_.end() && tab_it->second)
+      tab_it->second->view()->LoadURL(s);
   }
 }
 
