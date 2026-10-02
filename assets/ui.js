@@ -50,18 +50,34 @@ function focusAddressBar() {
 	address.select();
 }
 
-document.getElementById('address').addEventListener('blur', () => {
-	if (window.OnAddressBarBlur) {
-		window.OnAddressBarBlur();
+// ui.js is loaded from <head>, before the body has been parsed, so these two
+// lookups returned null. The resulting TypeError is uncaught, and an uncaught
+// error in a classic script aborts the rest of the file, so neither listener
+// was ever attached. That left the native side believing the address bar was
+// focused forever: clicking any chrome control marks it focused, and with no
+// blur callback nothing ever cleared it, so keyboard input kept routing to the
+// address bar instead of the page. Attach once the DOM exists.
+(function attachAddressBarFocusHandlers() {
+	const attach = () => {
+		const address = document.getElementById('address');
+		if (!address) return;
+		address.addEventListener('blur', () => {
+			if (window.OnAddressBarBlur) {
+				window.OnAddressBarBlur();
+			}
+		});
+		address.addEventListener('focus', () => {
+			if (window.OnAddressBarFocus) {
+				window.OnAddressBarFocus();
+			}
+		});
+	};
+	if (document.readyState === 'loading') {
+		document.addEventListener('DOMContentLoaded', attach, { once: true });
+	} else {
+		attach();
 	}
-});
-
-// Notify native when the address bar gains focus (eg, via mouse click)
-document.getElementById('address').addEventListener('focus', () => {
-	if (window.OnAddressBarFocus) {
-		window.OnAddressBarFocus();
-	}
-});
+})();
 
 // Update AdBlock toggle visual state: when enabled, normal; when disabled, grey out
 function updateAdblockEnabled(enabled) {
