@@ -615,7 +615,17 @@ protected:
   // Shortcuts mapping (eg, "Ctrl+T" -> "new-tab") loaded from assets/shortcuts.json
   std::map<std::string, std::string> shortcuts_;
   void LoadShortcuts();
+  // Maps a key event to the shortcuts_ identifier ("Ctrl+T", "Ctrl+Shift+T",
+  // "Ctrl+,", "Ctrl+Tab"). Empty when the event is not a bound Ctrl combo.
+  std::string NormalizeShortcutKey(const ultralight::KeyEvent &evt);
+
   bool RunShortcutAction(const std::string &action);
+
+  // Moves the active tab by +/-1 in tab-strip order, wrapping at both ends.
+  bool CycleActiveTab(int direction);
+
+  // Selects the tab at a 0-based index; -1 means the last tab (Chrome's Ctrl+0).
+  bool SelectTabByIndex(int index);
 
   BrowserSettings settings_;
 

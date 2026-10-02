@@ -9,5 +9,20 @@
   "Ctrl+P": "open-passwords",
   "Ctrl+L": "focus-address",
   "Ctrl+,": "open-settings",
-  "Ctrl+Shift+T": "open-themes"
+  "Ctrl+Shift+T": "open-themes",
+  "Ctrl+Tab": "next-tab",
+  "Ctrl+Shift+Tab": "prev-tab",
+  "Ctrl+1": "select-tab-1",
+  "Ctrl+2": "select-tab-2",
+  "Ctrl+3": "select-tab-3",
+  "Ctrl+4": "select-tab-4",
+  "Ctrl+5": "select-tab-5",
+  "Ctrl+6": "select-tab-6",
+  "Ctrl+7": "select-tab-7",
+  "Ctrl+8": "select-tab-8",
+  "Ctrl+9": "select-tab-9",
+  "Ctrl+0": "select-tab-last",
+  "Ctrl+Shift+R": "reload-hard",
+  "Ctrl+F": "find-in-page",
+  "F11": "toggle-fullscreen"
 }

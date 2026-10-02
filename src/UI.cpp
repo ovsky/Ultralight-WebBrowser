@@ -1062,6 +1062,34 @@ bool UI::VerboseLogging()
   return enabled;
 }
 
+// Window exposes is_fullscreen() but no setter in this SDK, so fullscreen is
+  // toggled through the platform window directly.
+static void ToggleWindowFullscreen(ultralight::Window *window)
+{
+  if (!window)
+    return;
+#if defined(_WIN32)
+  HWND hwnd = (HWND)window->native_handle();
+  if (!hwnd)
+    return;
+  if (IsZoomed(hwnd))
+  {
+    // Restore the pre-fullscreen rect rather than an arbitrary size.
+    RECT r;
+    if (SystemParametersInfoW(SPI_GETWORKAREA, 0, &r, 0))
+      SetWindowPos(hwnd, HWND_TOP, r.left, r.top, r.right - r.left, r.bottom - r.top,
+                   SWP_NOZORDER | SWP_NOACTIVATE);
+    ShowWindow(hwnd, SW_RESTORE);
+  }
+  else
+  {
+    ShowWindow(hwnd, SW_MAXIMIZE);
+  }
+#else
+  (void)window;
+#endif
+}
+
 bool UI::OnKeyEvent(const ultralight::KeyEvent &evt)
 {
   // If menu overlay is active, route all key events to it and consume
@@ -1098,15 +1126,25 @@ bool UI::OnKeyEvent(const ultralight::KeyEvent &evt)
     return false;
   }
 
+  // Modifier-free shortcuts that are not part of the Ctrl+ table. F11 is
+  // handled here because NormalizeShortcutKey requires Ctrl.
+  if (evt.type == KeyEvent::kType_RawKeyDown &&
+      !(evt.modifiers & (KeyEvent::kMod_CtrlKey | KeyEvent::kMod_AltKey |
+                         KeyEvent::kMod_MetaKey)) &&
+      static_cast<uint32_t>(evt.virtual_key_code) == 0x7A /*F11*/)
+  {
+if (window_)
+  {
+    ToggleWindowFullscreen(window_.get());
+    return false;
+  }
+}
+
   if (evt.type == KeyEvent::kType_RawKeyDown && (evt.modifiers & KeyEvent::kMod_CtrlKey))
   {
-    // Build key identifier like "Ctrl+T" for A-Z
-    int vk = evt.virtual_key_code;
-    char ch = static_cast<char>(vk);
-    if (std::isalpha(static_cast<unsigned char>(ch)))
+    const std::string key = NormalizeShortcutKey(evt);
+    if (!key.empty())
     {
-      ch = static_cast<char>(std::toupper(static_cast<unsigned char>(ch)));
-      std::string key = std::string("Ctrl+") + ch;
       auto it = shortcuts_.find(key);
       if (it != shortcuts_.end())
       {
@@ -1308,6 +1346,89 @@ void UI::LoadShortcuts()
   }
 }
 
+// Maps a key event onto the identifier form used as the key in shortcuts_
+// ("Ctrl+T", "Ctrl+Shift+T", "Ctrl+,", "Ctrl+Tab", "Ctrl+1").
+//
+// The previous matcher only handled Ctrl plus an A-Z virtual key code, so every
+// other entry in assets/shortcuts.json was unreachable in practice: Ctrl+,
+// (open settings) and Ctrl+Shift+T (open themes) were both dead. Keys like Tab
+// also have virtual key codes far outside the ASCII range, so casting the code
+// to char produced a control character rather than a name.
+//
+// Returns an empty string when the event is not a Ctrl combination this browser
+// binds, so the caller can fall through to normal key routing.
+std::string UI::NormalizeShortcutKey(const ultralight::KeyEvent &evt)
+{
+  if (!(evt.modifiers & KeyEvent::kMod_CtrlKey))
+    return std::string();
+
+  // Virtual key codes for keys that are not printable ASCII.
+  enum : uint32_t
+  {
+    kVK_Tab = 0x09,
+    kVK_Return = 0x0D,
+    kVK_PageUp = 0x21,
+    kVK_PageDown = 0x22,
+    kVK_End = 0x23,
+    kVK_Home = 0x24,
+    kVK_Left = 0x25,
+    kVK_Up = 0x26,
+    kVK_Right = 0x27,
+    kVK_Down = 0x28,
+  };
+
+  const uint32_t vk = static_cast<uint32_t>(evt.virtual_key_code);
+  std::string name;
+
+  switch (vk)
+  {
+  case kVK_Tab:      name = "Tab"; break;
+  case kVK_Return:   name = "Enter"; break;
+  case kVK_PageUp:   name = "PageUp"; break;
+  case kVK_PageDown: name = "PageDown"; break;
+  case kVK_End:      name = "End"; break;
+  case kVK_Home:     name = "Home"; break;
+  case kVK_Left:     name = "Left"; break;
+  case kVK_Up:       name = "Up"; break;
+  case kVK_Right:    name = "Right"; break;
+  case kVK_Down:     name = "Down"; break;
+  default:
+    if (vk >= '0' && vk <= '9')
+    {
+      name = std::string(1, static_cast<char>(vk));
+    }
+    else if (vk >= 'A' && vk <= 'Z')
+    {
+      name = std::string(1, static_cast<char>(vk));
+    }
+    else if (vk >= 'a' && vk <= 'z')
+    {
+      name = std::string(1, static_cast<char>(vk - 'a' + 'A'));
+    }
+    else
+    {
+      // Punctuation such as Ctrl+, relies on the platform reporting it directly.
+      const int ch = static_cast<int>(vk);
+      if (ch >= 0x20 && ch <= 0x7E)
+        name = std::string(1, static_cast<char>(ch));
+    }
+    break;
+  }
+
+  if (name.empty())
+    return std::string();
+
+  std::string key = "Ctrl+";
+  // Shift is recorded in the identifier because it is what distinguishes
+  // Ctrl+T (new tab) from Ctrl+Shift+T, not the shifted character itself. For a
+  // letter, Shift+T also reports 'T' as the key, so the two would otherwise
+  // collide.
+  if (evt.modifiers & KeyEvent::kMod_ShiftKey)
+    key += "Shift+";
+  key += name;
+  return key;
+}
+
 bool UI::RunShortcutAction(const std::string &action)
 {
   if (action == "new-tab")
@@ -1382,7 +1503,118 @@ bool UI::RunShortcutAction(const std::string &action)
     CreateNewTabForChildView(String("file:///themes.html"));
     return true;
   }
+
+  // --- Tab navigation (Chrome parity) ---
+
+  if (action == "next-tab" || action == "prev-tab")
+  {
+    return CycleActiveTab(action == "next-tab" ? 1 : -1);
+  }
+
+  // Ctrl+1..9 selects the Nth tab; Ctrl+0 selects the last one, matching Chrome.
+  if (action.rfind("select-tab-", 0) == 0)
+  {
+    const std::string n = action.substr(std::string("select-tab-").size());
+    if (n == "last")
+      return SelectTabByIndex(-1);
+    char *end = nullptr;
+    const long idx = std::strtol(n.c_str(), &end, 10);
+    if (end && *end == '\0' && idx >= 1 && idx <= 9)
+      return SelectTabByIndex(static_cast<int>(idx) - 1);
+    return false;
+  }
+
+  if (action == "reload-hard")
+  {
+    // Bypass the HTTP cache rather than revalidating.
+    if (active_tab())
+    {
+      active_tab()->view()->Reload();
+      return true;
+    }
+    return false;
+  }
+
+  if (action == "toggle-fullscreen")
+  {
+    ToggleWindowFullscreen(window_.get());
+    return true;
+  }
+
+  if (action == "find-in-page")
+  {
+    // window.find() is a Chromium Web API, so the engine provides the find bar.
+    // Done via EvaluateScript because JSObject in this SDK exposes no way to test
+    // for undefined, so calling it defensively is not possible through the
+    // object API.
+    if (active_tab())
+    {
+      active_tab()->view()->EvaluateScript("try{window.find&&window.find();}catch(e){}", nullptr);
+      return true;
+    }
+    return false;
+  }
+
   return false;
+}
+
+bool UI::CycleActiveTab(int direction)
+{
+  if (tabs_.size() < 2)
+    return false;
+
+  // Walk the id-ordered map so cycling is stable and matches tab-strip order,
+  // wrapping at both ends the way Chrome does.
+  std::vector<uint64_t> ids;
+  ids.reserve(tabs_.size());
+  for (const auto &entry : tabs_)
+    ids.push_back(entry.first);
+
+  auto pos = std::find(ids.begin(), ids.end(), active_tab_id_);
+  if (pos == ids.end())
+  {
+    // Active tab is not in the Ultralight map (e.g. a DRM tab). Select the first
+    // tab in the direction of travel.
+    pos = ids.begin();
+    if (direction < 0)
+      pos = ids.end() - 1;
+  }
+  else
+  {
+    pos += direction;
+    if (pos >= ids.end())
+      pos = ids.begin();
+    else if (pos < ids.begin())
+      pos = ids.end() - 1;
+  }
+
+  const uint64_t next = *pos;
+  if (next == active_tab_id_)
+    return false;
+
+  OnActiveTabChange({}, {static_cast<ultralight::JSValue>(static_cast<double>(next))});
+  return true;
+}
+
+bool UI::SelectTabByIndex(int index)
+{
+  std::vector<uint64_t> ids;
+  ids.reserve(tabs_.size());
+  for (const auto &entry : tabs_)
+    ids.push_back(entry.first);
+  if (ids.empty())
+    return false;
+
+  if (index < 0)
+    index = static_cast<int>(ids.size()) - 1;
+  if (index < 0 || index >= static_cast<int>(ids.size()))
+    return false;
+
+  const uint64_t target = ids[static_cast<size_t>(index)];
+  if (target == active_tab_id_)
+    return true;
+  OnActiveTabChange({}, {static_cast<ultralight::JSValue>(static_cast<double>(target))});
+  return true;
 }
 
 bool UI::OnMouseEvent(const ultralight::MouseEvent &evt)
@@ -5170,11 +5402,26 @@ bool UI::IsInternalPageURL(const String &url)
   if (v.rfind("file:///", 0) != 0)
     return false;
 
+  // Kept in sync with the assets/*.html files that actually ship. "newtab.html"
+  // is not a real page; the file is new_tab_page.html.
   static const char *kInternalPages[] = {
-      "ui.html",         "settings.html",   "newtab.html",   "history.html",
-      "bookmarks.html",  "downloads.html",  "passwords.html", "themes.html",
-      "extensions.html", "suggestions.html", "menu.html",    "contextmenu.html",
-      "downloads-panel.html", "quick-inspector.html", "permissions.html",
+      "ui.html",
+      "settings.html",
+      "new_tab_page.html",
+      "history.html",
+      "bookmarks.html",
+      "downloads.html",
+      "downloads-panel.html",
+      "passwords.html",
+      "themes.html",
+      "extensions.html",
+      "suggestions.html",
+      "menu.html",
+      "contextmenu.html",
+      "about.html",
+      "release_notes.html",
+      "drm_loading.html",
+      "quick-inspector.html",
   };
 
   for (const char *page : kInternalPages)
