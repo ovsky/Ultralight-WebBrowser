@@ -95,6 +95,12 @@ private:
 
     void EnsureDirectoryExists();
     void NotifyChangeLocked(std::unique_lock<std::mutex> &lock);
+    void NotifyProgressThrottled(std::unique_lock<std::mutex> &lock);
+    // Rate limiter for intermediate download progress, so chunk callbacks do
+    // not each rebuild and rewrite the history file and run a script in every
+    // tab. Terminal transitions bypass it.
+    std::chrono::steady_clock::time_point last_progress_notify_{};
+    bool has_notified_progress_ = false;
     DownloadRecord &GetOrCreateRecordLocked(DownloadId id);
     DownloadRecord *FindRecordLocked(DownloadId id);
     void CloseStreamLocked(DownloadId internal_id, bool remove_file);

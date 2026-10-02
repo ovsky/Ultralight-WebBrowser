@@ -448,6 +448,27 @@ void DownloadManager::OnReceiveDataForDownload(ultralight::View *caller, Downloa
         active.record->received_bytes += static_cast<int64_t>(data->size());
     }
 
+    NotifyProgressThrottled(lock);
+}
+
+void DownloadManager::NotifyProgressThrottled(std::unique_lock<std::mutex> &lock)
+{
+    // Progress arrives once per network chunk, which can be many times a
+    // second. Notifying for each one rebuilt the full history snapshot, wrote
+    // it back to disk, and ran a script in every open tab, so a single
+    // download produced sustained disk I/O and UI churn proportional to
+    // chunks x tabs.
+    //
+    // Only intermediate progress is coalesced. Terminal transitions (finish,
+    // fail, cancel, remove) always notify immediately, so the final state is
+    // never lost, and a download that stalls simply stops updating, which is
+    // correct because nothing is changing.
+    constexpr auto kMinNotifyInterval = std::chrono::milliseconds(120);
+    const auto now = std::chrono::steady_clock::now();
+    if (has_notified_progress_ && (now - last_progress_notify_) < kMinNotifyInterval)
+        return;
+    last_progress_notify_ = now;
+    has_notified_progress_ = true;
     NotifyChangeLocked(lock);
 }
 
