@@ -41,6 +41,30 @@
 
 static UI *g_ui = 0;
 
+// The browser's own pages, shared by LoadCachedInternalPages (which preloads a
+// subset) and IsInternalPageURL (which decides scroll behaviour). Kept at
+// namespace scope so both functions provably agree; a per-function copy is how
+// "newtab.html" ended up in one list while the real file was new_tab_page.html.
+static const char *const kInternalPageNames[] = {
+    "ui.html",
+    "settings.html",
+    "new_tab_page.html",
+    "history.html",
+    "bookmarks.html",
+    "downloads.html",
+    "downloads-panel.html",
+    "passwords.html",
+    "themes.html",
+    "extensions.html",
+    "about.html",
+    "release_notes.html",
+    "suggestions.html",
+    "menu.html",
+    "contextmenu.html",
+    "drm_loading.html",
+    "quick-inspector.html",
+};
+
 #define UI_HEIGHT 80
 #define UI_HEIGHT_COMPACT 60 // Reduced height when compact tabs mode is enabled
 
@@ -1230,28 +1254,36 @@ void UI::LoadCachedStartPage()
 
 void UI::LoadCachedInternalPages()
 {
-  // Pre-load frequently used internal pages for instant loading
-  static const char *pages[] = {
-      "assets/settings.html",
-      "assets/history.html",
-      "assets/downloads.html",
-      "assets/passwords.html",
-      "assets/extensions.html",
-      "assets/about.html",
-      "assets/themes.html",
-      "assets/bookmarks.html",
-      "assets/new_tab_page.html"};
-
-  static const char *urls[] = {
-      "file:///settings.html",
-      "file:///history.html",
-      "file:///downloads.html",
-      "file:///passwords.html",
-      "file:///extensions.html",
-      "file:///about.html",
-      "file:///themes.html",
-      "file:///bookmarks.html",
-      "file:///new_tab_page.html"};
+  // Single source of truth for the browser's own pages.
+  //
+  // This replaces two index-aligned arrays (one of "assets/x.html" paths, one of
+  // "file:///x.html" URLs) plus a third copy inside IsInternalPageURL. The arrays
+  // only worked while both were edited together, and the earlier divergence is
+  // why IsInternalPageURL briefly listed "newtab.html" while the real file is
+  // new_tab_page.html. One table means a new page is registered in one place.
+  //
+  // preload is true only for the pages opened often enough to be worth holding in
+  // memory; every page still needs to be listed so IsInternalPageURL recognises
+  // it and gives it instant (non-animated) scrolling.
+  static const InternalPage kInternalPages[] = {
+      {"ui.html", false},
+      {"settings.html", true},
+      {"new_tab_page.html", true},
+      {"history.html", true},
+      {"bookmarks.html", true},
+      {"downloads.html", true},
+      {"downloads-panel.html", false},
+      {"passwords.html", true},
+      {"themes.html", true},
+      {"extensions.html", true},
+      {"about.html", true},
+      {"release_notes.html", false},
+      {"suggestions.html", false},
+      {"menu.html", false},
+      {"contextmenu.html", false},
+      {"drm_loading.html", false},
+      {"quick-inspector.html", false},
+  };
 
   // Get current working directory to construct absolute paths
   char cwd_buf[1024] = {0};
@@ -1260,27 +1292,28 @@ void UI::LoadCachedInternalPages()
 #else
   getcwd(cwd_buf, sizeof(cwd_buf));
 #endif
-  
+
   std::string cwd(cwd_buf);
 
-  for (size_t i = 0; i < sizeof(pages) / sizeof(pages[0]); ++i)
+  for (const InternalPage &page : kInternalPages)
   {
-    // Try primary path
-    std::string file_path = cwd + "/" + pages[i];
-    std::ifstream in(file_path, std::ios::in | std::ios::binary);
-    
+    if (!page.preload)
+      continue;
+
+    const std::string relative = std::string("assets/") + page.name;
+    std::ifstream in(cwd + "/" + relative, std::ios::in | std::ios::binary);
+
     // If not found, try alternative path
     if (!in.is_open())
     {
-      file_path = cwd + "/../" + pages[i];
-      in.open(file_path, std::ios::in | std::ios::binary);
+      in.open(cwd + "/../" + relative, std::ios::in | std::ios::binary);
     }
     
     if (in.is_open())
     {
       std::ostringstream ss;
       ss << in.rdbuf();
-      cached_internal_pages_[urls[i]] = ss.str();
+      cached_internal_pages_["file:///" + std::string(page.name)] = ss.str();
       in.close();
     }
   }
@@ -1297,12 +1330,44 @@ const std::string &UI::GetCachedPageHTML(const std::string &url) const
 
 void UI::LoadShortcuts()
 {
-  // Defaults
+  // Defaults first, so a missing or unreadable assets/shortcuts.json degrades to
+  // the built-in set instead of leaving the browser with only four bindings.
+  // Previously this list held 4 of the 26 shipped bindings, so losing the JSON
+  // silently disabled tab switching, tab-by-number and hard reload.
+  static const std::pair<const char *, const char *> kDefaults[] = {
+      {"Ctrl+T", "new-tab"},
+      {"Ctrl+N", "new-window"},
+      {"Ctrl+W", "close-tab"},
+      {"Ctrl+H", "open-history"},
+      {"Ctrl+B", "open-bookmarks"},
+      {"Ctrl+J", "open-downloads"},
+      {"Ctrl+E", "open-extensions"},
+      {"Ctrl+P", "open-passwords"},
+      {"Ctrl+L", "focus-address"},
+      {"Ctrl+,", "open-settings"},
+      {"Ctrl+Shift+T", "open-themes"},
+      {"Ctrl+Tab", "next-tab"},
+      {"Ctrl+Shift+Tab", "prev-tab"},
+      {"Ctrl+1", "select-tab-1"},
+      {"Ctrl+2", "select-tab-2"},
+      {"Ctrl+3", "select-tab-3"},
+      {"Ctrl+4", "select-tab-4"},
+      {"Ctrl+5", "select-tab-5"},
+      {"Ctrl+6", "select-tab-6"},
+      {"Ctrl+7", "select-tab-7"},
+      {"Ctrl+8", "select-tab-8"},
+      {"Ctrl+9", "select-tab-9"},
+      {"Ctrl+0", "select-tab-last"},
+      {"Ctrl+Shift+R", "reload-hard"},
+      {"Ctrl+F", "find-in-page"},
+  };
+
   shortcuts_.clear();
-  shortcuts_["Ctrl+T"] = "new-tab";
-  shortcuts_["Ctrl+W"] = "close-tab";
-  shortcuts_["Ctrl+H"] = "open-history";
-  shortcuts_["Ctrl+L"] = "focus-address";
+  for (const auto &entry : kDefaults)
+    shortcuts_[entry.first] = entry.second;
+
+  // F11 is handled directly in OnKeyEvent rather than through this table,
+  // because it carries no Ctrl modifier.
 
   // Try load from assets/shortcuts.json
   std::ifstream in("assets/shortcuts.json", std::ios::in | std::ios::binary);
@@ -5398,33 +5463,13 @@ bool UI::IsInternalPageURL(const String &url)
   const std::string_view v(u8.data());
 
   // Only the browser's own file:// pages. A remote site that happens to contain
-  // one of these substrings in its URL must not be treated as chrome.
+  // one of these names in its URL must not be treated as chrome.
   if (v.rfind("file:///", 0) != 0)
     return false;
 
-  // Kept in sync with the assets/*.html files that actually ship. "newtab.html"
-  // is not a real page; the file is new_tab_page.html.
-  static const char *kInternalPages[] = {
-      "ui.html",
-      "settings.html",
-      "new_tab_page.html",
-      "history.html",
-      "bookmarks.html",
-      "downloads.html",
-      "downloads-panel.html",
-      "passwords.html",
-      "themes.html",
-      "extensions.html",
-      "suggestions.html",
-      "menu.html",
-      "contextmenu.html",
-      "about.html",
-      "release_notes.html",
-      "drm_loading.html",
-      "quick-inspector.html",
-  };
-
-  for (const char *page : kInternalPages)
+  // Matches on the file name only, so "file:///settings.html" matches while
+  // "https://example.com/settings.html" cannot.
+  for (const char *page : kInternalPageNames)
   {
     if (v.find(page) != std::string_view::npos)
       return true;

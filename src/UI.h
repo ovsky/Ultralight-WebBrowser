@@ -45,6 +45,17 @@ class UI : public WindowListener,
            public LoadListener,
            public ViewListener
 {
+  // One of the browser's own file:// pages.
+  //
+  // Single source of truth: LoadCachedInternalPages uses this table to decide
+  // what to preload, and IsInternalPageURL uses it to decide which views scroll
+  // instantly. Adding a page in one place therefore registers it for both.
+  struct InternalPage
+  {
+    const char *name;
+    bool preload;
+  };
+
 public:
   UI(RefPtr<Window> window);
   // Overload retained for compatibility; adblockers are optional and may be unused.
