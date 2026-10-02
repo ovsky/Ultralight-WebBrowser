@@ -712,6 +712,9 @@
         // registered after the settings view is created.
         const MAX_DRM_RETRIES = 20;
         let drmRetryCount = 0;
+        // 50 attempts at 100ms is 5s for the settings bridge.
+        const MAX_SETTINGS_RETRIES = 50;
+        let settingsRetryCount = 0;
 
         function log(msg) {
             console.log('[Settings]', msg);
@@ -854,12 +857,24 @@
 
         function loadSettings() {
             if (typeof window.GetSettingsSnapshot !== 'function') {
-                log('Bridge not ready, retrying...');
-                setTimeout(loadSettings, 100);
+                // Same shape as loadDrmStatus: the bridge lands shortly after the
+                // view is created, so a few retries are expected, but an
+                // unbounded loop here fires ten times a second and writes to the
+                // debug panel on every attempt.
+                settingsRetryCount++;
+                if (settingsRetryCount <= MAX_SETTINGS_RETRIES) {
+                    if (settingsRetryCount === 1)
+                        log('Bridge not ready, retrying...');
+                    setTimeout(loadSettings, 100);
+                    return;
+                }
+                log('Settings bridge unavailable after ' + MAX_SETTINGS_RETRIES +
+                    ' retries; settings will not load.');
                 return;
             }
             try {
                 const payload = window.GetSettingsSnapshot();
+                settingsRetryCount = 0;
                 log('Got payload: ' + (typeof payload));
                 let data = typeof payload === 'string' ? JSON.parse(payload) : payload;
                 if (data && data.values) {
