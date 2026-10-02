@@ -6,7 +6,6 @@
 #include <cstdlib>
 #include <cstring>
 #include <memory>
-#include <filesystem>
 
 #include "AdBlocker.h"
 
@@ -23,15 +22,18 @@ Browser::Browser()
   Config config;
   config.scroll_timer_delay = 1.0 / 60.0;
 
-  // The engine loads ICU data and the CA bundle through the FileSystem API,
-  // relative to this prefix (Config::resource_path_prefix). The SDK default is
-  // "resources/", but this project ships those files with the rest of its
-  // file:// assets under "assets/resources" (see the install rule in
-  // CMakeLists.txt). Only override when that folder is actually present:
-  // pointing the engine at a missing prefix is worse than leaving the default,
-  // because every resource lookup then fails instead of falling back.
-  if (std::filesystem::exists("assets/resources"))
-    config.resource_path_prefix = "assets/resources/";
+  // NOTE: Config::resource_path_prefix is deliberately left at the SDK default
+  // ("resources/").
+  //
+  // Overriding it to "assets/resources/" was tried and reverted. The engine
+  // loads ICU data and the CA bundle through the FileSystem API using this
+  // prefix, and the override produced a hard "could not find icudt67l.dat"
+  // failure plus an intermittent exit at startup. Since the project installs no
+  // custom FileSystem, the default FileSystem resolves this relative to the
+  // process working directory, which is not reliably the executable's folder
+  // (launching from a shortcut, a CI runner, or a different CWD all break it).
+  // Leaving the default lets the engine use its own installed-resource lookup
+  // instead of a path that only happens to work from one directory.
 
   app_ = App::Create(settings, config);
 
