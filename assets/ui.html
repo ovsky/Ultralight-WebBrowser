@@ -74,6 +74,9 @@
         <input onfocus="select_next_mouseup = true;"
             onmouseup="if (select_next_mouseup) this.select(); select_next_mouseup = false;" type="text"
             id="address"></input>
+        <span id="zoom-badge" class="zoom-badge" role="button" tabindex="0"
+            aria-label="Page zoom. Click to reset to 100%" data-tooltip="Reset zoom (Ctrl+0)"
+            style="display: none;">100%</span>
         <span id="toggle-bookmark" class="icon" role="button" tabindex="0" aria-label="Toggle bookmark"
             data-tooltip="Bookmark this page">
             <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" id="bookmark-icon">
@@ -274,6 +277,40 @@
             if (bar) bar.classList.remove('visible');
             try { document.body.classList.remove('session-restore-visible'); } catch (e) {}
         }
+
+        // Page zoom indicator.
+        //
+        // Driven by the native side after any zoom change. Hidden at 100% so the
+        // toolbar matches Chrome, which only surfaces the badge once zoom has
+        // actually moved off 100%.
+        (function setupZoomBadge() {
+            const badge = document.getElementById('zoom-badge');
+            if (!badge) return;
+
+            const render = (percent) => {
+                if (!percent || percent === 100) {
+                    badge.style.display = 'none';
+                    return;
+                }
+                badge.style.display = '';
+                badge.textContent = percent + '%';
+            };
+
+            // Called natively after Ctrl+plus/minus/0. Defined here rather than
+            // bound by C++ so the badge owns its own DOM.
+            window.OnZoomChanged = render;
+
+            const reset = () => {
+                if (typeof OnResetZoom === 'function') OnResetZoom();
+            };
+            badge.addEventListener('click', reset);
+            badge.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    reset();
+                }
+            });
+        })();
 
         function bindCallbacks() {
             el.addEventListener('requestNewTab', ({ detail }) => OnRequestNewTab());

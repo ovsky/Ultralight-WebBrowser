@@ -7,6 +7,7 @@
 #include "PasswordManager.h"
 #include "BookmarkStore.h"
 #include <iostream>
+#include <cmath>
 #include <string>
 #include <cstdio>
 #include <sstream>
@@ -196,6 +197,29 @@ void Tab::Resize(uint32_t width, uint32_t height)
     inspector_overlay_->MoveTo(0, overlay_->y() + overlay_->height());
     inspector_overlay_->Resize(container_width_, inspector_overlay_->height());
   }
+}
+
+void Tab::SetZoom(double zoom)
+{
+  // Clamp to a range the engine handles well. Chrome's own bounds are 25% and
+  // 500%; going past that mainly produces unreadable layout rather than useful
+  // magnification, and very small scales make hit-testing unreliable.
+  constexpr double kMinZoom = 0.25;
+  constexpr double kMaxZoom = 5.0;
+
+  if (zoom < kMinZoom)
+    zoom = kMinZoom;
+  if (zoom > kMaxZoom)
+    zoom = kMaxZoom;
+  // Snap to whole percent so repeated Ctrl+plus does not accumulate float drift.
+  zoom = std::round(zoom * 100.0) / 100.0;
+
+  if (std::fabs(zoom - zoom_) < 0.001)
+    return;
+
+  zoom_ = zoom;
+  if (overlay_ && overlay_->view())
+    overlay_->view()->set_device_scale(zoom_);
 }
 
 void Tab::MoveTo(uint32_t x, uint32_t y)

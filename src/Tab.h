@@ -46,6 +46,12 @@ public:
 
   void SetInspectorHeight(int height);
 
+  // Per-tab page zoom, as a device scale where 1.0 is 100%. Chrome keeps zoom
+  // per origin; this keeps it per tab, which is the granularity a single-tab
+  // Ctrl+plus or Ctrl+minus can act on without affecting other tabs.
+  double zoom() const { return zoom_; }
+  void SetZoom(double zoom);
+
   void Resize(uint32_t width, uint32_t height);
 
   // Move the tab's overlay to a new position (x, y)
@@ -197,6 +203,9 @@ protected:
   uint64_t id_;
   bool ready_to_close_ = false;
   uint32_t container_width_, container_height_;
+
+  // Page zoom for this tab; 1.0 is 100%. See SetZoom.
+  double zoom_ = 1.0;
 
   // Password manager state for this tab
   std::string pending_save_origin_;

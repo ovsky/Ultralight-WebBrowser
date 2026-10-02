@@ -172,6 +172,8 @@ public:
   void OnToggleTools(const JSObject &obj, const JSArgs &args);
   void OnRequestNewTab(const JSObject &obj, const JSArgs &args);
   void OnRequestNewWindow(const JSObject &obj, const JSArgs &args);
+  // Zoom badge click: reset the active tab to 100%.
+  void OnResetZoom(const JSObject &obj, const JSArgs &args);
   void OnRequestTabClose(const JSObject &obj, const JSArgs &args);
   void OnActiveTabChange(const JSObject &obj, const JSArgs &args);
   void OnRequestChangeURL(const JSObject &obj, const JSArgs &args);
@@ -637,6 +639,10 @@ protected:
 
   // Selects the tab at a 0-based index; -1 means the last tab (Chrome's Ctrl+0).
   bool SelectTabByIndex(int index);
+
+  // Reports the active tab's zoom percentage to the chrome view so the address
+  // bar can show it. Best effort: never throws, and never reverts the zoom.
+  void SyncZoomToUI(double zoom);
 
   BrowserSettings settings_;
 

@@ -1356,10 +1356,12 @@ void UI::LoadShortcuts()
       {"Ctrl+6", "select-tab-6"},
       {"Ctrl+7", "select-tab-7"},
       {"Ctrl+8", "select-tab-8"},
-      {"Ctrl+9", "select-tab-9"},
-      {"Ctrl+0", "select-tab-last"},
+      {"Ctrl+9", "select-tab-last"},
       {"Ctrl+Shift+R", "reload-hard"},
       {"Ctrl+F", "find-in-page"},
+      {"Ctrl+Plus", "zoom-in"},
+      {"Ctrl+Minus", "zoom-out"},
+      {"Ctrl+0", "zoom-reset"},
   };
 
   shortcuts_.clear();
@@ -1444,6 +1446,9 @@ std::string UI::NormalizeShortcutKey(const ultralight::KeyEvent &evt)
 
   const uint32_t vk = static_cast<uint32_t>(evt.virtual_key_code);
   std::string name;
+  // Set for keys where Shift is part of the same binding (Ctrl+= and Ctrl+Shift+=
+  // are both zoom-in), so the identifier does not need a Shift variant.
+  bool suppress_shift = false;
 
   switch (vk)
   {
@@ -1457,27 +1462,50 @@ std::string UI::NormalizeShortcutKey(const ultralight::KeyEvent &evt)
   case kVK_Up:       name = "Up"; break;
   case kVK_Right:    name = "Right"; break;
   case kVK_Down:     name = "Down"; break;
-  default:
-    if (vk >= '0' && vk <= '9')
-    {
-      name = std::string(1, static_cast<char>(vk));
-    }
-    else if (vk >= 'A' && vk <= 'Z')
-    {
-      name = std::string(1, static_cast<char>(vk));
-    }
-    else if (vk >= 'a' && vk <= 'z')
-    {
-      name = std::string(1, static_cast<char>(vk - 'a' + 'A'));
-    }
-    else
-    {
-      // Punctuation such as Ctrl+, relies on the platform reporting it directly.
-      const int ch = static_cast<int>(vk);
-      if (ch >= 0x20 && ch <= 0x7E)
-        name = std::string(1, static_cast<char>(ch));
-    }
-    break;
+default:
+      if (vk >= '0' && vk <= '9')
+      {
+        name = std::string(1, static_cast<char>(vk));
+      }
+      else if (vk >= 'A' && vk <= 'Z')
+      {
+        name = std::string(1, static_cast<char>(vk));
+      }
+      else if (vk >= 'a' && vk <= 'z')
+      {
+        name = std::string(1, static_cast<char>(vk - 'a' + 'A'));
+      }
+      else
+      {
+        switch (vk)
+        {
+        // Zoom keys. Windows reports the unshifted key for these, so Ctrl+Shift+=
+        // arrives as '=' too. Both spellings mean zoom-in in Chrome, so the
+        // Shift flag is dropped for these (see below). Numeric keypad variants
+        // are included because Ctrl+'+' on the keypad is the other common way to
+        // zoom in.
+        case 0xBB: /* '='  */
+        case 0x6B: /* KP+ */
+          name = "Plus";
+          suppress_shift = true;
+          break;
+        case 0xBD: /* '-'  */
+        case 0x6D: /* KP- */
+        case 0x6F: /* KP_ */
+          name = "Minus";
+          suppress_shift = true;
+          break;
+        default:
+        {
+          // Punctuation such as Ctrl+, relies on the platform reporting it directly.
+          const int ch = static_cast<int>(vk);
+          if (ch >= 0x20 && ch <= 0x7E)
+            name = std::string(1, static_cast<char>(ch));
+          break;
+        }
+        }
+      }
+      break;
   }
 
   if (name.empty())
@@ -1488,7 +1516,7 @@ std::string UI::NormalizeShortcutKey(const ultralight::KeyEvent &evt)
   // Ctrl+T (new tab) from Ctrl+Shift+T, not the shifted character itself. For a
   // letter, Shift+T also reports 'T' as the key, so the two would otherwise
   // collide.
-  if (evt.modifiers & KeyEvent::kMod_ShiftKey)
+  if ((evt.modifiers & KeyEvent::kMod_ShiftKey) && !suppress_shift)
     key += "Shift+";
   key += name;
   return key;
@@ -1620,7 +1648,37 @@ bool UI::RunShortcutAction(const std::string &action)
     return false;
   }
 
+  // --- Page zoom (Chrome parity) ---
+  // Zoom applies to the active tab only, matching Chrome's per-tab behaviour.
+  if (action == "zoom-in" || action == "zoom-out" || action == "zoom-reset")
+  {
+    auto tab = active_tab();
+    if (!tab)
+      return false;
+    if (action == "zoom-reset")
+      tab->SetZoom(1.0);
+    else
+      tab->SetZoom(tab->zoom() + (action == "zoom-in" ? 0.1 : -0.1));
+    SyncZoomToUI(tab->zoom());
+    return true;
+  }
+
   return false;
+}
+
+void UI::SyncZoomToUI(double zoom)
+{
+  // The chrome view has no zoom badge today, so this only keeps the value
+  // observable for the address bar / status area. Best effort: a missing JS
+  // binding must never revert the zoom, which is already applied to the tab.
+  RefPtr<View> ui_view = view();
+  if (!ui_view)
+    return;
+
+  const std::string script =
+      "try{if(window.OnZoomChanged)window.OnZoomChanged(" +
+      std::to_string(static_cast<int>(std::lround(zoom * 100.0))) + ");}catch(e){}";
+  ui_view->EvaluateScript(String(script.c_str()), nullptr);
 }
 
 bool UI::CycleActiveTab(int direction)
@@ -2036,6 +2094,7 @@ void UI::OnDOMReady(View *caller, uint64_t frame_id, bool is_main_frame, const S
     }
   }
   global["OnRequestNewTab"] = BindJSCallback(&UI::OnRequestNewTab);
+  global["OnResetZoom"] = BindJSCallback(&UI::OnResetZoom);
   global["OnRequestNewWindow"] = BindJSCallback(&UI::OnRequestNewWindow);
   global["OnRequestTabClose"] = BindJSCallback(&UI::OnRequestTabClose);
   global["OnActiveTabChange"] = BindJSCallback(&UI::OnActiveTabChange);
@@ -2247,6 +2306,17 @@ void UI::OnRequestNewTab(const JSObject &obj, const JSArgs &args)
   CreateNewTab();
 }
 
+void UI::OnResetZoom(const JSObject &, const JSArgs &)
+{
+  // Clicking the zoom badge resets the active tab to 100%, matching Chrome's
+  // click-the-zoom-indicator behaviour.
+  auto tab = active_tab();
+  if (!tab)
+    return;
+  tab->SetZoom(1.0);
+  SyncZoomToUI(tab->zoom());
+}
+
 void UI::OnRequestNewWindow(const JSObject &obj, const JSArgs &args)
 {
 #if defined(_WIN32)
@@ -2386,6 +2456,8 @@ void UI::OnActiveTabChange(const JSObject &obj, const JSArgs &args)
       SetLoading(false);
       SetCanGoBack(drm_tab->CanGoBack());
       SetCanGoForward(drm_tab->CanGoForward());
+      // Zoom is per Ultralight tab; a DRM tab has none of its own.
+      SyncZoomToUI(1.0);
     }
     else
     {
@@ -2397,6 +2469,8 @@ void UI::OnActiveTabChange(const JSObject &obj, const JSArgs &args)
       // Was CanGoBack(), so the forward arrow always mirrored the back arrow.
       SetCanGoForward(tab_view->CanGoForward());
       SetURL(tab_view->url());
+      // Zoom is per tab, so the badge has to follow the newly active tab.
+      SyncZoomToUI(active_it->second->zoom());
     }
 
     // Update bookmark button state for the newly active tab

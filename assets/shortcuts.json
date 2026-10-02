@@ -20,9 +20,11 @@
   "Ctrl+6": "select-tab-6",
   "Ctrl+7": "select-tab-7",
   "Ctrl+8": "select-tab-8",
-  "Ctrl+9": "select-tab-9",
-  "Ctrl+0": "select-tab-last",
+  "Ctrl+9": "select-tab-last",
   "Ctrl+Shift+R": "reload-hard",
   "Ctrl+F": "find-in-page",
+  "Ctrl+Plus": "zoom-in",
+  "Ctrl+-": "zoom-out",
+  "Ctrl+0": "zoom-reset",
   "F11": "toggle-fullscreen"
 }

@@ -167,6 +167,30 @@ svg#icon_defs path {
      display: inline-block;
 }
 
+/* Page zoom indicator, shown only when the active tab is not at 100%. Sits
+   between the address bar and the bookmark button, as in Chrome. */
+.zoom-badge {
+     flex: 0 0 auto;
+     min-width: 40px;
+     padding: 2px 6px;
+     margin: 0 4px;
+     font-size: 11px;
+     font-weight: 600;
+     line-height: 16px;
+     text-align: center;
+     color: var(--color-text-secondary, #b6b3c9);
+     background: var(--color-bg-hover, #2c2c3a);
+     border: 1px solid var(--color-border-secondary, #262633);
+     border-radius: var(--radius-sm, 4px);
+     cursor: pointer;
+     user-select: none;
+}
+
+.zoom-badge:hover {
+     color: var(--color-text-primary, #f2f1f8);
+     background: var(--color-bg-active, #3a3a4c);
+}
+
 /* AdBlock toggle coloring: highlight when protection is active */
 #toggle-adblock {
      color: var(--color-text-tertiary, #b6b3c9);
