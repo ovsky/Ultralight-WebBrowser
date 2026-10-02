@@ -97,7 +97,7 @@ private:
     void NotifyChangeLocked(std::unique_lock<std::mutex> &lock);
     DownloadRecord &GetOrCreateRecordLocked(DownloadId id);
     DownloadRecord *FindRecordLocked(DownloadId id);
-    void CloseStreamLocked(DownloadId id, bool remove_file);
+    void CloseStreamLocked(DownloadId internal_id, bool remove_file);
     void LoadHistoryFromDisk();
     void SaveHistorySnapshotUnlocked(const std::string &snapshot);
     std::string BuildHistorySnapshotLocked(size_t max_entries) const;
@@ -113,6 +113,8 @@ private:
     mutable std::mutex mutex_;
     DownloadId next_id_ = 1;
     std::map<DownloadId, DownloadRecord> records_;
+    // Keyed by our internal id, same key space as records_. SDK callbacks carry
+    // the external id and must translate via GetInternalIdLocked before use.
     std::unordered_map<DownloadId, ActiveDownload> active_;
     std::unordered_map<DownloadId, DownloadId> external_to_internal_id_; // Maps Ultralight's ID to our internal ID
     uint64_t start_sequence_counter_ = 0;

@@ -2,7 +2,9 @@
 
 #include <Ultralight/platform/Platform.h>
 #include "Utils.h"
-#include "UI.h"
+// UI.h used to be included here, but this file references no UI:: symbols.
+// Leaving it in forced every test to link the whole UI, which is why download
+// bookkeeping had no unit coverage at all.
 
 #ifdef _WIN32
 #include <windows.h>
@@ -414,7 +416,10 @@ void DownloadManager::OnBeginDownload(ultralight::View *caller, DownloadId id, c
     ActiveDownload active;
     active.record = &record;
     active.stream = std::move(stream);
-    active_[id] = std::move(active);
+    // Keyed by our internal id, matching records_. The UI only ever knows
+    // internal ids (GetDownloadsJSON emits rec.id), so keying by the SDK's
+    // external id here made CancelDownload and RemoveDownload miss every time.
+    active_[internal_id] = std::move(active);
 
     if (record.sequence == 0)
     {
@@ -428,7 +433,7 @@ void DownloadManager::OnBeginDownload(ultralight::View *caller, DownloadId id, c
 void DownloadManager::OnReceiveDataForDownload(ultralight::View *caller, DownloadId id, ultralight::RefPtr<ultralight::Buffer> data)
 {
     std::unique_lock<std::mutex> lock(mutex_);
-    auto it = active_.find(id);
+    auto it = active_.find(GetInternalIdLocked(id));
     if (it == active_.end())
         return;
 
@@ -476,7 +481,7 @@ void DownloadManager::OnFinishDownload(ultralight::View *caller, DownloadId id)
         }
     }
 
-    CloseStreamLocked(id, false);
+    CloseStreamLocked(internal_id, false);
 
 #ifdef _WIN32
     // Perform WebP to PNG conversion after releasing the file stream
@@ -517,7 +522,7 @@ void DownloadManager::OnFailDownload(ultralight::View *caller, DownloadId id)
         rec->path.clear();
     }
 
-    CloseStreamLocked(id, true);
+    CloseStreamLocked(internal_id, true);
     NotifyChangeLocked(lock);
 }
 
@@ -931,9 +936,11 @@ DownloadManager::DownloadRecord *DownloadManager::FindRecordLocked(DownloadId id
     return &it->second;
 }
 
-void DownloadManager::CloseStreamLocked(DownloadId id, bool remove_file)
+// Takes our internal id, the same key space as records_ and active_. Callers
+// that receive an SDK callback must translate with GetInternalIdLocked first.
+void DownloadManager::CloseStreamLocked(DownloadId internal_id, bool remove_file)
 {
-    auto it = active_.find(id);
+    auto it = active_.find(internal_id);
     if (it != active_.end())
     {
         if (it->second.stream && it->second.stream->is_open())
@@ -941,9 +948,16 @@ void DownloadManager::CloseStreamLocked(DownloadId id, bool remove_file)
         active_.erase(it);
     }
 
-    DownloadId internal_id = GetInternalIdLocked(id);
-    // Clean up the ID mapping for this external ID (after we've used it)
-    external_to_internal_id_.erase(id);
+    // Drop every external mapping that resolves to this internal id. The map
+    // only ever holds in-flight downloads, so scanning it is cheaper than
+    // carrying a second reverse index for the sake of these erases.
+    for (auto map_it = external_to_internal_id_.begin(); map_it != external_to_internal_id_.end();)
+    {
+        if (map_it->second == internal_id)
+            map_it = external_to_internal_id_.erase(map_it);
+        else
+            ++map_it;
+    }
 
     auto rec = records_.find(internal_id);
     if (remove_file && rec != records_.end() && !rec->second.path.empty())
