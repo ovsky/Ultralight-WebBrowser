@@ -347,8 +347,12 @@ public:
   double spoofed_latitude() const { return settings_.spoofed_latitude; }
   double spoofed_longitude() const { return settings_.spoofed_longitude; }
 
-protected:
+  // Public: the data-file helpers in UI.cpp resolve history and session through
+  // this too, so every persistent file lands in the same place regardless of the
+  // working directory the browser was launched from.
   static std::filesystem::path SettingsDirectory();
+
+protected:
   static std::filesystem::path SettingsFilePath();
   static std::filesystem::path LegacySettingsFilePath();
   void CreateNewTab();

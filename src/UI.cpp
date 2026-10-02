@@ -41,6 +41,44 @@
 
 static UI *g_ui = 0;
 
+// History and session were written to a path relative to the working directory
+// ("data/history.json"), while settings and themes used the absolute
+// SettingsDirectory(). That split meant launching the browser from anywhere
+// other than the folder holding "data" silently wrote a fresh, empty history and
+// session -- the same working-directory fragility that made the ICU lookup fail.
+//
+// These helpers resolve both files through SettingsDirectory(), with the old
+// relative location kept as a read fallback so an existing install keeps its
+// history instead of appearing to lose it on upgrade.
+namespace
+{
+  std::filesystem::path DataFilePath(const char *name)
+  {
+    return UI::SettingsDirectory() / name;
+  }
+
+  std::filesystem::path LegacyDataFilePath(const char *name)
+  {
+    return std::filesystem::path("data") / name;
+  }
+
+  // Opens a data file for reading, transparently falling back to the legacy
+  // working-directory-relative copy. Returns an unopened stream if neither
+  // exists, so callers keep their existing "no file yet" behaviour.
+  std::ifstream OpenDataFileForRead(const char *name)
+  {
+    std::ifstream in(DataFilePath(name), std::ios::in | std::ios::binary);
+    if (in.is_open())
+      return in;
+
+    std::ifstream legacy(LegacyDataFilePath(name), std::ios::in | std::ios::binary);
+    if (legacy.is_open())
+      return legacy;
+
+    return std::ifstream();
+  }
+} // namespace
+
 // The browser's own pages, shared by LoadCachedInternalPages (which preloads a
 // subset) and IsInternalPageURL (which decides scroll behaviour). Kept at
 // namespace scope so both functions provably agree; a per-function copy is how
@@ -1045,7 +1083,7 @@ UI::~UI()
   if (clear_history_on_exit_)
   {
     history_.clear();
-    std::remove("data/history.json");
+    std::remove(DataFilePath("history.json").string().c_str());
   }
   else
   {
@@ -2363,7 +2401,7 @@ void UI::OnDOMReady(View *caller, uint64_t frame_id, bool is_main_frame, const S
     if (applySettingsPanel)
     {
       std::string payload = BuildSettingsPayload(true);
-      // Settings page loaded â€” apply settings
+      // Settings page loaded Ă˘â‚¬â€ť apply settings
       applySettingsPanel({String(payload.c_str())});
     }
     else
@@ -4988,7 +5026,7 @@ void UI::HandleSettingMutation(const std::string &key, bool value)
   if (key == "clear_history_on_exit")
   {
     if (value)
-      std::remove("data/history.json");
+      std::remove(DataFilePath("history.json").string().c_str());
     else
       SaveHistoryToDisk();
   }
@@ -5939,7 +5977,7 @@ void UI::LoadPopularSites()
 
 void UI::LoadHistoryFromDisk()
 {
-  std::ifstream in("data/history.json", std::ios::in | std::ios::binary);
+  std::ifstream in = OpenDataFileForRead("history.json");
   if (!in.is_open())
     return;
 
@@ -6060,12 +6098,12 @@ void UI::SaveHistoryToDisk()
 {
   if (clear_history_on_exit_)
   {
-    std::remove("data/history.json");
+    std::remove(DataFilePath("history.json").string().c_str());
     return;
   }
 
   EnsureDataDirectoryExists();
-  std::ofstream out("data/history.json", std::ios::out | std::ios::binary | std::ios::trunc);
+  std::ofstream out(DataFilePath("history.json"), std::ios::out | std::ios::binary | std::ios::trunc);
   if (!out.is_open())
     return;
 
@@ -6102,7 +6140,7 @@ void UI::SaveSessionToDisk()
     return;
 
   EnsureDataDirectoryExists();
-  std::ofstream out("data/session.json", std::ios::out | std::ios::binary | std::ios::trunc);
+  std::ofstream out(DataFilePath("session.json"), std::ios::out | std::ios::binary | std::ios::trunc);
   if (!out.is_open())
     return;
 
@@ -6184,7 +6222,7 @@ void UI::SaveSessionToDisk()
 void UI::LoadSessionFromDisk()
 {
   // Load session data from disk (does not restore tabs, just loads the data)
-  std::ifstream in("data/session.json");
+  std::ifstream in = OpenDataFileForRead("session.json");
   if (!in.is_open())
   {
     session_restore_pending_ = false;
@@ -6236,7 +6274,7 @@ void UI::LoadSessionFromDisk()
 
 bool UI::HasSavedSession() const
 {
-  std::ifstream in("data/session.json");
+  std::ifstream in = OpenDataFileForRead("session.json");
   if (!in.is_open())
     return false;
 
@@ -6275,7 +6313,7 @@ void UI::SaveSessionToDiskWithCleanExit()
   // Called during normal shutdown to preserve tabs for next startup
 
   EnsureDataDirectoryExists();
-  std::ofstream out("data/session.json", std::ios::out | std::ios::binary | std::ios::trunc);
+  std::ofstream out(DataFilePath("session.json"), std::ios::out | std::ios::binary | std::ios::trunc);
   if (!out.is_open())
     return;
 
@@ -6353,7 +6391,7 @@ void UI::SaveSessionToDiskWithCleanExit()
 void UI::RestoreSavedSession()
 {
   // Restore tabs from saved session
-  std::ifstream in("data/session.json");
+  std::ifstream in = OpenDataFileForRead("session.json");
   if (!in.is_open())
     return;
 
@@ -6449,7 +6487,7 @@ void UI::RestoreSavedSession()
 
 int UI::GetSavedSessionTabCount() const
 {
-  std::ifstream in("data/session.json");
+  std::ifstream in = OpenDataFileForRead("session.json");
   if (!in.is_open())
     return 0;
 
@@ -6526,7 +6564,7 @@ bool UI::IsInternalBrowserPage(const std::string &url) const
 int UI::GetMeaningfulSavedTabCount() const
 {
   // Count tabs that are NOT internal browser pages
-  std::ifstream in("data/session.json");
+  std::ifstream in = OpenDataFileForRead("session.json");
   if (!in.is_open())
     return 0;
 
