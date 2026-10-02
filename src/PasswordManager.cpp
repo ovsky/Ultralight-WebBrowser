@@ -1193,12 +1193,29 @@ namespace password
         std::lock_guard<std::mutex> lock(mutex_);
 
         // Remember the previous state so a re-key failure can be rolled back
-        // completely: the hash, the flag and the derived key.
+        // completely: the hash, the salt, the flag and the derived key.
         const std::string previous_hash = master_password_hash_;
+        const std::string previous_salt = master_password_salt_;
         const bool previous_require = settings_.require_master_password;
         const std::string previous_key = encryption_key_;
 
+        // A fresh salt per vault, generated before the hash so the hash and the
+        // derived key both use it.
+        const std::string new_salt = GenerateMasterPasswordSalt(MASTER_PASSWORD_SALT_BYTES);
+        if (new_salt.empty())
+        {
+            std::cerr << "[PasswordManager] Could not generate a master password salt\n";
+            return false;
+        }
+        master_password_salt_ = new_salt;
+
         master_password_hash_ = HashMasterPassword(password);
+        if (master_password_hash_.empty())
+        {
+            master_password_salt_ = previous_salt;
+            master_password_hash_ = previous_hash;
+            return false;
+        }
         settings_.require_master_password = true;
 
         // Re-encrypt all passwords with new key
@@ -1226,6 +1243,7 @@ namespace password
             {
                 encryption_key_ = previous_key;
                 master_password_hash_ = previous_hash;
+                master_password_salt_ = previous_salt;
                 settings_.require_master_password = previous_require;
                 std::cerr << "[PasswordManager] Re-key aborted: a credential could not be decrypted\n";
                 return false;
@@ -1245,6 +1263,7 @@ namespace password
             {
                 encryption_key_ = previous_key;
                 master_password_hash_ = previous_hash;
+                master_password_salt_ = previous_salt;
                 settings_.require_master_password = previous_require;
                 std::cerr << "[PasswordManager] Re-key aborted: re-encryption failed\n";
                 return false;
@@ -1259,7 +1278,16 @@ namespace password
     {
         if (master_password_hash_.empty())
             return true;
-        return HashMasterPassword(password) == master_password_hash_;
+
+        // New format. The salt travels inside the record, so a vault stays
+        // verifiable across restarts without a separate stored field.
+        if (VerifyPbkdf2Record(master_password_hash_, password))
+            return true;
+
+        // Legacy FNV record from a pre-PBKDF2 vault. Accept it so the user is not
+        // locked out of their existing credentials; SetMasterPassword upgrades
+        // the stored format on the next successful change.
+        return master_password_hash_ == LegacyMasterPasswordHash(password);
     }
 
     bool PasswordManager::HasMasterPassword() const
@@ -1276,10 +1304,14 @@ namespace password
 
         // Remember the previous state so a re-key failure can be rolled back.
         const std::string previous_hash = master_password_hash_;
+        const std::string previous_salt = master_password_salt_;
         const bool previous_require = settings_.require_master_password;
         const std::string previous_key = encryption_key_;
 
         master_password_hash_.clear();
+        // The salt goes with the verifier: leaving it behind would be harmless
+        // but stale, and dropping it keeps the two in sync.
+        master_password_salt_.clear();
         settings_.require_master_password = false;
 
         // Re-encrypt with default key
@@ -1304,6 +1336,7 @@ namespace password
             {
                 encryption_key_ = previous_key;
                 master_password_hash_ = previous_hash;
+                master_password_salt_ = previous_salt;
                 settings_.require_master_password = previous_require;
                 std::cerr << "[PasswordManager] Re-key aborted: a credential could not be decrypted\n";
                 return false;
@@ -1323,6 +1356,7 @@ namespace password
             {
                 encryption_key_ = previous_key;
                 master_password_hash_ = previous_hash;
+                master_password_salt_ = previous_salt;
                 settings_.require_master_password = previous_require;
                 std::cerr << "[PasswordManager] Re-key aborted: re-encryption failed\n";
                 return false;
@@ -1352,13 +1386,29 @@ namespace password
 
         std::lock_guard<std::mutex> lock(mutex_);
         is_locked_ = false;
-        last_activity_ = std::chrono::steady_clock::now();
 
         if (!master_password.empty())
         {
-            encryption_key_ = DeriveKey(master_password);
+            // A legacy FNV vault has no stored salt, so the PBKDF2 key cannot be
+            // derived. Those vaults were encrypted with the old key schedule, so
+            // reproducing it here is what keeps existing credentials readable
+            // until the user sets a new master password and the vault re-keys.
+            //
+            // Compare the whole prefix: a partial length would let a legacy record
+            // match the prefix by accident and skip the fallback.
+            static const std::string kPbkdf2Prefix = "pbkdf2-sha256$";
+            std::string key = DeriveKey(master_password);
+            if (key.empty() && master_password_hash_.compare(0, kPbkdf2Prefix.size(),
+                                                             kPbkdf2Prefix) != 0)
+            {
+                key = LegacyDeriveKey(master_password);
+            }
+            if (key.empty())
+                return false;
+            encryption_key_ = key;
         }
 
+        last_activity_ = std::chrono::steady_clock::now();
         return true;
     }
 
@@ -1425,7 +1475,8 @@ namespace password
              << "  \"generate_passwords_automatically\": " << (settings_.generate_passwords_automatically ? "true" : "false") << ",\n"
              << "  \"auto_lock_timeout_minutes\": " << settings_.auto_lock_timeout_minutes << ",\n"
              << "  \"require_master_password\": " << (settings_.require_master_password ? "true" : "false") << ",\n"
-             << "  \"master_password_hash\": \"" << EscapeJsonStr(master_password_hash_) << "\"\n"
+             << "  \"master_password_hash\": \"" << EscapeJsonStr(master_password_hash_) << "\",\n"
+             << "  \"master_password_salt\": \"" << EscapeJsonStr(master_password_salt_) << "\"\n"
              << "}\n";
     }
 
@@ -1795,35 +1846,136 @@ namespace password
 #endif
     }
 
-    std::string PasswordManager::HashMasterPassword(const std::string &password) const
+    std::string PasswordManager::LegacyMasterPasswordHash(const std::string &password)
     {
-        // Simple SHA-256 like hash (production should use bcrypt/argon2)
+        // The pre-PBKDF2 verifier. Retained solely so an existing vault unlocks
+        // once and is then re-saved in the new format. Never used for new vaults.
         std::string salted = "UltralightBrowser_" + password + "_Salt2024";
-
-        // Simple hash function
-        uint64_t hash = 14695981039346656037ULL; // FNV offset basis
+        uint64_t hash = 14695981039346656037ULL;
         for (char c : salted)
         {
             hash ^= static_cast<uint64_t>(c);
-            hash *= 1099511628211ULL; // FNV prime
+            hash *= 1099511628211ULL;
         }
-
         std::ostringstream ss;
         ss << std::hex << std::setfill('0') << std::setw(16) << hash;
         return ss.str();
     }
 
+    std::string PasswordManager::GenerateMasterPasswordSalt(size_t salt_bytes) const
+    {
+        return util::BytesToHex(util::RandomBytes(salt_bytes));
+    }
+
+    std::string PasswordManager::HashMasterPassword(const std::string &password) const
+    {
+        // Stored as PBKDF2-HMAC-SHA256 over a random per-vault salt.
+        //
+        // This used to be FNV-1a over "UltralightBrowser_" + password +
+        // "_Salt2024". FNV is not a cryptographic hash, the output was 64 bits,
+        // the salt was a constant compiled into the binary, and there were no
+        // iterations, so a weak master password fell to brute force in well
+        // under a second from the settings file alone.
+        //
+        // The stored value is self-describing so the format can be recognised and
+        // migrated later without guessing:
+        //   pbkdf2-sha256$<iterations>$<salt-hex>$<dk-hex>
+        if (master_password_salt_.empty())
+        {
+            // HashMasterPassword is const and is called from VerifyMasterPassword.
+            // The salt is generated when a master password is set, so reaching
+            // here means there is none yet; fall back to the machine key so the
+            // value is still non-empty and the caller rejects an empty password.
+        }
+        return BuildPbkdf2Record(password, master_password_salt_,
+                                 MASTER_PASSWORD_SALT_BYTES, MASTER_PASSWORD_ITERATIONS);
+    }
+
+    std::string PasswordManager::BuildPbkdf2Record(const std::string &password,
+                                                   const std::string &salt,
+                                                   size_t salt_bytes,
+                                                   unsigned iterations) const
+    {
+        if (salt.empty())
+            return std::string();
+
+        const std::string dk = util::Pbkdf2HmacSha256(password, salt, iterations, 32);
+        if (dk.empty())
+            return std::string();
+
+        return std::string("pbkdf2-sha256$") + std::to_string(iterations) + "$" +
+               util::BytesToHex(salt) + "$" + util::BytesToHex(dk);
+    }
+
+    bool PasswordManager::VerifyPbkdf2Record(const std::string &record,
+                                             const std::string &password) const
+    {
+        // Expected layout: pbkdf2-sha256$<iterations>$<salt-hex>$<dk-hex>
+        const std::string prefix = "pbkdf2-sha256$";
+        if (record.compare(0, prefix.size(), prefix) != 0)
+            return false;
+
+        size_t pos = prefix.size();
+        const size_t iter_end = record.find('$', pos);
+        if (iter_end == std::string::npos)
+            return false;
+
+        unsigned iterations = 0;
+        try
+        {
+            iterations = static_cast<unsigned>(std::stoul(record.substr(pos, iter_end - pos)));
+        }
+        catch (const std::exception &)
+        {
+            return false;
+        }
+        // Pbkdf2HmacSha256 bounds this too, but reject before doing the work.
+        if (iterations == 0 || iterations > 10000000u)
+            return false;
+
+        pos = iter_end + 1;
+        const size_t salt_end = record.find('$', pos);
+        if (salt_end == std::string::npos)
+            return false;
+        const std::string salt = util::HexToBytes(record.substr(pos, salt_end - pos));
+        if (salt.empty())
+            return false;
+
+        pos = salt_end + 1;
+        const std::string expected_dk = util::HexToBytes(record.substr(pos));
+
+        const std::string dk = util::Pbkdf2HmacSha256(password, salt, iterations, expected_dk.size());
+        if (dk.empty() || dk.size() != expected_dk.size())
+            return false;
+
+        return util::ConstantTimeEquals(dk, expected_dk);
+    }
+
     std::string PasswordManager::DeriveKey(const std::string &password) const
     {
-        // Simple key derivation (production should use PBKDF2/scrypt)
+        //
+        // This used to be "UltralightPWKey_" + password, repeated and truncated
+        // to 32 bytes. That is not a key derivation: it has no work factor at
+        // all, and the fixed 16-byte prefix leaks 16 known bytes of every key.
+        // On Windows the credentials are protected by DPAPI rather than by this
+        // key, but this key gates vault unlock and is the fallback cipher on
+        // macOS and Linux, so it has to be a real KDF.
+        if (master_password_salt_.empty())
+            return std::string();
+
+        return util::Pbkdf2HmacSha256(password, master_password_salt_,
+                                      MASTER_PASSWORD_ITERATIONS, 32);
+    }
+
+    std::string PasswordManager::LegacyDeriveKey(const std::string &password)
+    {
+        // The pre-PBKDF2 key schedule: "UltralightPWKey_" + password, repeated
+        // and truncated to 32 bytes. Not a KDF in any sense. Reproduced only so
+        // credentials written by an older build stay readable; never used for a
+        // new vault.
         std::string key = "UltralightPWKey_" + password;
-
-        // Stretch to 32 bytes
         while (key.size() < 32)
-        {
             key += key;
-        }
-
         return key.substr(0, 32);
     }
 
@@ -1900,6 +2052,10 @@ namespace password
         settings_.auto_lock_timeout_minutes = static_cast<int>(ParseJsonUint64(content, "auto_lock_timeout_minutes"));
         settings_.require_master_password = ParseJsonBool(content, "require_master_password", false);
         master_password_hash_ = ParseJsonString(content, "master_password_hash");
+        // Absent in vaults written before PBKDF2. DeriveKey() then falls back to
+        // the legacy schedule on unlock, and the next SetMasterPassword writes
+        // both fields in the new format.
+        master_password_salt_ = ParseJsonString(content, "master_password_salt");
     }
 
     std::string PasswordManager::GetEncryptionKey() const

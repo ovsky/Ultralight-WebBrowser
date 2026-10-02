@@ -213,7 +213,7 @@ endif()
 	 find_library(ULTRALIGHT_CORE_LIB NAMES UltralightCore PATHS "${ULTRALIGHT_SDK_ROOT}/lib" "${ULTRALIGHT_SDK_ROOT}/bin" NO_DEFAULT_PATH)
 	 find_library(WEB_CORE_LIB NAMES WebCore PATHS "${ULTRALIGHT_SDK_ROOT}/lib" "${ULTRALIGHT_SDK_ROOT}/bin" NO_DEFAULT_PATH)
 
-	 if(APP_CORE_LIB AND ULTRALIGHT_LIB)
+	if(APP_CORE_LIB AND ULTRALIGHT_LIB)
 		 add_executable(UtilsTest tests/UtilsTest.cpp src/Utils.cpp)
 		 target_link_libraries(UtilsTest PRIVATE ${APP_CORE_LIB} ${ULTRALIGHT_LIB} ${ULTRALIGHT_CORE_LIB} ${WEB_CORE_LIB})
 		 target_include_directories(UtilsTest PRIVATE "${ULTRALIGHT_SDK_ROOT}/include")
@@ -280,9 +280,22 @@ add_test(NAME MemoryMonitorTest COMMAND MemoryMonitorTest)
 	 else()
 	 	message(STATUS "Skipping DownloadManagerTest: Ultralight SDK libraries not found")
 	 endif()
- 	else()
+ else()
 	 message(STATUS "Skipping tests on Windows when not using MSVC (to avoid linking MSVC .lib with MinGW)")
  endif()
+
+# util::RandomBytes uses BCryptGenRandom on Windows, so every target that
+# compiles src/Utils.cpp needs bcrypt. Applied here rather than per target so a
+# new test that compiles Utils.cpp does not have to remember it.
+if(WIN32 AND MSVC)
+	# util::RandomBytes uses BCryptGenRandom on Windows.
+	target_link_libraries(Ultralight-WebBrowser PRIVATE bcrypt)
+	foreach(_utils_target IN ITEMS UtilsTest DownloadManagerTest MediaFallbackTest)
+		if(TARGET ${_utils_target})
+			target_link_libraries(${_utils_target} PRIVATE bcrypt)
+		endif()
+	endforeach()
+endif()
 
 # Install/package settings
 set(INSTALL_DIR_NAME "UltralightWebBrowser")

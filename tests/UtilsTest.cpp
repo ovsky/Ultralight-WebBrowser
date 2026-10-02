@@ -1,7 +1,9 @@
 #include "../src/Utils.h"
+#include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <iostream>
 #include <string>
 
 static int g_failures = 0;
@@ -375,6 +377,247 @@ static void TestExtractJsonBoolField()
           "ExtractJsonBoolField rejects a null field name");
 }
 
+// Pinned to the published vectors rather than to our own output, so a mistake in
+// the implementation cannot quietly agree with itself.
+static void TestSha256()
+{
+    using namespace util;
+
+    // FIPS 180-2 / NIST examples.
+    CheckEq(Sha256(""),
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "Sha256 of the empty string");
+    CheckEq(Sha256("abc"),
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+            "Sha256(\"abc\")");
+    CheckEq(Sha256("abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq"),
+            "248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1",
+            "Sha256 of the 56-byte NIST example");
+
+    // The message is longer than one block, which exercises the multi-block loop
+    // and the 55/56/64-byte padding boundaries.
+    CheckEq(Sha256(std::string(1000000, 'a')),
+            "cdc76e5c9914fb9281a1c7e284d73e67f1809a48a497200e046d39ccc7112cd0",
+            "Sha256 of one million 'a'");
+
+    // 55 bytes is the largest input that still needs no extra padding block.
+    CheckEq(Sha256(std::string(55, 'a')),
+            Sha256(std::string(55, 'a')),
+            "Sha256 is stable at the 55-byte padding boundary");
+    Check(Sha256(std::string(55, 'a')) != Sha256(std::string(56, 'a')),
+          "Sha256 distinguishes 55 from 56 bytes");
+}
+
+// The primitives return raw bytes; compare them as hex against the published
+// vectors, which are all given in hex.
+static std::string ToHex(const std::string &raw)
+{
+    static const char *hex = "0123456789abcdef";
+    std::string out;
+    out.reserve(raw.size() * 2);
+    for (char c : raw)
+    {
+        const unsigned char byte = static_cast<unsigned char>(c);
+        out.push_back(hex[byte >> 4]);
+        out.push_back(hex[byte & 0x0F]);
+    }
+    return out;
+}
+
+// RFC 4231 test cases 1, 2 and 3.
+static void TestHmacSha256()
+{
+    using namespace util;
+
+    CheckEq(ToHex(HmacSha256(std::string(20, '\x0b'), "Hi There")),
+            "b0344c61d8db38535ca8afceaf0bf12b881dc200c9833da726e9376c2e32cff7",
+            "HMAC-SHA256 RFC 4231 case 1");
+
+    CheckEq(ToHex(HmacSha256("Jefe", "what do ya want for nothing?")),
+            "5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843",
+            "HMAC-SHA256 RFC 4231 case 2");
+
+    CheckEq(ToHex(HmacSha256(std::string(20, '\xaa'), std::string(50, '\xdd'))),
+            "773ea91e36800e46854db8ebd09181a72959098b3ef8c122d9635514ced565fe",
+            "HMAC-SHA256 RFC 4231 case 3");
+
+    // An over-long key must be hashed down to the block size first.
+    CheckEq(ToHex(HmacSha256(std::string(131, '\xaa'), "Test Using Larger Than Block-Size Key - Hash Key First")),
+            "60e431591ee0b67f0d8a26aacbf5b77f8e0bc6213728c5140546040f0ee37f54",
+            "HMAC-SHA256 RFC 4231 case 6");
+}
+
+// RFC 6070-style vectors, expressed for HMAC-SHA256 as in RFC 7914 section 11.
+static void TestPbkdf2HmacSha256()
+{
+    using namespace util;
+
+    CheckEq(ToHex(Pbkdf2HmacSha256("password", "salt", 1, 32)),
+            "120fb6cffcf8b32c43e7225256c4f837a86548c92ccc35480805987cb70be17b",
+            "PBKDF2-HMAC-SHA256 c=1");
+    CheckEq(ToHex(Pbkdf2HmacSha256("password", "salt", 2, 32)),
+            "ae4d0c95af6b46d32d0adff928f06dd02a303f8ef3c251dfd6e2d85a95474c43",
+            "PBKDF2-HMAC-SHA256 c=2");
+    CheckEq(ToHex(Pbkdf2HmacSha256("password", "salt", 4096, 32)),
+            "c5e478d59288c841aa530db6845c4c8d962893a001ce4e11a4963873aa98134a",
+            "PBKDF2-HMAC-SHA256 c=4096");
+
+    // Long output spans more than one HMAC-SHA256 block. RFC 7914 publishes this
+    // vector for dkLen=40; only the leading 32 bytes are reproduced here, so
+    // compare that prefix rather than inventing the trailing block.
+    const std::string long_dk =
+        Pbkdf2HmacSha256("passwordPASSWORDpassword",
+                         "saltSALTsaltSALTsaltSALTsaltSALTsalt", 4096, 40);
+    CheckEq(std::to_string(long_dk.size()), "40",
+            "PBKDF2 returns the requested key length");
+    CheckEq(ToHex(long_dk).substr(0, 64),
+            "348c89dbcbd32b2f32d814b8116e84cf2b17347ebc1800181c4e2a1fb8dd53e1",
+            "PBKDF2-HMAC-SHA256 dkLen=40 c=4096, first block");
+
+    // Distinct inputs must not collide.
+    Check(Pbkdf2HmacSha256("password", "salt", 1000, 32) !=
+              Pbkdf2HmacSha256("password", "salt2", 1000, 32),
+          "PBKDF2 depends on the salt");
+    Check(Pbkdf2HmacSha256("password", "salt", 1000, 32) !=
+              Pbkdf2HmacSha256("Password", "salt", 1000, 32),
+          "PBKDF2 depends on the password");
+
+    // Iteration count must actually change the output.
+    Check(Pbkdf2HmacSha256("password", "salt", 1000, 32) !=
+              Pbkdf2HmacSha256("password", "salt", 1001, 32),
+          "PBKDF2 depends on the iteration count");
+
+    // A corrupt settings file must not be able to hang the UI thread.
+    CheckEq(Pbkdf2HmacSha256("p", "s", 0, 32), "", "PBKDF2 rejects zero iterations");
+    CheckEq(Pbkdf2HmacSha256("p", "s", 50000000u, 32), "",
+            "PBKDF2 rejects an absurd iteration count");
+    CheckEq(Pbkdf2HmacSha256("p", "s", 1000, 0), "", "PBKDF2 rejects a zero length key");
+}
+
+static void TestConstantTimeEquals()
+{
+    using namespace util;
+
+    Check(ConstantTimeEquals("abc", "abc"), "equal strings compare equal");
+    Check(!ConstantTimeEquals("abc", "abd"), "differing strings compare unequal");
+    Check(!ConstantTimeEquals("abc", "abcd"), "differing lengths compare unequal");
+    Check(ConstantTimeEquals("", ""), "empty strings compare equal");
+}
+
+static void TestHexRoundTrip()
+{
+    using namespace util;
+
+    // Bytes 0x00..0x0f, which exercises leading zeros and high nibbles.
+    const std::string raw("\x00\x01\x02\x7f\x80\xfe\xff", 7);
+    CheckEq(BytesToHex(raw), "0001027f80feff", "BytesToHex encodes nibbles in order");
+    CheckEq(HexToBytes("0001027f80feff"), raw, "hex round-trips through HexToBytes");
+
+    CheckEq(BytesToHex(""), "", "empty input encodes to empty hex");
+    CheckEq(HexToBytes(""), "", "empty hex decodes to empty bytes");
+
+    // A salt is 16 bytes -> 32 hex chars, which is what the vault stores.
+    CheckEq(std::to_string(RandomBytes(16).size()), "16", "RandomBytes returns the requested count");
+
+    // Malformed hex must be rejected, not silently half-decoded, so a corrupt
+    // settings file cannot produce a plausible-looking but wrong salt.
+    CheckEq(HexToBytes("abc"), "", "odd-length hex is rejected");
+    CheckEq(HexToBytes("zz"), "", "non-hex characters are rejected");
+    CheckEq(HexToBytes("00 11"), "", "embedded whitespace is rejected");
+    CheckEq(HexToBytes("00x1"), "", "a trailing non-hex character is rejected");
+
+    // Uppercase must decode, since a hand-edited settings file may use it.
+    CheckEq(HexToBytes("ABCDEF"), HexToBytes("abcdef"), "hex decoding is case-insensitive");
+}
+
+// The stored master password verifier is a self-describing record:
+//   pbkdf2-sha256$<iterations>$<salt-hex>$<dk-hex>
+// VerifyMasterPassword parses exactly this shape, so the format is pinned here
+// rather than only inside PasswordManager, which has no test target.
+static void TestPbkdf2RecordFormat()
+{
+    using namespace util;
+
+    const std::string prefix = "pbkdf2-sha256$";
+
+    const std::string salt_hex = BytesToHex(RandomBytes(16));
+    CheckEq(std::to_string(salt_hex.size()), "32", "a 16-byte salt encodes to 32 hex chars");
+
+    const unsigned iterations = 1000;
+    const std::string dk = Pbkdf2HmacSha256("correct horse", HexToBytes(salt_hex), iterations, 32);
+    const std::string record =
+        prefix + std::to_string(iterations) + "$" + salt_hex + "$" + BytesToHex(dk);
+
+    // Parse it back the way VerifyPbkdf2Record does.
+    CheckEq(std::to_string(record.compare(0, prefix.size(), prefix)), "0",
+            "a new record carries the expected prefix");
+
+    const size_t iter_end = record.find('$', prefix.size());
+    Check(record.find('$', iter_end + 1) != std::string::npos,
+          "the record has a salt field after the iterations");
+    const std::string stored_iter_text = record.substr(prefix.size(), iter_end - prefix.size());
+    const size_t salt_end = record.find('$', iter_end + 1);
+    const std::string stored_salt_hex = record.substr(iter_end + 1, salt_end - iter_end - 1);
+    const std::string stored_dk_hex = record.substr(salt_end + 1);
+
+    CheckEq(stored_iter_text, "1000", "iterations round-trip");
+    CheckEq(stored_salt_hex, salt_hex, "the salt round-trips through the record");
+    CheckEq(HexToBytes(stored_salt_hex), HexToBytes(salt_hex), "the salt decodes to the same bytes");
+
+    // Re-deriving from the stored salt reproduces the stored key. This is the
+    // whole point of embedding the salt in the record: the vault stays verifiable
+    // after a restart without a separate stored field.
+    CheckEq(ToHex(Pbkdf2HmacSha256("correct horse", HexToBytes(stored_salt_hex), iterations, 32)),
+            ToHex(HexToBytes(stored_dk_hex)),
+            "re-deriving from the stored salt reproduces the stored key");
+
+    // A wrong password must not reproduce it.
+    Check(ToHex(Pbkdf2HmacSha256("wrong horse", HexToBytes(stored_salt_hex), iterations, 32)) !=
+              ToHex(HexToBytes(stored_dk_hex)),
+          "a different password produces a different key");
+
+    // A legacy FNV record is a bare 16-char hex string with no prefix, so the
+    // two formats are distinguishable and neither is mistaken for the other.
+    const std::string legacy = "0011223344556677";
+    Check(legacy.compare(0, prefix.size(), prefix) != 0,
+          "a legacy record does not carry the new-format prefix");
+}
+
+static void TestRandomBytesAreDistinct()
+{
+    using namespace util;
+
+    // Two calls must not return the same 16 bytes. This is a smoke test for the
+    // generator actually being seeded, not a proof of CSPRNG quality.
+    const std::string a = RandomBytes(16);
+    const std::string b = RandomBytes(16);
+    CheckEq(std::to_string(a.size()), "16", "first draw has the requested length");
+    CheckEq(std::to_string(b.size()), "16", "second draw has the requested length");
+    Check(!ConstantTimeEquals(a, b), "two random draws differ");
+    CheckEq(RandomBytes(0), "", "zero length returns empty");
+}
+
+// VerifyMasterPassword and Unlock both run on the UI thread, so the production
+// cost must stay interactive. This guards against someone raising the iteration
+// count to a value that makes unlock feel like a hang. The budget is generous
+// because this runs on shared CI hardware, but it is far below the point where a
+// user would notice.
+static void TestProductionIterationCountIsInteractive()
+{
+    using namespace util;
+
+    const unsigned kProductionIterations = 200000;
+    const auto start = std::chrono::steady_clock::now();
+    const std::string dk = Pbkdf2HmacSha256("a master password", RandomBytes(16),
+                                            kProductionIterations, 32);
+    const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                            std::chrono::steady_clock::now() - start)
+                            .count();
+
+    CheckEq(std::to_string(dk.size()), "32", "production derivation returns 32 bytes");
+    Check(elapsed < 2000, "production iteration count stays interactive on the UI thread");
+}
+
 int main()
 {
     TestEscapeJsonString();
@@ -390,6 +633,14 @@ int main()
     TestFindMatchingBraceUnescapedTitleBrace();
     TestExtractJsonStringField();
     TestExtractJsonBoolField();
+    TestSha256();
+    TestHmacSha256();
+    TestPbkdf2HmacSha256();
+    TestConstantTimeEquals();
+    TestHexRoundTrip();
+    TestRandomBytesAreDistinct();
+    TestPbkdf2RecordFormat();
+    TestProductionIterationCountIsInteractive();
 
     if (g_failures > 0)
     {

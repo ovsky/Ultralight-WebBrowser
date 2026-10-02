@@ -214,12 +214,35 @@ namespace password
         static std::string GenerateUUID();
         static uint64_t GetCurrentTimestamp();
 
+        // PBKDF2 cost. High enough to hurt an offline guess of the master
+        // password, low enough that unlocking stays interactive on the UI thread.
+        static constexpr unsigned MASTER_PASSWORD_ITERATIONS = 200000;
+        static constexpr size_t MASTER_PASSWORD_SALT_BYTES = 16;
+
     private:
         // Encryption helpers
         std::string Encrypt(const std::string &plaintext) const;
         std::string Decrypt(const std::string &ciphertext) const;
         std::string HashMasterPassword(const std::string &password) const;
         std::string DeriveKey(const std::string &password) const;
+
+        // Formats and checks a stored master password verifier of the form
+        //   pbkdf2-sha256$<iterations>$<salt-hex>$<dk-hex>
+        std::string BuildPbkdf2Record(const std::string &password, const std::string &salt,
+                                      size_t salt_bytes, unsigned iterations) const;
+        bool VerifyPbkdf2Record(const std::string &record, const std::string &password) const;
+
+        // Legacy verifier, kept only so an existing vault can still be unlocked
+        // once and then migrated. FNV-1a over a constant salt; see the
+        // implementation for why it is not acceptable for new vaults.
+        static std::string LegacyMasterPasswordHash(const std::string &password);
+
+        // The pre-PBKDF2 key schedule, for reading vaults written by an older
+        // build. Never used for a new vault.
+        static std::string LegacyDeriveKey(const std::string &password);
+
+        // A fresh random salt for the vault, hex-encoded.
+        std::string GenerateMasterPasswordSalt(size_t salt_bytes) const;
 
         // Internal helpers
         void LoadBlacklist();
@@ -245,6 +268,10 @@ namespace password
 
         std::string encryption_key_;
         std::string master_password_hash_;
+        // Per-vault PBKDF2 salt, hex-encoded. Generated when a master password is
+        // set and persisted alongside the verifier, so the stored key can be
+        // re-derived after a restart.
+        std::string master_password_salt_;
         bool is_locked_;
         std::chrono::steady_clock::time_point last_activity_;
 
