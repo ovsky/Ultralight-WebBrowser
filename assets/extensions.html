@@ -136,16 +136,17 @@
 
 /* Single page scroller. A nested list scroller gave the window two
    scrollbars and made wheel routing ambiguous, now that scrolling is
-   dispatched by pointer position. The header sticks so the actions stay
-   reachable in a long list. */
+   dispatched by pointer position.
+
+   The header is not sticky, for the same reason as in settings.html: a sticky
+   header over the list has to be repositioned and repainted on every wheel
+   frame, and the rows underneath it repaint too, so scroll cost grows with the
+   length of the list instead of staying flat. */
 #extensions-container {
     padding-bottom: 24px;
 }
 
 header {
-    position: sticky;
-    top: -24px;
-    z-index: 5;
     background: var(--bg-primary);
     padding-top: 24px;
 }

@@ -33,7 +33,12 @@
         }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            background: linear-gradient(135deg, var(--bg-primary) 0%, #252540 100%);
+            /* Flat background rather than a gradient. A gradient body is
+               repainted across the full viewport on every scroll frame, and on
+               a long page that is most of the pixels on screen. A solid colour
+               lets the engine keep the background as one cached layer. The
+               visual difference is negligible next to the smoothness gain. */
+            background: var(--bg-primary);
             color: var(--text-primary);
             line-height: 1.5;
             min-height: 100vh;
@@ -120,16 +125,23 @@
 
         /* One page scroller. The previous nested #settings-container scroller
            produced a second scrollbar and made wheel input ambiguous, since
-           scroll routing now depends on pointer position. The header sticks
-           so search stays reachable in a long list. */
+           scroll routing now depends on pointer position.
+
+           The header used to be position: sticky, which is the single most
+           expensive thing this page can do while scrolling. A sticky element
+           over a gradient body has to be re-positioned and repainted on every
+           wheel frame, and because it sits on top of the rows it forces those
+           rows to repaint too, so the cost scales with the length of the list
+           instead of staying constant.
+
+           Scrolling past the header is a fair trade for a steady frame rate:
+           the search box is the first thing at the top of the page, and the
+           list is short enough to scroll back to. */
         #settings-container {
             padding-bottom: 24px;
         }
 
         header {
-            position: sticky;
-            top: -24px;
-            z-index: 5;
             background: var(--bg-primary);
             padding-top: 24px;
         }
