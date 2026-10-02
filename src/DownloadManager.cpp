@@ -725,17 +725,25 @@ void DownloadManager::PruneStaleRequests()
 
 std::filesystem::path DownloadManager::DetermineDefaultDirectory()
 {
-    std::filesystem::path base;
+  // Resolve against the user's home directory, not the working directory. Using
+  // current_path() here meant downloads landed next to whatever binary the
+  // browser happened to be launched from, so a shortcut or a different CWD
+  // scattered files across unrelated folders.
+  std::filesystem::path base;
 #ifdef _WIN32
+  auto profile = util::GetEnvVar("USERPROFILE");
+  if (!profile.empty())
+    base = std::filesystem::path(profile);
+  else
     base = std::filesystem::current_path();
 #else
-    auto home = util::GetEnvVar("HOME");
-    if (!home.empty())
-        base = std::filesystem::path(home);
-    else
-        base = std::filesystem::current_path();
+  auto home = util::GetEnvVar("HOME");
+  if (!home.empty())
+    base = std::filesystem::path(home);
+  else
+    base = std::filesystem::current_path();
 #endif
-    return base / kDownloadsFolderName;
+  return base / kDownloadsFolderName;
 }
 
 std::string DownloadManager::DeriveFilename(const std::string &url, const std::string &suggested)
