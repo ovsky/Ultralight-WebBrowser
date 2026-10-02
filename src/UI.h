@@ -91,7 +91,7 @@ public:
     bool convert_webp_to_png = false; // Convert downloaded WebP images to PNG format
 
     // Performance
-    bool smooth_scrolling = true;
+    bool smooth_scrolling = false;
     bool hardware_acceleration = true;
     bool enable_local_storage = true;
     bool enable_database = true;
@@ -542,6 +542,13 @@ protected:
   bool is_over_inspector_resize_drag_handle_;
   int inspector_resize_begin_height_;
   int inspector_resize_begin_mouse_y_;
+
+  // Last known pointer position, updated from every mouse event. ScrollEvent
+  // has no coordinates, so this is what lets the wheel be routed to the view
+  // under the cursor instead of to whichever view was focused last.
+  int last_mouse_x_ = 0;
+  int last_mouse_y_ = 0;
+  bool has_pointer_pos_ = false;
   bool address_bar_is_focused_ = false;
   bool adblock_enabled_cached_ = true;
   bool suggestions_enabled_ = true;
@@ -553,7 +560,7 @@ protected:
   bool reduce_motion_enabled_ = false;
   bool high_contrast_ui_enabled_ = false;
   bool vibrant_window_theme_enabled_ = false;
-  bool smooth_scrolling_enabled_ = true;
+  bool smooth_scrolling_enabled_ = false;
 
   // Session restore state
   bool session_restore_pending_ = false;     // True if we should prompt to restore session

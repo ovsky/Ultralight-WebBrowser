@@ -263,8 +263,8 @@ namespace
 
       // Performance
       SettingDescriptor{"smooth_scrolling", "Smooth scrolling",
-                        "Enable smooth animated scrolling for a more fluid browsing experience.",
-                        "performance", nullptr, false, &UI::BrowserSettings::smooth_scrolling, true},
+                        "Animate scrolling. Off by default: this is implemented with scroll-behavior:smooth, which animates the document scroller on every wheel tick and also turns scrollIntoView() and in-page anchor jumps into animations.",
+                        "performance", nullptr, false, &UI::BrowserSettings::smooth_scrolling, false},
       SettingDescriptor{"hardware_acceleration", "Hardware acceleration",
                         "Use GPU to accelerate graphics rendering for better performance.",
                         "performance", nullptr, false, &UI::BrowserSettings::hardware_acceleration, true},
@@ -1864,6 +1864,16 @@ bool UI::SelectTabByIndex(int index)
 bool UI::OnMouseEvent(const ultralight::MouseEvent &evt)
 {
   InputDiagScope diag("mouse");
+
+  // Remember where the pointer is. OnScrollEvent carries deltas only, with no
+  // cursor position, so without this the wheel can only be routed by which view
+  // happens to be focused -- which is not necessarily the one under the
+  // pointer. Recorded before any of the early returns below so the position is
+  // tracked no matter which overlay consumes the event.
+  last_mouse_x_ = static_cast<int>(evt.x);
+  last_mouse_y_ = static_cast<int>(evt.y);
+  has_pointer_pos_ = true;
+
   // CRITICAL: If clicking in UI area (toolbar) on a DRM tab, detach WebView2 immediately
   // This prevents WebView2 from intercepting keyboard input to address bar
   if (evt.type == MouseEvent::kType_MouseDown && evt.y <= ui_height_)
@@ -2079,6 +2089,40 @@ bool UI::OnScrollEvent(const ultralight::ScrollEvent &evt)
   {
     suggestions_overlay_->view()->FireScrollEvent(evt);
     return false;
+  }
+
+  // Route by pointer position rather than by focus.
+  //
+  // AppCore delivers the wheel to the focused view. Focus is set on click, so
+  // scrolling over a page without clicking it first sent the wheel to whatever
+  // was focused before -- moving the pointer onto the settings tab and scrolling
+  // scrolled the address bar instead, or scrolled nothing at all. Position
+  // tracking in OnMouseEvent gives the routing the same hit test that
+  // OnMouseEvent uses for clicks, so wheel and click always agree.
+  //
+  // has_pointer_pos is false until the first mouse event arrives, which should
+  // not happen before the user can scroll; the old focus-based path is kept for
+  // that case rather than guessing.
+  if (has_pointer_pos_)
+  {
+    if (last_mouse_y_ <= ui_height_)
+    {
+      // Over the browser chrome.
+      if (view())
+      {
+        view()->FireScrollEvent(evt);
+        return false;
+      }
+    }
+    else if (active_tab() && active_tab()->view())
+    {
+      // Over the content area. Only the active tab is shown, so it is the one
+      // under the pointer.
+      active_tab()->view()->FireScrollEvent(evt);
+      return false;
+    }
+    // A DRM tab is a native WebView2 child that scrolls itself, so there is
+    // nothing to forward to; fall through to the focus-based path.
   }
 
   // Not over an overlay: let AppCore forward the scroll to the focused view,

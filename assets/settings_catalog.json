@@ -171,10 +171,10 @@
   {
     "key": "smooth_scrolling",
     "name": "Smooth scrolling",
-    "description": "Enable smooth animated scrolling for a more fluid browsing experience.",
+    "description": "Animate scrolling. Off by default: this is implemented with scroll-behavior:smooth, which animates the document scroller on every wheel tick and also turns scrollIntoView() and in-page anchor jumps into animations.",
     "category": "performance",
     "note": null,
-    "default": true
+    "default": false
   },
   {
     "key": "hardware_acceleration",
