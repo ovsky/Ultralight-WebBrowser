@@ -3531,7 +3531,7 @@ void UI::UpdateTabNavigation(uint64_t id, bool is_loading, bool can_go_back, boo
   // Save session when navigation completes (not during loading to reduce disk I/O)
   if (!is_loading)
   {
-    SaveSessionToDisk();
+    RequestSessionSave();
   }
 }
 
@@ -3796,7 +3796,7 @@ void UI::RecordHistory(const String &url, const String &title)
   }
 
   // Save history to disk after recording
-  SaveHistoryToDisk();
+  RequestHistorySave();
 
   // If any tab is showing the History page, ask it to refresh now
   for (auto &it : tabs_)
@@ -6251,6 +6251,35 @@ void UI::LoadHistoryFromDisk()
 
     pos = obj_end + 1;
   }
+}
+
+void UI::RequestHistorySave()
+{
+  // RecordHistory runs on every URL change, and SaveHistoryToDisk rewrites the
+  // whole file (up to 500 entries) synchronously on the UI thread. During fast
+  // navigation that is a write per page. Coalescing is safe because the
+  // destructor calls SaveHistoryToDisk directly on shutdown, so a clean exit
+  // always persists everything; only an unclean exit can lose the tail, which
+  // is the same tradeoff every browser makes with debounced writes.
+  constexpr auto kMinInterval = std::chrono::milliseconds(1500);
+  const auto now = std::chrono::steady_clock::now();
+  if (last_history_save_ + kMinInterval > now)
+    return;
+  last_history_save_ = now;
+  SaveHistoryToDisk();
+}
+
+void UI::RequestSessionSave()
+{
+  // Same reasoning as RequestHistorySave. Session is small, but it is written
+  // on every navigation completion, and the UI thread does not need to do it
+  // more than once a second to keep crash recovery useful.
+  constexpr auto kMinInterval = std::chrono::milliseconds(1000);
+  const auto now = std::chrono::steady_clock::now();
+  if (last_session_save_ + kMinInterval > now)
+    return;
+  last_session_save_ = now;
+  SaveSessionToDisk();
 }
 
 void UI::SaveHistoryToDisk()

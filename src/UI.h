@@ -16,6 +16,7 @@
 #include <optional>
 #include <atomic>
 #include <thread>
+#include <chrono>
 
 namespace drm
 {
@@ -436,6 +437,14 @@ protected:
   void LoadPopularSites();
   void LoadHistoryFromDisk();
   void SaveHistoryToDisk();
+  // Coalesced history writes for the per-navigation path. Writing the whole
+  // file on every URL change is a synchronous multi-hundred-entry write on the
+  // UI thread. The destructor still calls SaveHistoryToDisk directly, so a
+  // clean shutdown always persists everything.
+  void RequestHistorySave();
+  void RequestSessionSave();
+  std::chrono::steady_clock::time_point last_history_save_{};
+  std::chrono::steady_clock::time_point last_session_save_{};
   std::vector<std::string> GetSuggestions(const std::string &input, int maxResults);
   // JS bridge to open/close suggestions overlay and pick
   void OnOpenSuggestionsOverlay(const JSObject &obj, const JSArgs &args);
