@@ -8,7 +8,6 @@
     <link rel="icon" type="image/svg+xml"
         href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23c2bce8'%3E%3Cpath d='M19.14 12.94c.04-.31.06-.63.06-.94 0-.31-.02-.63-.06-.94l2.03-1.58a.49.49 0 00.12-.61l-1.92-3.32a.49.49 0 00-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 00-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.49.49 0 00-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58a.49.49 0 00-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z'/%3E%3C/svg%3E">
     <link rel="stylesheet" href="themes/theme-variables.css">
-    <link rel="stylesheet" href="settings.css">
     <style>
         * {
             box-sizing: border-box;
@@ -110,7 +109,7 @@
             color: var(--text-secondary);
             cursor: pointer;
             font-size: 13px;
-            transition: all 0.2s ease;
+            transition: background-color 90ms linear, color 90ms linear;
         }
 
         .settings-search .clear-btn:hover {
@@ -119,10 +118,20 @@
             color: var(--text-primary);
         }
 
+        /* One page scroller. The previous nested #settings-container scroller
+           produced a second scrollbar and made wheel input ambiguous, since
+           scroll routing now depends on pointer position. The header sticks
+           so search stays reachable in a long list. */
         #settings-container {
-            max-height: calc(100vh - 220px);
-            overflow-y: auto;
-            padding-right: 32px;
+            padding-bottom: 24px;
+        }
+
+        header {
+            position: sticky;
+            top: -24px;
+            z-index: 5;
+            background: var(--bg-primary);
+            padding-top: 24px;
         }
 
         .settings-group {
@@ -153,13 +162,24 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            transition: all 0.2s ease;
+            /* Hover feedback is an instant background swap. A transition here
+               animates every row the cursor crosses, which repaints long
+               lists continuously and makes the page feel like it lags the
+               mouse. Only click-driven controls animate. */
+            transition: background-color 90ms linear, border-color 90ms linear;
         }
 
         .setting-item:hover {
             background: var(--bg-tertiary);
             border-color: var(--accent-color);
-            transform: translateX(4px);
+        }
+
+        .setting-item.row-toggle {
+            cursor: pointer;
+        }
+
+        .setting-item.row-toggle .toggle-switch {
+            pointer-events: none;
         }
 
         .setting-info {
@@ -230,7 +250,7 @@
             font-size: 14px;
             font-weight: 500;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: background-color 90ms linear, border-color 90ms linear, color 90ms linear;
             font-family: inherit;
         }
 
@@ -527,7 +547,7 @@
             color: var(--text-secondary);
             font-size: 11px;
             cursor: pointer;
-            transition: all 0.15s ease;
+            transition: background-color 90ms linear, color 90ms linear;
         }
 
         .location-preset:hover {
@@ -815,6 +835,11 @@
         };
 
         let currentSettings = {}, originalSettings = {}, isDirty = false;
+
+        // Live control registry, keyed by setting key. Lets a setting change
+        // update just the affected widgets instead of rebuilding the list.
+        const toggleControls = Object.create(null);
+        const numberControls = Object.create(null);
         let memoryPollTimer = null;
         let targetUserAgent = '', originalTargetUserAgent = '';
         let darkThemeExcludedSites = '', originalDarkThemeExcludedSites = '';
@@ -940,6 +965,10 @@
         function renderSettings() {
             const container = document.getElementById('settings-container');
             container.innerHTML = '';
+            // The list is rebuilt (search, first load). Drop controls from the
+            // previous build so the registry never points at detached nodes.
+            Object.keys(toggleControls).forEach(k => delete toggleControls[k]);
+            Object.keys(numberControls).forEach(k => delete numberControls[k]);
             const query = (window.__settingsSearchTerm || '').trim().toLowerCase();
             let anyRendered = false;
             Object.keys(settingsDefinitions).forEach(groupKey => {
@@ -1012,6 +1041,7 @@
                         };
 
                         input.addEventListener('change', commit);
+                        numberControls[setting.key] = input;
                         itemDiv.appendChild(infoDiv);
                         itemDiv.appendChild(input);
                         groupDiv.appendChild(itemDiv);
@@ -1021,10 +1051,15 @@
                     const toggleDiv = document.createElement('div');
                     toggleDiv.className = 'toggle-switch';
                     if (currentSettings[setting.key]) toggleDiv.classList.add('active');
-                    toggleDiv.addEventListener('click', () => {
+                    toggleControls[setting.key] = toggleDiv;
+                    // The whole row is the hit target. The switch itself is only
+                    // 48x24, which made long lists fiddly to operate; clicking
+                    // the label area now toggles the same setting.
+                    itemDiv.classList.add('row-toggle');
+                    itemDiv.addEventListener('click', () => {
                         const newValue = !currentSettings[setting.key];
                         currentSettings[setting.key] = newValue;
-                        toggleDiv.classList.toggle('active');
+                        toggleDiv.classList.toggle('active', newValue);
                         log('Changed ' + setting.key + ' to ' + newValue);
                         if (typeof window.OnUpdateSetting === 'function') {
                             window.OnUpdateSetting(setting.key, newValue);
@@ -1053,9 +1088,12 @@
                                     window.OnReloadChromeUI();
                             }
                         }
-                        // Re-hydrate from latest snapshot so UA input instantly
-                        // reflects the updated Custom UA toggle state.
-                        setTimeout(loadSettings, 50);
+                        // Re-hydrate from the latest snapshot so the UA editor
+                        // reflects the updated Custom UA toggle. Only the
+                        // widget states are refreshed; rebuilding the list
+                        // here made every toggle click feel like a stall and
+                        // could reset scroll position.
+                        refreshAfterSettingChange();
                     });
                     itemDiv.appendChild(infoDiv);
                     itemDiv.appendChild(toggleDiv);
@@ -1064,6 +1102,41 @@
                 container.appendChild(groupDiv);
             });
             log('Rendered UI');
+        }
+
+        function syncControlStates() {
+            Object.keys(toggleControls).forEach(key => {
+                toggleControls[key].classList.toggle('active', !!currentSettings[key]);
+            });
+            Object.keys(numberControls).forEach(key => {
+                const el = numberControls[key];
+                if (document.activeElement === el) return;
+                const value = Number(currentSettings[key]);
+                if (!Number.isNaN(value) && String(value) !== el.value) el.value = String(value);
+            });
+        }
+
+        // Refresh values and dependent editors in place after a change.
+        function refreshAfterSettingChange() {
+            if (typeof window.GetSettingsSnapshot !== 'function') {
+                syncControlStates();
+                updateDirtyState();
+                return;
+            }
+            try {
+                const payload = window.GetSettingsSnapshot();
+                const data = typeof payload === 'string' ? JSON.parse(payload) : payload;
+                if (data && data.values) {
+                    currentSettings = { ...data.values };
+                    originalSettings = { ...data.values };
+                }
+                syncControlStates();
+                hydrateUserAgentEditor();
+                updateDirtyState();
+                updateMemoryReadout();
+            } catch (error) {
+                log('ERROR: ' + error.message);
+            }
         }
 
         // Live working-set readout, shown only while low-RAM mode is enabled.
