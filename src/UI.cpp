@@ -2091,10 +2091,9 @@ bool UI::OnScrollEvent(const ultralight::ScrollEvent &evt)
   // The overlay view receives the event directly, so a long menu or suggestion
   // list can still scroll itself instead of the wheel being swallowed.
   //
-  // The downloads panel is deliberately excluded: it is a non-modal panel that
-  // only consumes mouse events inside its own bounds, and without cursor
-  // coordinates we cannot tell where the wheel was, so leaving it alone
-  // preserves the existing page-scrolling behaviour.
+  // The downloads panel and the tab switcher are non-modal and are handled
+  // separately below, where the recorded pointer position makes a hit test
+  // possible.
   if (menu_overlay_ && menu_overlay_->view())
   {
     menu_overlay_->view()->FireScrollEvent(evt);
@@ -2109,6 +2108,47 @@ bool UI::OnScrollEvent(const ultralight::ScrollEvent &evt)
   {
     suggestions_overlay_->view()->FireScrollEvent(evt);
     return false;
+  }
+
+  // The tab switcher and the downloads panel are the opposite case: like the
+  // chrome, they only consume mouse events inside their own bounds (see
+  // OnMouseEvent), so they must not swallow a wheel event that happened
+  // somewhere else. OnMouseEvent records the pointer position, so the wheel can
+  // be hit-tested against them exactly the way clicks are: over the panel the
+  // wheel scrolls the panel, anywhere else it scrolls the page behind it.
+  //
+  // Both panels hold scrollable lists -- the switcher caps its list at 60vh and
+  // the downloads panel at 380px -- so without this the only way to reach the
+  // rest of either list was to hover it exactly and scroll, and any wheel
+  // movement elsewhere scrolled the page behind an open panel.
+  if (has_pointer_pos_)
+  {
+    if (tab_search_overlay_ && tab_search_overlay_->view())
+    {
+      const int ox = tab_search_overlay_->x();
+      const int oy = tab_search_overlay_->y();
+      const int ow = static_cast<int>(tab_search_overlay_->width());
+      const int oh = static_cast<int>(tab_search_overlay_->height());
+      if (last_mouse_x_ >= ox && last_mouse_x_ < ox + ow &&
+          last_mouse_y_ >= oy && last_mouse_y_ < oy + oh)
+      {
+        tab_search_overlay_->view()->FireScrollEvent(evt);
+        return false;
+      }
+    }
+    if (downloads_overlay_ && downloads_overlay_->view())
+    {
+      const int ox = downloads_overlay_->x();
+      const int oy = downloads_overlay_->y();
+      const int ow = static_cast<int>(downloads_overlay_->width());
+      const int oh = static_cast<int>(downloads_overlay_->height());
+      if (last_mouse_x_ >= ox && last_mouse_x_ < ox + ow &&
+          last_mouse_y_ >= oy && last_mouse_y_ < oy + oh)
+      {
+        downloads_overlay_->view()->FireScrollEvent(evt);
+        return false;
+      }
+    }
   }
 
   // Route by pointer position rather than by focus.
