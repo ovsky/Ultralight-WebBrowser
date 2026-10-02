@@ -12,7 +12,7 @@
   "Ctrl+P": "open-passwords",
   "Ctrl+L": "focus-address",
   "Ctrl+,": "open-settings",
-  "Ctrl+Shift+T": "open-themes",
+  "Ctrl+Shift+T": "reopen-closed-tab",
   "Ctrl+Shift+A": "open-tab-search",
   "Ctrl+Tab": "next-tab",
   "Ctrl+Shift+Tab": "prev-tab",

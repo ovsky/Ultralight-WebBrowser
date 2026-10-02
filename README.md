@@ -748,6 +748,7 @@ declares.
 | Action | Default Shortcut |
 |--------|------------------|
 | New Tab | `Ctrl+T` |
+| Reopen Closed Tab | `Ctrl+Shift+T` |
 | Close Tab | `Ctrl+W` |
 | Reload | `Ctrl+R` / `F5` |
 | Hard Reload | `Ctrl+Shift+R` |
@@ -768,13 +769,18 @@ declares.
 | Downloads | `Ctrl+J` |
 | Extensions | `Ctrl+E` |
 | Passwords | `Ctrl+P` |
-| Themes | `Ctrl+Shift+T` |
+
+Themes is reachable from the browser menu.
 
 Zoom is per tab: each tab remembers its own level, and the badge beside the
 address bar shows it and resets to 100% when clicked.
 
 Tab Search lists open tabs by title and URL with Up/Down and Enter; Escape or a
 click outside dismisses it.
+
+Reopen Closed Tab restores the last 25 closed tabs, most recent first, and the
+list survives a restart. Closing the same page twice in a row does not stack up
+duplicate entries.
 
 </details>
 

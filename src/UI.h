@@ -510,6 +510,20 @@ protected:
   // needs its own ordering.
   std::map<uint64_t, uint64_t> tab_last_active_seq_;
   uint64_t tab_activation_counter_ = 0;
+
+  // Recently closed tabs, most recent first. Chrome reopens the last one with
+  // Ctrl+Shift+T; entries are capped and consecutive duplicates collapse so
+  // closing the same tab repeatedly cannot grow this without bound.
+  struct ClosedTabEntry
+  {
+    std::string url;
+    std::string title;
+  };
+  std::vector<ClosedTabEntry> closed_tabs_;
+  void RememberClosedTab(uint64_t tab_id);
+  bool ReopenLastClosedTab();
+  void SaveClosedTabs();
+  void LoadClosedTabs();
   // Raised by the watchdog thread, consumed on the UI thread. Using an atomic
   // flag keeps every view mutation on the thread that created the App, which
   // Ultralight requires.

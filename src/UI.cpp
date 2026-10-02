@@ -684,6 +684,10 @@ UI::UI(RefPtr<Window> window)
 
   // Load session data for crash recovery
   LoadSessionFromDisk();
+
+  // Restore the reopen-closed-tab stack. Independent of continuous session
+  // saving, so Ctrl+Shift+T still works across restarts when that is off.
+  LoadClosedTabs();
 }
 
 // Compatibility overload: accepts optional ad/tracker blockers (ignored if not used)
@@ -1427,7 +1431,7 @@ void UI::LoadShortcuts()
       {"Ctrl+P", "open-passwords"},
       {"Ctrl+L", "focus-address"},
       {"Ctrl+,", "open-settings"},
-      {"Ctrl+Shift+T", "open-themes"},
+      {"Ctrl+Shift+T", "reopen-closed-tab"},
       {"Ctrl+Shift+A", "open-tab-search"},
       {"Ctrl+Tab", "next-tab"},
       {"Ctrl+Shift+Tab", "prev-tab"},
@@ -1631,6 +1635,10 @@ bool UI::RunShortcutAction(const std::string &action)
       return true;
     }
     return false;
+  }
+  if (action == "reopen-closed-tab")
+  {
+    return ReopenLastClosedTab();
   }
   if (action == "open-history")
   {
@@ -2616,6 +2624,72 @@ void UI::OnRequestNewWindow(const JSObject &obj, const JSArgs &args)
 #endif
 }
 
+// Records a tab so Ctrl+Shift+T can bring it back, matching Chrome. Called
+// before the tab is torn down, while its URL and title are still readable.
+//
+// The URL is captured here rather than reconstructed later because a DRM tab's
+// address only exists in the drm_tab_urls_ map, which is erased during close.
+void UI::RememberClosedTab(uint64_t tab_id)
+{
+  std::string url;
+  std::string title;
+
+  auto drm_url = drm_tab_urls_.find(tab_id);
+  if (drm_url != drm_tab_urls_.end())
+  {
+    url = drm_url->second;
+    auto drm_title = drm_tab_titles_.find(tab_id);
+    if (drm_title != drm_tab_titles_.end())
+      title = drm_title->second;
+  }
+  else
+  {
+    auto it = tabs_.find(tab_id);
+    if (it != tabs_.end() && it->second)
+    {
+      View *v = it->second->view().get();
+      if (v)
+      {
+        url = util::ToStdString(v->url());
+        title = util::ToStdString(v->title());
+      }
+    }
+  }
+
+  // Nothing worth restoring: a blank tab, or one that never navigated.
+  if (url.empty())
+    return;
+
+  // Closing the same page repeatedly should not fill the stack with copies.
+  if (!closed_tabs_.empty() && closed_tabs_.front().url == url)
+    return;
+
+  closed_tabs_.insert(closed_tabs_.begin(), ClosedTabEntry{url, title});
+
+  // Chrome keeps a bounded list; the cap also bounds what gets persisted.
+  constexpr size_t kMaxClosedTabs = 25;
+  if (closed_tabs_.size() > kMaxClosedTabs)
+    closed_tabs_.resize(kMaxClosedTabs);
+
+  SaveClosedTabs();
+}
+
+bool UI::ReopenLastClosedTab()
+{
+  if (closed_tabs_.empty())
+    return false;
+
+  const ClosedTabEntry entry = closed_tabs_.front();
+  closed_tabs_.erase(closed_tabs_.begin());
+  SaveClosedTabs();
+
+  const String url(entry.url.c_str());
+  RefPtr<View> created = CreateNewTabForChildView(url);
+
+  // The page reports its own title once it loads, so nothing is seeded here.
+  return created.get() != nullptr;
+}
+
 void UI::OnRequestTabClose(const JSObject &obj, const JSArgs &args)
 {
   if (args.size() == 1)
@@ -2629,6 +2703,9 @@ void UI::OnRequestTabClose(const JSObject &obj, const JSArgs &args)
     auto tab_it = tabs_.find(id);
     if (tab_it == tabs_.end() || !tab_it->second)
       return;
+
+    // Capture the address while the tab still exists, so it can be reopened.
+    RememberClosedTab(id);
 
     if (tabs_.size() == 1 && App::instance())
       App::instance()->Quit();
@@ -6124,6 +6201,68 @@ void UI::SaveHistoryToDisk()
 
 // ================================================================================
 // Session Management (Crash Recovery / Restore Tabs)
+// ================================================================================
+// Closed-tab stack persistence.
+//
+// Kept in its own file rather than folded into session.json so that reopening a
+// tab does not depend on continuous-session saving being enabled, and so a
+// corrupt session cannot take the closed-tab list down with it.
+
+void UI::SaveClosedTabs()
+{
+  EnsureDataDirectoryExists();
+  std::ofstream out(DataFilePath("closed_tabs.json"), std::ios::out | std::ios::binary | std::ios::trunc);
+  if (!out.is_open())
+    return;
+
+  out << "{\n  \"version\": 1,\n  \"tabs\": [\n";
+  for (size_t i = 0; i < closed_tabs_.size(); ++i)
+  {
+    if (i)
+      out << ",\n";
+    // URLs and titles are attacker-influenced, so both are escaped.
+    out << "    {\"url\": \"" << util::EscapeJsonString(closed_tabs_[i].url)
+        << "\", \"title\": \"" << util::EscapeJsonString(closed_tabs_[i].title) << "\"}";
+  }
+  out << "\n  ]\n}\n";
+}
+
+void UI::LoadClosedTabs()
+{
+  std::ifstream in = OpenDataFileForRead("closed_tabs.json");
+  if (!in.is_open())
+    return;
+
+  std::stringstream buffer;
+  buffer << in.rdbuf();
+  const std::string doc = buffer.str();
+
+  // Hand-rolled scan: the document is machine-written and small, and pulling in
+  // a JSON parser for two fields would be disproportionate.
+  size_t pos = 0;
+  constexpr size_t kMaxClosedTabs = 25;
+  while (closed_tabs_.size() < kMaxClosedTabs)
+  {
+    const size_t url_start = doc.find("\"url\"", pos);
+    if (url_start == std::string::npos)
+      break;
+    const size_t title_start = doc.find("\"title\"", url_start);
+    if (title_start == std::string::npos)
+      break;
+
+    std::string url;
+    std::string title;
+    if (!ExtractJsonStringField(doc.substr(url_start, title_start - url_start), "url", url) ||
+        !ExtractJsonStringField(doc.substr(title_start), "title", title))
+      break;
+    if (url.empty())
+      break;
+
+    closed_tabs_.push_back(ClosedTabEntry{url, title});
+    pos = title_start + 1;
+  }
+}
+
 // ================================================================================
 
 void UI::SaveSessionToDisk()
