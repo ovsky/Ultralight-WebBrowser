@@ -373,6 +373,57 @@ if(APPLE)
 	endif()
 endif()
 
+# Stage the assets folder next to the exe as a tracked build step.
+#
+# This used to be a POST_BUILD command on the executable, which only runs when the
+# exe relinks. Editing an asset therefore left the stale copy in the build dir in
+# place, and the app loads <build>/assets, not <source>/assets. The symptom was
+# confusing: a page edit appeared to do nothing, or an already-fixed page kept
+# reproducing a bug that was fixed days earlier in source.
+#
+# A custom target with the asset files listed as dependencies makes the generator
+# restage them whenever any of them changes, independent of the executable.
+set(ULTRALIGHT_STAGED_ASSET_FILES
+	${ULTRALIGHT_STAGED_ASSET_FILES}
+	"${CMAKE_CURRENT_SOURCE_DIR}/assets/ui.css"
+	"${CMAKE_CURRENT_SOURCE_DIR}/assets/ui.js"
+	"${CMAKE_CURRENT_SOURCE_DIR}/assets/menu.html"
+	"${CMAKE_CURRENT_SOURCE_DIR}/assets/settings.html"
+	"${CMAKE_CURRENT_SOURCE_DIR}/assets/about.html"
+	"${CMAKE_CURRENT_SOURCE_DIR}/assets/history.html"
+	"${CMAKE_CURRENT_SOURCE_DIR}/assets/bookmarks.html"
+	"${CMAKE_CURRENT_SOURCE_DIR}/assets/downloads.html"
+	"${CMAKE_CURRENT_SOURCE_DIR}/assets/downloads-panel.html"
+	"${CMAKE_CURRENT_SOURCE_DIR}/assets/extensions.html"
+	"${CMAKE_CURRENT_SOURCE_DIR}/assets/passwords.html"
+	"${CMAKE_CURRENT_SOURCE_DIR}/assets/themes.html"
+	"${CMAKE_CURRENT_SOURCE_DIR}/assets/new_tab_page.html"
+	"${CMAKE_CURRENT_SOURCE_DIR}/assets/tab_search.html"
+	"${CMAKE_CURRENT_SOURCE_DIR}/assets/contextmenu.html"
+	"${CMAKE_CURRENT_SOURCE_DIR}/assets/quick-inspector.html"
+	"${CMAKE_CURRENT_SOURCE_DIR}/assets/release_notes.html"
+	"${CMAKE_CURRENT_SOURCE_DIR}/assets/suggestions.html"
+	"${CMAKE_CURRENT_SOURCE_DIR}/assets/drm_loading.html"
+)
+# Only list files that exist, so adding one to assets/ does not break configure.
+set(ULTRALIGHT_STAGED_ASSET_FILES_FUNDAMENTAL)
+foreach(_asset IN LISTS ULTRALIGHT_STAGED_ASSET_FILES)
+	if(EXISTS "${_asset}")
+		list(APPEND ULTRALIGHT_STAGED_ASSET_FILES_FUNDAMENTAL "${_asset}")
+	else()
+		message(STATUS "Asset not staged (missing): ${_asset}")
+	endif()
+endforeach()
+
+add_custom_target(ultralight_stage_assets ALL
+	COMMAND ${CMAKE_COMMAND} -E copy_directory
+		"${CMAKE_CURRENT_SOURCE_DIR}/assets" "${CMAKE_CURRENT_BINARY_DIR}/assets"
+	DEPENDS ${ULTRALIGHT_STAGED_ASSET_FILES_FUNDAMENTAL}
+	COMMENT "Staging assets/ next to the executable"
+	VERBATIM
+)
+add_dependencies(Ultralight-WebBrowser ultralight_stage_assets)
+
 # Post-build: copy assets and runtime files next to the exe for running from build dir
 if(WIN32)
 	add_custom_command(TARGET Ultralight-WebBrowser POST_BUILD
