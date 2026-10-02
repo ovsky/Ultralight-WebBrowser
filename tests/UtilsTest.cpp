@@ -169,6 +169,43 @@ static void TestGetEnvVar()
     Check(missing.empty(), "GetEnvVar returns empty for an unset variable");
 }
 
+// The tab switcher (Ctrl+Shift+A) injects a tab list into the page. Page titles
+// and URLs are attacker-controlled, so a title containing a quote, a closing
+// script tag or a backslash must not be able to break out of the JSON string
+// that carries it. The payload is built by UI::BuildTabSearchJSON from these
+// escapers, so exercising them here covers the injection surface.
+static void TestTabSearchPayloadEscaping()
+{
+    using namespace util;
+
+    // A hostile page title: JSON metacharacters plus the sequence that would
+    // close a script context if the value were ever interpolated unescaped.
+    const std::string hostile = "\",\"__proto__\":{\"x\":\"\\ </script><img src=x onerror=alert(1)>";
+    const std::string escaped = EscapeJsonString(hostile);
+
+    // After escaping, the only quotes present are the ones JSON itself requires
+    // as delimiters, and there are none at all inside the value, so it cannot
+    // terminate the string early.
+    Check(escaped.find("\\\"") != std::string::npos,
+          "tab search payload escapes embedded quotes");
+    Check(escaped.find("\\\\") != std::string::npos,
+          "tab search payload escapes embedded backslashes");
+
+    // The payload is handed to EvaluateScript as a JS string literal, so the JS
+    // escaper has to neutralise both quote styles and the tag-terminator.
+    const std::string js = EscapeJsStringLiteral(hostile);
+    Check(js.find("\\'") != std::string::npos || js.find("\\\"") != std::string::npos,
+          "tab search payload escapes quotes for the JS literal");
+    Check(js.find("</script>") == std::string::npos,
+          "tab search payload neutralises a closing script tag");
+
+    // A URL containing a query string is the common case; it must survive intact
+    // so the switcher shows the real address.
+    CheckEq(EscapeJsonString("https://example.com/?a=1&b=2"),
+            "https://example.com/?a=1&b=2",
+            "tab search payload leaves ordinary URLs untouched");
+}
+
 int main()
 {
     TestEscapeJsonString();
@@ -178,6 +215,7 @@ int main()
     TestTrim();
     TestToLower();
     TestGetEnvVar();
+    TestTabSearchPayloadEscaping();
 
     if (g_failures > 0)
     {

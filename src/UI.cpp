@@ -63,6 +63,7 @@ static const char *const kInternalPageNames[] = {
     "contextmenu.html",
     "drm_loading.html",
     "quick-inspector.html",
+    "tab_search.html",
 };
 
 #define UI_HEIGHT 80
@@ -1116,6 +1117,27 @@ static void ToggleWindowFullscreen(ultralight::Window *window)
 
 bool UI::OnKeyEvent(const ultralight::KeyEvent &evt)
 {
+  // Tab switcher owns the keyboard while open, and is checked first so arrow keys
+  // move the selection instead of scrolling the page behind it. Ctrl+Shift+A must
+  // still toggle it closed, so that combo is handled before the capture.
+  if (evt.type == KeyEvent::kType_RawKeyDown &&
+      (evt.modifiers & KeyEvent::kMod_CtrlKey) &&
+      (evt.modifiers & KeyEvent::kMod_ShiftKey) &&
+      static_cast<uint32_t>(evt.virtual_key_code) == 'A')
+  {
+    if (tab_search_overlay_)
+      HideTabSearchOverlay();
+    else
+      ShowTabSearchOverlay();
+    return false;
+  }
+
+  if (tab_search_overlay_ && tab_search_overlay_->view())
+  {
+    tab_search_overlay_->view()->FireKeyEvent(evt);
+    return false;
+  }
+
   // If menu overlay is active, route all key events to it and consume
   if (menu_overlay_ && menu_overlay_->view())
   {
@@ -1346,6 +1368,7 @@ void UI::LoadShortcuts()
       {"Ctrl+L", "focus-address"},
       {"Ctrl+,", "open-settings"},
       {"Ctrl+Shift+T", "open-themes"},
+      {"Ctrl+Shift+A", "open-tab-search"},
       {"Ctrl+Tab", "next-tab"},
       {"Ctrl+Shift+Tab", "prev-tab"},
       {"Ctrl+1", "select-tab-1"},
@@ -1597,6 +1620,12 @@ bool UI::RunShortcutAction(const std::string &action)
     return true;
   }
 
+  if (action == "open-tab-search")
+  {
+    ShowTabSearchOverlay();
+    return true;
+  }
+
   // --- Tab navigation (Chrome parity) ---
 
   if (action == "next-tab" || action == "prev-tab")
@@ -1679,6 +1708,126 @@ void UI::SyncZoomToUI(double zoom)
       "try{if(window.OnZoomChanged)window.OnZoomChanged(" +
       std::to_string(static_cast<int>(std::lround(zoom * 100.0))) + ");}catch(e){}";
   ui_view->EvaluateScript(String(script.c_str()), nullptr);
+}
+
+std::string UI::BuildTabSearchJSON()
+{
+  std::string out = "[";
+  bool first = true;
+
+  for (const auto &entry : tabs_)
+  {
+    Tab *tab = entry.second.get();
+    if (!tab)
+      continue;
+
+    View *v = tab->view().get();
+    auto title_u8 = v->title().utf8();
+    auto url_u8 = v->url().utf8();
+    // GetFaviconURL fills and reads the favicon caches, so it is not const.
+    auto favicon_str = GetFaviconURL(v->url());
+    auto fav_u8 = favicon_str.utf8();
+
+    const std::string title = title_u8.data() ? title_u8.data() : "";
+    const std::string url = url_u8.data() ? url_u8.data() : "";
+    const std::string fav = fav_u8.data() ? fav_u8.data() : "";
+
+    if (!first)
+      out += ",";
+    first = false;
+
+    // Titles and URLs are attacker-influenced, so every value goes through the
+    // escaper. Without it a page titled with a quote would break the JSON and
+    // could inject markup into the switcher.
+    out += "{\"id\":";
+    out += std::to_string(entry.first);
+    out += ",\"title\":\"";
+    out += util::EscapeJsonString(title);
+    out += "\",\"url\":\"";
+    out += util::EscapeJsonString(url);
+    out += "\",\"favicon\":\"";
+    out += util::EscapeJsonString(fav);
+    out += "\",\"current\":";
+    out += (entry.first == active_tab_id_) ? "true" : "false";
+    out += "}";
+  }
+
+  out += "]";
+  return out;
+}
+
+void UI::ShowTabSearchOverlay()
+{
+  HideTabSearchOverlay();
+
+  if (tabs_.size() < 2)
+    return; // Nothing to switch between, so do not flash an empty panel.
+
+  ultralight::ViewConfig cfg;
+  cfg.is_transparent = true;
+  cfg.initial_device_scale = window_->scale();
+  if (overlay_ && overlay_->view())
+  {
+    cfg.is_accelerated = overlay_->view()->is_accelerated();
+    cfg.display_id = overlay_->view()->display_id();
+  }
+
+  // The list is content-height and capped in CSS, so reserving a generous height
+  // and letting the overlay clip avoids a second round trip to measure the rows.
+  int panel_height = static_cast<int>(window_->height() / 2);
+  if (panel_height < 1)
+    panel_height = 1;
+  auto view = App::instance()->renderer()->CreateView(window_->width(),
+                                                      static_cast<uint32_t>(panel_height), cfg, nullptr);
+
+  tab_search_overlay_ = Overlay::Create(window_, view, 0, ui_height_);
+  tab_search_overlay_->Show();
+  view->set_load_listener(this);
+  view->set_view_listener(this);
+  view->LoadURL("file:///tab_search.html");
+
+  // The page asks for the list once it is ready; the JSON is built at that point
+  // rather than captured now so the titles are current.
+  pending_tab_search_json_ = BuildTabSearchJSON();
+}
+
+void UI::HideTabSearchOverlay()
+{
+  if (!tab_search_overlay_)
+    return;
+  tab_search_overlay_->Hide();
+  tab_search_overlay_->Unfocus();
+  tab_search_overlay_->view()->set_load_listener(nullptr);
+  tab_search_overlay_->view()->set_view_listener(nullptr);
+  tab_search_overlay_ = nullptr;
+  pending_tab_search_json_ = "";
+}
+
+void UI::OnTabSearchPick(const JSObject &, const JSArgs &args)
+{
+  if (args.size() < 1 || !args[0].IsString())
+    return;
+
+  auto id_u8 = JSStringToUtf8(args[0].ToString());
+  const std::string id_str = id_u8.data() ? id_u8.data() : "";
+  if (id_str.empty())
+    return;
+
+  HideTabSearchOverlay();
+
+  // The id arrives as a string so large tab ids survive; parse it rather than
+  // casting, and ignore anything that is not a plain number.
+  for (char c : id_str)
+  {
+    if (!std::isdigit(static_cast<unsigned char>(c)))
+      return;
+  }
+
+  const uint64_t id = std::strtoull(id_str.c_str(), nullptr, 10);
+  if (tabs_.count(id) == 0)
+    return;
+
+  OnActiveTabChange({}, {static_cast<ultralight::JSValue>(static_cast<double>(id))});
 }
 
 bool UI::CycleActiveTab(int direction)
@@ -1769,6 +1918,23 @@ bool UI::OnMouseEvent(const ultralight::MouseEvent &evt)
   {
     context_menu_overlay_->view()->FireMouseEvent(evt);
     return false;
+  }
+  // Tab switcher: clicks inside the panel select a tab, clicks anywhere else
+  // dismiss it and fall through to the page below, matching Chrome.
+  if (tab_search_overlay_ && tab_search_overlay_->view())
+  {
+    const int ox = tab_search_overlay_->x();
+    const int oy = tab_search_overlay_->y();
+    const int ow = static_cast<int>(tab_search_overlay_->width());
+    const int oh = static_cast<int>(tab_search_overlay_->height());
+
+    if (evt.x >= ox && evt.x < ox + ow && evt.y >= oy && evt.y < oy + oh)
+    {
+      tab_search_overlay_->view()->FireMouseEvent(evt);
+      return false;
+    }
+
+    HideTabSearchOverlay();
   }
   // If suggestions overlay is active, route mouse to it and consume
   if (suggestions_overlay_ && suggestions_overlay_->view())
@@ -2000,8 +2166,22 @@ void UI::OnDOMReady(View *caller, uint64_t frame_id, bool is_main_frame, const S
   bool is_downloads_overlay_view = url_utf8.data() && std::strstr(url_utf8.data(), "downloads-panel.html") != nullptr;
   bool is_settings_page_view = url_utf8.data() && std::strstr(url_utf8.data(), "settings.html") != nullptr;
   bool is_extensions_page_view = url_utf8.data() && std::strstr(url_utf8.data(), "extensions.html") != nullptr;
+  bool is_tab_search_view = url_utf8.data() && std::strstr(url_utf8.data(), "tab_search.html") != nullptr;
 
-  if (!is_menu_view && !is_ctx_view && !is_sugg_view && !is_downloads_overlay_view && !is_settings_page_view && !is_extensions_page_view)
+  // The tab switcher page is inert data; it owns its own keyboard handling and
+  // only needs the list, so it is excluded from the chrome binding pass below.
+  if (is_tab_search_view && !pending_tab_search_json_.empty())
+  {
+    // The payload is already-escaped JSON, so it is injected as a quoted JS
+    // string literal with EscapeJsStringLiteral rather than re-escaped as JSON.
+    const std::string script =
+        "try{if(window.OnTabSearchShow)window.OnTabSearchShow(" +
+        util::EscapeJsStringLiteral(pending_tab_search_json_) + ");}catch(e){}";
+    caller->EvaluateScript(String(script.c_str()), nullptr);
+  }
+
+  if (!is_menu_view && !is_ctx_view && !is_sugg_view && !is_downloads_overlay_view &&
+      !is_settings_page_view && !is_extensions_page_view && !is_tab_search_view)
   {
     // Only main UI view has these functions
     updateBack = global["updateBack"];
@@ -2095,6 +2275,8 @@ void UI::OnDOMReady(View *caller, uint64_t frame_id, bool is_main_frame, const S
   }
   global["OnRequestNewTab"] = BindJSCallback(&UI::OnRequestNewTab);
   global["OnResetZoom"] = BindJSCallback(&UI::OnResetZoom);
+  global["OnTabSearchPick"] = BindJSCallback(&UI::OnTabSearchPick);
+  global["CloseTabSearchOverlay"] = BindJSCallbackWithRetval(&UI::OnHideTabSearchOverlay);
   global["OnRequestNewWindow"] = BindJSCallback(&UI::OnRequestNewWindow);
   global["OnRequestTabClose"] = BindJSCallback(&UI::OnRequestTabClose);
   global["OnActiveTabChange"] = BindJSCallback(&UI::OnActiveTabChange);
@@ -2317,6 +2499,14 @@ void UI::OnResetZoom(const JSObject &, const JSArgs &)
   SyncZoomToUI(tab->zoom());
 }
 
+ultralight::JSValue UI::OnHideTabSearchOverlay(const JSObject &, const JSArgs &)
+{
+  HideTabSearchOverlay();
+  // Returned to JS because the page calls it as a plain function; an undefined
+  // return value would surface as an exception in the page's try/catch.
+  return JSValue();
+}
+
 void UI::OnRequestNewWindow(const JSObject &obj, const JSArgs &args)
 {
 #if defined(_WIN32)
@@ -2382,6 +2572,9 @@ void UI::OnRequestTabClose(const JSObject &obj, const JSArgs &args)
     closeTab({id});
 
     tab_last_active_seq_.erase(id);
+    // The switcher would otherwise keep listing a tab that no longer exists.
+    if (tab_search_overlay_)
+      HideTabSearchOverlay();
     if (memory_monitor_)
       memory_monitor_->NoteTabClosed();
 

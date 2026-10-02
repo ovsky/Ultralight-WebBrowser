@@ -10,6 +10,7 @@
   "Ctrl+L": "focus-address",
   "Ctrl+,": "open-settings",
   "Ctrl+Shift+T": "open-themes",
+  "Ctrl+Shift+A": "open-tab-search",
   "Ctrl+Tab": "next-tab",
   "Ctrl+Shift+Tab": "prev-tab",
   "Ctrl+1": "select-tab-1",

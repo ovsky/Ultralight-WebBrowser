@@ -174,6 +174,8 @@ public:
   void OnRequestNewWindow(const JSObject &obj, const JSArgs &args);
   // Zoom badge click: reset the active tab to 100%.
   void OnResetZoom(const JSObject &obj, const JSArgs &args);
+  // Backs CloseTabSearchOverlay(), which the page calls without using a result.
+  ultralight::JSValue OnHideTabSearchOverlay(const JSObject &obj, const JSArgs &args);
   void OnRequestTabClose(const JSObject &obj, const JSArgs &args);
   void OnActiveTabChange(const JSObject &obj, const JSArgs &args);
   void OnRequestChangeURL(const JSObject &obj, const JSArgs &args);
@@ -467,6 +469,12 @@ protected:
   RefPtr<Overlay> downloads_overlay_;
   RefPtr<Overlay> context_menu_overlay_;
   RefPtr<Overlay> suggestions_overlay_;
+  // Ctrl+Shift+A tab switcher. Chrome shows a dropdown under the toolbar; this
+  // is a separate overlay because the suggestions overlay is owned by the
+  // address bar and is torn down on every keystroke.
+  RefPtr<Overlay> tab_search_overlay_;
+  // Tab list captured when the switcher opens; handed to the page once it loads.
+  std::string pending_tab_search_json_;
   float scale_;
   // Optional ad/tracker blocker references (may be unused in this build)
   AdBlocker *adblock_ = nullptr;
@@ -643,6 +651,14 @@ protected:
   // Reports the active tab's zoom percentage to the chrome view so the address
   // bar can show it. Best effort: never throws, and never reverts the zoom.
   void SyncZoomToUI(double zoom);
+
+  // Ctrl+Shift+A tab switcher.
+  void ShowTabSearchOverlay();
+  void HideTabSearchOverlay();
+  void OnTabSearchPick(const JSObject &obj, const JSArgs &args);
+  // Snapshot of open tabs as JSON for the switcher: id, title, url, favicon,
+  // and whether the tab is currently active.
+  std::string BuildTabSearchJSON();
 
   BrowserSettings settings_;
 

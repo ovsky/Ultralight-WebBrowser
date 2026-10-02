@@ -95,6 +95,13 @@ std::string EscapeJsStringLiteral(const std::string &input)
   // be parsed as code.
   ReplaceAll(out, "'", "\\'");
 
+  // Neutralise '<' so a value containing "</script>" cannot terminate an inline
+  // script block. EvaluateScript payloads are not inline HTML so this is not
+  // strictly required today, but this helper is used for values that end up in
+  // markup in other places, and escaping '<' costs nothing: it cannot appear
+  // unescaped in a JS string in any code path that matters.
+  ReplaceAll(out, "<", "\\u003C");
+
   // EscapeJsonString operates byte-wise, so U+2028 (E2 80 A8) and U+2029
   // (E2 80 A9) still pass through as raw UTF-8. They are valid inside a JSON
   // string but terminate a JavaScript string literal, so escape them here.
