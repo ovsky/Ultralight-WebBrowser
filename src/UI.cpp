@@ -3677,6 +3677,18 @@ void UI::RecordHistory(const String &url, const String &title)
                         .count();
 
   // Find existing entry by URL and update; otherwise push new
+  //
+  // A single navigation reaches RecordHistory twice when it starts from the
+  // address bar: UI::OnAddressBarNavigate records immediately so the History
+  // page updates promptly, and Tab::OnChangeURL records again once the view's
+  // URL actually changes. Link navigations only hit the second path. Counting
+  // both made visit_count roughly double for address-bar navigations while
+  // link navigations counted once, so the numbers depended on how you got to a
+  // page. A repeat inside this window is treated as the same visit: the title is
+  // refreshed (the first call carries an empty one) but the count is not
+  // incremented again.
+  constexpr uint64_t kSameVisitWindowMs = 1500;
+
   bool found = false;
   for (auto &e : history_)
   {
@@ -3684,8 +3696,10 @@ void UI::RecordHistory(const String &url, const String &title)
     {
       if (!t.empty())
         e.title = t;
+      const bool same_visit = (now_ms - e.timestamp_ms) < kSameVisitWindowMs;
       e.timestamp_ms = now_ms;
-      e.visit_count = (e.visit_count + 1);
+      if (!same_visit)
+        e.visit_count = (e.visit_count + 1);
       found = true;
       break;
     }
