@@ -17,7 +17,7 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $build = Join-Path $root 'build-win64'
 $exe = Join-Path $build 'Ultralight-WebBrowser.exe'
-$tests = @('UtilsTest', 'MemoryMonitorTest', 'ThemeManagerTest', 'MediaFallbackTest')
+$tests = @('UtilsTest', 'MemoryMonitorTest', 'ThemeManagerTest', 'MediaFallbackTest', 'DownloadManagerTest')
 $vcvars = 'C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat'
 
 $fail = 0

@@ -260,6 +260,26 @@ add_test(NAME MemoryMonitorTest COMMAND MemoryMonitorTest)
 	 	src/MediaFallback.cpp)
 	 target_link_libraries(MediaFallbackTest PRIVATE GTest::gtest_main)
 	 add_test(NAME MediaFallbackTest COMMAND MediaFallbackTest)
+
+	 # DownloadManagerTest needs the Ultralight listener types but no UI. It used
+	 # to be impossible because DownloadManager.cpp included UI.h while using no
+	 # UI:: symbols; that dead include has been removed so this can link.
+	 if (TARGET UtilsTest)
+	 	add_executable(DownloadManagerTest
+	 		tests/DownloadManagerTest.cpp
+	 		src/DownloadManager.cpp
+	 		src/Utils.cpp)
+	 	target_link_libraries(DownloadManagerTest PRIVATE GTest::gtest_main ${APP_CORE_LIB} ${ULTRALIGHT_LIB} ${ULTRALIGHT_CORE_LIB} ${WEB_CORE_LIB})
+	 	target_include_directories(DownloadManagerTest PRIVATE "${ULTRALIGHT_SDK_ROOT}/include")
+	 	if (WIN32)
+	 		target_link_libraries(DownloadManagerTest PRIVATE windowscodecs.lib shlwapi.lib ole32.lib)
+	 		set_target_properties(DownloadManagerTest PROPERTIES
+	 			MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+	 	endif()
+	 	add_test(NAME DownloadManagerTest COMMAND DownloadManagerTest)
+	 else()
+	 	message(STATUS "Skipping DownloadManagerTest: Ultralight SDK libraries not found")
+	 endif()
  	else()
 	 message(STATUS "Skipping tests on Windows when not using MSVC (to avoid linking MSVC .lib with MinGW)")
  endif()

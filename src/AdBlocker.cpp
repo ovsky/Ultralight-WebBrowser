@@ -128,6 +128,9 @@ void AdBlocker::Clear()
     std::lock_guard<std::mutex> lock(mtx_);
     blocked_hosts_.clear();
     url_substrings_.clear();
+    // url_globs_ was missed here, so Clear left glob rules live and they kept
+    // matching at MatchInternal. LoadBlocklist clears all three; this should too.
+    url_globs_.clear();
 }
 
 bool AdBlocker::OnNetworkRequest(View * /*caller*/, NetworkRequest &request)

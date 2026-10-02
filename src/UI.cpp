@@ -2443,9 +2443,24 @@ void UI::OnDOMReady(View *caller, uint64_t frame_id, bool is_main_frame, const S
     RefPtr<JSContext> lock(view()->LockJSContext());
     if (tabs_.empty())
     {
+      // Startup URL override. Set UL_START_URL to open a specific page in the
+      // first tab instead of the session or the default home page. Useful for
+      // kiosk/dedicated builds and for the page smoke test in
+      // scripts/verify-pages.ps1, which needs a deterministic way to load each
+      // internal page -- session restore deliberately ignores file:/// pages,
+      // so it cannot be used for that.
+      const char *start_url_env = getenv("UL_START_URL");
+      if (start_url_env && *start_url_env)
+      {
+        session_restore_pending_ = false;
+        CreateNewTab();
+        auto tab_it = tabs_.begin();
+        if (tab_it->second && tab_it->second->view())
+          tab_it->second->view()->LoadURL(String(start_url_env));
+      }
       // Check if we should restore a previous session
       // Only show restore bar if there are meaningful (non-internal) tabs to restore
-      if (settings_.restore_session_on_startup && session_restore_pending_ && HasSavedSession() && GetMeaningfulSavedTabCount() > 0)
+      else if (settings_.restore_session_on_startup && session_restore_pending_ && HasSavedSession() && GetMeaningfulSavedTabCount() > 0)
       {
         // IMPORTANT: Set this flag BEFORE creating the tab to prevent session saving
         // from overwriting the saved session while the restore bar is visible
@@ -3382,14 +3397,21 @@ RefPtr<View> UI::CreateNewTabForChildView(const String &url)
 
 void UI::UpdateTabTitle(uint64_t id, const ultralight::String &title)
 {
+  // A listener callback can arrive after the tab was closed. Indexing tabs_
+  // with operator[] would insert a null entry and then dereference it, so
+  // bail out first -- the same guard UpdateTabFavicon uses.
+  auto tab_it = tabs_.find(id);
+  if (tab_it == tabs_.end() || !tab_it->second)
+    return;
+
   RefPtr<JSContext> lock(view()->LockJSContext());
   // Title changed; pass current page URL-derived favicon
-  updateTab({id, title, GetFaviconURL(tabs_[id]->view()->url()), tabs_[id]->view()->is_loading()});
+  updateTab({id, title, GetFaviconURL(tab_it->second->view()->url()), tab_it->second->view()->is_loading()});
 
   // If active tab is a local file, reflect title in the address bar instead of file URL
   if (id == active_tab_id_)
   {
-    auto url_u = tabs_[id]->view()->url().utf8();
+    auto url_u = tab_it->second->view()->url().utf8();
     const char *cur = url_u.data();
     std::string_view cur_view(cur ? cur : "");
     if (cur && cur_view.size() >= 7 && cur_view.substr(0, 7) == "file://")
@@ -3431,12 +3453,16 @@ void UI::UpdateTabURL(uint64_t id, const ultralight::String &url)
 
 void UI::UpdateTabNavigation(uint64_t id, bool is_loading, bool can_go_back, bool can_go_forward)
 {
-  if (tabs_.empty())
+  // Same stale-callback guard as UpdateTabTitle: an empty map is not the same
+  // as this id still being present, and operator[] would create a null entry.
+  auto tab_it = tabs_.find(id);
+  if (tab_it == tabs_.end() || !tab_it->second)
     return;
 
   RefPtr<JSContext> lock(view()->LockJSContext());
   // Loading/nav state; update favicon based on current URL
-  updateTab({id, tabs_[id]->view()->title(), GetFaviconURL(tabs_[id]->view()->url()), tabs_[id]->view()->is_loading()});
+  updateTab({id, tab_it->second->view()->title(), GetFaviconURL(tab_it->second->view()->url()),
+             tab_it->second->view()->is_loading()});
 
   if (id == active_tab_id_)
   {
