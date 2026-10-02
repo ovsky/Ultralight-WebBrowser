@@ -206,6 +206,45 @@ static void TestTabSearchPayloadEscaping()
             "tab search payload leaves ordinary URLs untouched");
 }
 
+// Regression cover for the '<' escaping and for the quote-breakout shape that
+// was actually exploitable.
+//
+// '<' is escaped so a value interpolated into markup cannot close an enclosing
+// element. The single-quote case matters most: a stored credential username is
+// site-controlled (a page can autofill one containing a quote, and it is saved
+// verbatim when the user accepts the save bar), and escaping only " & < while
+// leaving ' raw let the value terminate a JS string literal and run as code.
+static void TestAttributeBreakoutEscaping()
+{
+    using namespace util;
+
+    CheckEq(EscapeJsStringLiteral("<"), "\\u003C",
+            "EscapeJsStringLiteral escapes '<' so it cannot close markup");
+    CheckEq(EscapeJsStringLiteral("a<b>c"), "a\\u003Cb>c",
+            "EscapeJsStringLiteral escapes '<' but leaves '>' (it cannot open a tag)");
+
+    // The tag terminator must not survive in any form.
+    Check(EscapeJsStringLiteral("</script>").find("</script>") == std::string::npos,
+          "EscapeJsStringLiteral neutralises </script>");
+    Check(EscapeJsStringLiteral("<img src=x onerror=alert(1)>").find("<img") == std::string::npos,
+          "EscapeJsStringLiteral neutralises an injected tag");
+
+    // The realistic credential payload: a quote tries to end the JS literal and
+    // the remainder tries to define a handler.
+    const std::string hostile = "x');alert(document.cookie);//";
+    const std::string escaped = EscapeJsStringLiteral(hostile);
+    CheckEq(escaped, "x\\');alert(document.cookie);//",
+            "EscapeJsStringLiteral keeps a quote from ending the literal");
+    // After escaping, the value contains no raw quote that could terminate it.
+    Check(escaped.find("x');") == std::string::npos,
+          "EscapeJsStringLiteral leaves no unescaped quote terminator");
+
+    // EscapeJsonString is the weaker helper and deliberately leaves ' and <
+    // alone; assert that so a future change to it is deliberate.
+    CheckEq(EscapeJsonString("it's <b>"), "it's <b>",
+            "EscapeJsonString leaves quotes and angle brackets for the JS path");
+}
+
 int main()
 {
     TestEscapeJsonString();
@@ -216,6 +255,7 @@ int main()
     TestToLower();
     TestGetEnvVar();
     TestTabSearchPayloadEscaping();
+    TestAttributeBreakoutEscaping();
 
     if (g_failures > 0)
     {
