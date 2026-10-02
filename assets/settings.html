@@ -707,13 +707,28 @@
         <div class="debug-info" id="debug-info"></div>
     </div>
     <script>
+        const MAX_DEBUG_LINES = 200;
+        // 20 attempts at 500ms is 10s, far longer than the bridge needs to be
+        // registered after the settings view is created.
+        const MAX_DRM_RETRIES = 20;
+        let drmRetryCount = 0;
+
         function log(msg) {
             console.log('[Settings]', msg);
             const debug = document.getElementById('debug-info');
-            if (debug) {
-                debug.textContent += new Date().toLocaleTimeString() + ': ' + msg + '\n';
-                debug.scrollTop = debug.scrollHeight;
+            if (!debug) return;
+
+            // Appending to textContent re-reads and re-creates the whole text
+            // node every call, so this got progressively more expensive as the
+            // buffer filled. Trimming to a fixed window keeps it constant-cost
+            // and stops the panel growing without bound over a long session.
+            let lines = debug.textContent ? debug.textContent.split('\n') : [];
+            lines.push(new Date().toLocaleTimeString() + ': ' + msg);
+            if (lines.length > MAX_DEBUG_LINES) {
+                lines = lines.slice(lines.length - MAX_DEBUG_LINES);
             }
+            debug.textContent = lines.join('\n');
+            debug.scrollTop = debug.scrollHeight;
         }
 
         const settingsDefinitions = {
@@ -1340,14 +1355,27 @@
             if (!drmElements.panel)
                 return;
             if (typeof window.GetDrmStatus !== 'function') {
-                if (!isRetry)
-                    log('DRM status bridge not ready, retrying...');
-                setTimeout(() => loadDrmStatus(true), 500);
+                // The bridge is registered a moment after the settings view is
+                // created, so a few retries are expected. Without a cap, a
+                // failure that never resolves turns into a permanent 2Hz timer
+                // that keeps waking the page for no reason.
+                drmRetryCount = (drmRetryCount || 0) + 1;
+                if (drmRetryCount <= MAX_DRM_RETRIES) {
+                    if (!isRetry)
+                        log('DRM status bridge not ready, retrying...');
+                    setTimeout(() => loadDrmStatus(true), 500);
+                    return;
+                }
+                log('DRM status bridge unavailable after ' + MAX_DRM_RETRIES +
+                    ' retries; DRM status will not update.');
                 return;
             }
             try {
                 const payload = window.GetDrmStatus();
                 drmStatusSnapshot = typeof payload === 'string' ? JSON.parse(payload) : payload;
+                // Bridge is available, so later refreshes should start clean
+                // rather than inheriting an earlier run's retry count.
+                drmRetryCount = 0;
                 renderDrmPanel();
             } catch (error) {
                 log('ERROR reading DRM status: ' + error.message);
