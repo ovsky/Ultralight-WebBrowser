@@ -350,6 +350,13 @@ choose, by closing the least-recently-used background tabs. See
   - Preserves original filename with PNG extension
 - **Session Restore** – Restore tabs and state from previous browsing session
 - **Password Manager** – Secure credential storage and autofill
+  - Credentials are encrypted with Windows DPAPI where available
+  - The optional master password is stored as PBKDF2-HMAC-SHA256 over a random
+    per-vault salt at 200000 iterations, compared in constant time
+  - The stored verifier is self-describing (`pbkdf2-sha256$<iterations>$<salt>$<key>`)
+    so the format can be recognised and migrated later
+  - Vaults written by earlier builds still unlock; the next master password change
+    re-keys everything into the new format
 - **Search in History, Bookmarks, and Downloads** – All three long-running lists can be
   filtered as you type
   - Matches title and URL (and filename), filtering before rows are built so only
@@ -404,6 +411,10 @@ choose, by closing the least-recently-used background tabs. See
 - Tab title and navigation callbacks indexed `tabs_` without checking existence, so
   a callback arriving after a tab closed dereferenced a null entry
 - `AdBlocker::Clear()` left glob rules loaded, which kept matching after a clear
+- A history or session entry whose title contains `}` was silently dropped. The loaders
+  scanned for the next `}`, but `EscapeJsonString` does not escape `}` or `[` because
+  they are legal bare JSON string content, so a page titled "Fix } in C++" truncated its
+  own record and lost the URL. All three loaders now scan to the matching brace
 
 ### v0.9.5 (Previous Release)
 
@@ -605,11 +616,20 @@ because session restore deliberately filters `file:///` pages out.
 
 Two things to know when editing pages:
 
-- The browser loads `<build>/assets`, which CMake only refreshes as a post-build step
-  of relinking the executable. Editing a page without touching C++ leaves that copy
-  stale; `verify-pages.ps1` mirrors the copy for you.
+- The browser loads `<build>/assets`, which the `ultralight_stage_assets` build target
+  copies from `<source>/assets`. It is a tracked target, so editing a page restages it
+  on the next build with no relink required.
 - Page-level failures surface as a blank page, so run the page check after any change
   to `assets/*.html` or `assets/*.js`.
+
+> **Why this matters:** asset staging used to be a `POST_BUILD` command on the
+> executable, which only runs when the executable relinks. Any edit confined to
+> `assets/` left the previous copy in place, so the build reported "no work to do"
+> and the running app served the old file. That produced bugs that were already fixed
+> in source reappearing in the build — including the address bar focus handlers, which
+> made keyboard input keep going to the address bar instead of the page. If a UI change
+> appears to do nothing, check whether the file in `build-win64/assets` actually
+> changed.
 
 ### Engine Resource Files (ICU + CA bundle)
 
