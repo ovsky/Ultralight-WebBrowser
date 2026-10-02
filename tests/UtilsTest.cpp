@@ -35,7 +35,7 @@ static void TestEscapeJsonString()
     using namespace util;
 
     // Backslash, quote and the three originally handled whitespace escapes.
-    std::string s = "Line\nQuote\"\\Back";
+    std::string s = "Line\nReturn\rTab\tQuote\"\\Back";
     std::string e = EscapeJsonString(s);
     Check(Contains(e, "\\n"), "EscapeJsonString escapes newline");
     Check(Contains(e, "\\\""), "EscapeJsonString escapes double quote");
@@ -86,7 +86,9 @@ static void TestEscapeJsStringLiteral()
             "EscapeJsStringLiteral escapes U+2028");
     CheckEq(EscapeJsStringLiteral("\xE2\x80\xA9"), "\\u2029",
             "EscapeJsStringLiteral escapes U+2029");
-    CheckEq(EscapeJsStringLiteral("a\xE2\x80\xA8b"), "a\\u2028b",
+    // The hex escapes must be closed off before the 'b': a C++ hex escape is
+    // greedy, so "\xA8b" would parse as the single value 0xA8B and overflow.
+    CheckEq(EscapeJsStringLiteral("a\xE2\x80\xA8" "b"), "a\\u2028b",
             "EscapeJsStringLiteral escapes U+2028 in context");
 
     // Escaping must be applied everywhere, not just to the first occurrence.
@@ -95,10 +97,10 @@ static void TestEscapeJsStringLiteral()
     CheckEq(EscapeJsStringLiteral("\xE2\x80\xA8\xE2\x80\xA9"), "\\u2028\\u2029",
             "EscapeJsStringLiteral escapes repeated line terminators");
 
-    // A backslash immediately before a quote: EscapeJsonString already turned the
-    // quote into \", so no raw quote may survive and nothing may be double-escaped.
-    CheckEq(EscapeJsStringLiteral("\\'"), "\\\\\\\"",
-            "EscapeJsStringLiteral handles backslash-then-quote");
+    // A backslash immediately before a single quote. EscapeJsonString doubles the
+    // backslash, then the quote is escaped as \' (these values land inside
+    // single-quoted JS literals), so nothing may be double-escaped.
+    CheckEq(EscapeJsStringLiteral("\\'"), "\\\\\\'", "EscapeJsStringLiteral handles backslash-then-quote");
 }
 
 static void TestEscapeShellArg()
@@ -115,6 +117,8 @@ static void TestEscapeShellArg()
 
 static void TestToIso8601UTC()
 {
+    using namespace util;
+
     auto now = std::chrono::system_clock::now();
     std::string t = ToIso8601UTC(now);
     Check(t.size() == 20, "ToIso8601UTC returns YYYY-MM-DDTHH:MM:SSZ");
@@ -151,6 +155,8 @@ static void TestToLower()
 
 static void TestGetEnvVar()
 {
+    using namespace util;
+
 #if defined(_WIN32)
     _putenv_s("UITESTENV", "testval");
 #else

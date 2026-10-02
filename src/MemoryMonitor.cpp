@@ -6,6 +6,11 @@
 #include <cstring>
 
 #ifdef _WIN32
+// windows.h defines min()/max() as macros, which breaks every std::min and
+// std::max below. NOMINMAX has to be defined before the header is pulled in.
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 #include <windows.h>
 // psapi.h must follow windows.h.
 #include <psapi.h>
@@ -306,36 +311,49 @@ void MemoryMonitor::RecomputeOverBudgetLocked(uint64_t resident_bytes, bool samp
     const uint64_t recovery_bytes =
         static_cast<uint64_t>(static_cast<double>(budget_bytes_) * kRecoveryRatio);
 
-    const bool previously_tracking = over_budget_since_ != std::chrono::steady_clock::time_point{};
+    const bool tracking = over_budget_since_ != std::chrono::steady_clock::time_point{};
 
     if (resident_bytes > budget_bytes_)
     {
         // Start the grace window once, and keep the original start time while
         // usage stays high. Resetting it on every poll would restart the grace
         // period indefinitely and the latch could never trip.
-        if (!previously_tracking)
+        if (!tracking)
         {
             over_budget_since_ = now;
         }
-    }
-    else if (previously_tracking && resident_bytes <= recovery_bytes)
-    {
-        // Usage has genuinely recovered, so the next excursion starts fresh.
-        over_budget_since_ = std::chrono::steady_clock::time_point{};
-    }
 
-    // Between the budget and the recovery watermark we deliberately hold the
-    // previous decision. A workload hovering near the limit must not flap.
-    over_budget_ = previously_tracking ||
-                   (over_budget_since_ != std::chrono::steady_clock::time_point{} &&
-                    (now - over_budget_since_) >= grace_period_);
+        // The decision comes from how long this excursion has lasted, not from
+        // whether a window is open. Deriving it from "tracking" would latch on
+        // the second poll and defeat the grace window entirely.
+        over_budget_ = (now - over_budget_since_) >= grace_period_;
+    }
+    else if (tracking)
+    {
+        if (resident_bytes <= recovery_bytes)
+        {
+            // Usage has genuinely recovered, so the next excursion starts fresh.
+            over_budget_since_ = std::chrono::steady_clock::time_point{};
+            over_budget_ = false;
+        }
+        // Otherwise we sit in the hysteresis band, between the budget and the
+        // recovery watermark, and deliberately hold the previous decision. A
+        // workload hovering near the limit must not flap.
+    }
+    else
+    {
+        over_budget_ = false;
+    }
 }
 
 MemorySnapshot MemoryMonitor::Poll()
 {
     std::lock_guard<std::mutex> lock(mutex_);
 
-    const bool should_sample = low_ram_mode_enabled_ || budget_bytes_ != 0;
+    // Only pay for a platform query when low-RAM mode is actually on. A stored
+    // budget on its own is not a reason to query: mode off means the user
+    // asked us not to watch memory, and this runs once per frame.
+    const bool should_sample = low_ram_mode_enabled_;
     if (should_sample && sampler_)
     {
         MemorySample sample;

@@ -48,6 +48,15 @@ namespace
 {
   constexpr int kDownloadsOverlaySpacing = 8;
 
+  // ultralight::JSString only offers an implicit conversion to ultralight::String,
+  // and ultralight::String is the type that owns the UTF-8 buffer. String::utf8()
+  // hands back a reference into the receiver, so the intermediate String has to be
+  // copied rather than referenced or the result would dangle.
+  inline ultralight::String8 JSStringToUtf8(ultralight::JSString value)
+  {
+    return ultralight::String(value).utf8();
+  }
+
   struct SettingDescriptor
   {
     const char *key;
@@ -68,7 +77,7 @@ namespace
     int max_value = 0;
   };
 
-  constexpr std::array<SettingDescriptor, 34> kFallbackSettingsCatalog = {
+  constexpr std::array<SettingDescriptor, 35> kFallbackSettingsCatalog = {
       // Appearance
       SettingDescriptor{"launch_dark_theme", "Launch in dark theme",
                         "Start Ultralight with dark chrome, toolbars, and tabs by default.",
@@ -1701,7 +1710,7 @@ void UI::OnDOMReady(View *caller, uint64_t frame_id, bool is_main_frame, const S
     if (applySettingsPanel)
     {
       std::string payload = BuildSettingsPayload(true);
-      // Settings page loaded — apply settings
+      // Settings page loaded â€” apply settings
       applySettingsPanel({String(payload.c_str())});
     }
     else
@@ -3426,7 +3435,7 @@ ultralight::JSValue UI::OnNativeGetThemeSetting(const JSObject &, const JSArgs &
 {
   if (args.size() >= 1 && args[0].IsString())
   {
-    auto key = args[0].ToString().utf8();
+    auto key = JSStringToUtf8(args[0].ToString());
     const std::string key_str = key.data() ? key.data() : "";
 
     if (key_str == "theme")
@@ -3441,12 +3450,12 @@ void UI::OnNativeSetThemeSetting(const JSObject &, const JSArgs &args)
   if (args.size() < 2 || !args[0].IsString() || !args[1].IsString())
     return;
 
-  auto key = args[0].ToString().utf8();
+  auto key = JSStringToUtf8(args[0].ToString());
   const std::string key_str = key.data() ? key.data() : "";
   if (key_str != "theme")
     return;
 
-  auto value = args[1].ToString().utf8();
+  auto value = JSStringToUtf8(args[1].ToString());
   const std::string theme_id = value.data() ? value.data() : "";
 
   // The manager logs why a value was refused. It also keeps a localStorage copy
@@ -3464,7 +3473,7 @@ void UI::OnNativeSaveCustomThemes(const JSObject &, const JSArgs &args)
   if (args.size() < 1 || !args[0].IsString())
     return;
 
-  auto json = args[0].ToString().utf8();
+  auto json = JSStringToUtf8(args[0].ToString());
   theme_store()->SaveCustomThemesJSON(json.data() ? json.data() : "");
 }
 
@@ -3478,7 +3487,7 @@ void UI::OnNativeSaveThemeOverrides(const JSObject &, const JSArgs &args)
   if (args.size() < 1 || !args[0].IsString())
     return;
 
-  auto json = args[0].ToString().utf8();
+  auto json = JSStringToUtf8(args[0].ToString());
   theme_store()->SaveOverridesJSON(json.data() ? json.data() : "");
 }
 
@@ -6902,8 +6911,8 @@ void UI::OnShowPasswordSavePrompt(const JSObject &obj, const JSArgs &args)
   if (args.size() < 2)
     return;
 
-  auto origin_str = args[0].ToString().utf8();
-  auto username_str = args[1].ToString().utf8();
+  auto origin_str = JSStringToUtf8(args[0].ToString());
+  auto username_str = JSStringToUtf8(args[1].ToString());
 
   ShowPasswordSavePrompt(origin_str.data() ? origin_str.data() : "",
                          username_str.data() ? username_str.data() : "");
