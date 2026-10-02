@@ -755,6 +755,7 @@ declares.
 | Back | `Alt+Left` |
 | Forward | `Alt+Right` |
 | Address Bar | `Ctrl+L` |
+| Bookmark This Tab | `Ctrl+D` |
 | Find in Page | `Ctrl+F` |
 | Tab Search | `Ctrl+Shift+A` |
 | Next / Previous Tab | `Ctrl+Tab` / `Ctrl+Shift+Tab` |

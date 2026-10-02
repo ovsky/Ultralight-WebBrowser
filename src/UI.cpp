@@ -1426,6 +1426,7 @@ void UI::LoadShortcuts()
       {"Ctrl+W", "close-tab"},
       {"Ctrl+H", "open-history"},
       {"Ctrl+B", "open-bookmarks"},
+      {"Ctrl+D", "toggle-bookmark"},
       {"Ctrl+J", "open-downloads"},
       {"Ctrl+E", "open-extensions"},
       {"Ctrl+P", "open-passwords"},
@@ -1639,6 +1640,18 @@ bool UI::RunShortcutAction(const std::string &action)
   if (action == "reopen-closed-tab")
   {
     return ReopenLastClosedTab();
+  }
+  if (action == "toggle-bookmark")
+  {
+    // No arguments: OnToggleBookmark then falls back to the active tab's URL,
+    // title and favicon, which is exactly the behaviour the star button has.
+    // Refresh afterwards so the button does not keep showing the pre-toggle
+    // state until something else happens to update it.
+    if (!active_tab())
+      return false;
+    OnToggleBookmark({}, {});
+    UpdateBookmarkButtonState();
+    return true;
   }
   if (action == "open-history")
   {

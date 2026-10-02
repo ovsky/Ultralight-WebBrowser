@@ -7,6 +7,7 @@
   "Ctrl+W": "close-tab",
   "Ctrl+H": "open-history",
   "Ctrl+B": "open-bookmarks",
+  "Ctrl+D": "toggle-bookmark",
   "Ctrl+J": "open-downloads",
   "Ctrl+E": "open-extensions",
   "Ctrl+P": "open-passwords",
