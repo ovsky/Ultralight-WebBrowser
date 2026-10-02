@@ -14,14 +14,17 @@ static void PauseForDebugger() {}
 // Set environment variables to try to relax WebKit security (may not work with Ultralight's WebKit)
 static void SetWebKitEnvironment() {
 #if defined(_WIN32)
-  _putenv_s("WEBKIT_DISABLE_COMPOSITING_MODE", "1");
-  // Try to disable web security (these are WebKit env vars, may not work)
-  _putenv_s("WEBKIT_DISABLE_WEB_SECURITY", "1");
-  _putenv_s("WEBKIT_ALLOW_UNIVERSAL_ACCESS_FROM_FILE_URLS", "1");
+    // WEBKIT_DISABLE_COMPOSITING_MODE used to be set here alongside the security
+    // variables below. It is not a security setting, and disabling WebKit's
+    // compositing is what forces scrolling to repaint on the main thread instead
+    // of being composited -- the wheel then has to wait for paints instead of
+    // tracking the pointer. Removing it. The two security variables are left
+    // alone: changing the web-security posture is outside the scope of this fix.
+    _putenv_s("WEBKIT_DISABLE_WEB_SECURITY", "1");
+    _putenv_s("WEBKIT_ALLOW_UNIVERSAL_ACCESS_FROM_FILE_URLS", "1");
 #else
-  setenv("WEBKIT_DISABLE_COMPOSITING_MODE", "1", 1);
-  setenv("WEBKIT_DISABLE_WEB_SECURITY", "1", 1);
-  setenv("WEBKIT_ALLOW_UNIVERSAL_ACCESS_FROM_FILE_URLS", "1", 1);
+    setenv("WEBKIT_DISABLE_WEB_SECURITY", "1", 1);
+    setenv("WEBKIT_ALLOW_UNIVERSAL_ACCESS_FROM_FILE_URLS", "1", 1);
 #endif
 }
 

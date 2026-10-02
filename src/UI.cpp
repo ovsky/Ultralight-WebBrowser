@@ -2053,6 +2053,26 @@ bool UI::OnMouseEvent(const ultralight::MouseEvent &evt)
     return !over_drag_handle;
   }
 
+  // Deliver content-area mouse input to the active tab directly.
+  //
+  // Returning true would hand the event back to AppCore, which resolves the
+  // target from the focused view. That made clicks depend on which view happened
+  // to be focused: after using the address bar, the chrome view held focus, so
+  // the focus() call above did not reliably decide where the same mousedown
+  // landed, and hits on controls -- settings toggles in particular -- were easy
+  // to miss. This mirrors the overlay handling above and the scroll fix: route by
+  // position instead of by focus.
+  if (active_tab() && active_tab()->view())
+  {
+    ultralight::MouseEvent adjusted = evt;
+    // The tab view sits below the chrome; translate into its coordinate space.
+    adjusted.y = evt.y - ui_height_;
+    active_tab()->view()->FireMouseEvent(adjusted);
+    return false;
+  }
+
+  // A DRM tab is a native WebView2 child that handles its own input, so leave
+  // the fall-through path in place for it.
   return true;
 }
 
