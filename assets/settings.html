@@ -1083,7 +1083,14 @@
         function startMemoryReadoutPolling() {
             if (typeof memoryPollTimer !== 'undefined' && memoryPollTimer !== null) return;
             updateMemoryReadout();
-            memoryPollTimer = setInterval(updateMemoryReadout, 2000);
+            memoryPollTimer = setInterval(function () {
+                if (!document.hidden) updateMemoryReadout();
+            }, 2000);
+            // The readout must catch up the moment the page is shown again,
+            // otherwise it would display the last value sampled while hidden.
+            document.addEventListener('visibilitychange', function () {
+                if (!document.hidden) updateMemoryReadout();
+            });
         }
 
         function updateDirtyState() {

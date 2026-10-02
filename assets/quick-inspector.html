@@ -374,9 +374,11 @@
 
         // UI
         let perfTimer = 0;
+        let infoTimer = 0;
         function setTab(id) {
             // clear any polling timers
             if (perfTimer) { clearInterval(perfTimer); perfTimer = 0; }
+            if (infoTimer) { clearInterval(infoTimer); infoTimer = 0; }
 
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
@@ -542,7 +544,11 @@
             ]);
             setTab('elements');
             refreshInfo();
-            setInterval(refreshInfo, 1000);
+            // Poll only while the Info panel is the visible tab, matching how the
+                // Performance poller is gated. Otherwise the inspector keeps
+                // calling into the host once a second for a panel nobody is
+                // looking at.
+                infoTimer = setInterval(refreshInfo, 1000);
         });
         function refreshOuterHTML() { try { const sel = selOut.textContent || ''; if (!sel) return; const j = NativeQuickGetOuterHTML ? NativeQuickGetOuterHTML(sel) : ''; if (outerHTMLOut) outerHTMLOut.value = j || ''; } catch (e) { } }
         function applyAttr() { try { const sel = selOut.textContent || ''; const n = attrNameIn.value || ''; const v = attrValueIn.value || ''; if (!sel || !n) return; if (NativeQuickSetAttribute) NativeQuickSetAttribute(sel, n, v); refreshOuterHTML(); } catch (e) { } }

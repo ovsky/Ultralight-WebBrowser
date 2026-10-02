@@ -483,7 +483,11 @@
             tick();
         });
 
-        setInterval(refresh, 1500);
+        // The panel sits hidden behind the download badge most of the time. Skip the
+        // tick while hidden and refresh once it is shown again, so the badge and
+        // the list cannot drift apart.
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
+        setInterval(function () { if (!document.hidden) refresh(); }, 1500);
     </script>
 </body>
 

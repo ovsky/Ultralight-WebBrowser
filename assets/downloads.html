@@ -420,7 +420,10 @@
 
         window.addEventListener('focus', () => refresh());
         document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
-        setInterval(refresh, 1500);
+        // Skip the tick while the page is hidden. Both listeners below already
+        // refresh when the page becomes visible again, so a hidden tick can only
+        // ever produce data nobody is looking at.
+        setInterval(function () { if (!document.hidden) refresh(); }, 1500);
     </script>
 </body>
 
