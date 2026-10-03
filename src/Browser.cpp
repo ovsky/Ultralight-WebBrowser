@@ -18,6 +18,30 @@
 
 Browser::Browser()
 {
+#if defined(_WIN32)
+  // Declared in browser.manifest as well, but some packagers strip the manifest
+  // (a zip round-trip through a tool that rewrites resources can drop it), and a
+  // DPI-unaware process pays for a full-surface bitmap stretch on every repaint.
+  // SetPerMonitorAwareV2 must be called before the first window is created, and
+  // it is a no-op-safe call when awareness is already set by the manifest.
+  //
+  // Shcore requires Windows 8.1; user32 provides SetProcessDpiAwarenessContext
+  // on Windows 10 1703+. Both are resolved dynamically so this still loads on
+  // Windows 7, where the fallback below is used.
+  {
+    using SetCtxFn = BOOL(WINAPI *)(DPI_AWARENESS_CONTEXT);
+    if (HMODULE user32 = GetModuleHandleW(L"user32.dll"))
+    {
+      if (SetCtxFn set_ctx = reinterpret_cast<SetCtxFn>(
+              GetProcAddress(user32, "SetProcessDpiAwarenessContext")))
+      {
+        // PER_MONITOR_AWARE_V2
+        set_ctx(reinterpret_cast<DPI_AWARENESS_CONTEXT>(-4));
+      }
+    }
+  }
+#endif
+
   Settings settings;
   Config config;
   config.scroll_timer_delay = 1.0 / 60.0;
