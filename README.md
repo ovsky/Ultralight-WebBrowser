@@ -371,11 +371,30 @@ choose, by closing the least-recently-used background tabs. See
     `enable_drm_webview`, and the tests all specify enabled. A freshly constructed
     `DRMSettings` reported enabled until the first `Load()` flipped it off
   - Fixes the two pre-existing `DRMSettingsTest` failures
+- **Tab open/close no longer blocks the UI thread** – Session writes are coalesced
+  - `SaveSessionToDisk()` calls `view()->url()` and `view()->title()` for every open
+    tab. Those are synchronous calls into the engine that block the UI thread until the
+    renderer answers, followed by a rewrite of `session.json`
+  - That ran directly on the UI thread on every tab open and every tab close — the two
+    moments where a hitch is most noticeable — while navigation completion already went
+    through the coalescing `RequestSessionSave()`. Now consistent
+- **Settings page logging no longer touches the DOM on every interaction** – `log()`
+  rebuilt the entire debug text node and then read `scrollHeight`, forcing a synchronous
+  layout from the toggle/save path. Lines are now buffered and flushed at most once per
+  frame, and `console.debug` is used so the native handler drops them by default
+- **Button glow** – Focus indication moved from spread-only `box-shadow` rings to
+  `outline`, and blur radii on button shadows cut from 15–20 px to 6–8 px
+  - A spread-only shadow paints a hard-edged halo rather than reading as focus, and
+    inflates the element's paint box. The large blurs were both the visible glow and the
+    most expensive blur passes in the stylesheet
 
 #### New Developer Tools
 - **`tools/PerfProbe.cpp`** – Offscreen paint-cost probe for the browser's own pages
   - Measures per-frame time and repaint area without a window, so a suspected CSS or
     `ViewConfig` regression is reproducible with one command instead of subjective feel
+- **`scripts/measure-interaction-cost.ps1`** – Reports process CPU idle vs. under
+    synthetic input, with a `WM_NULL` round-trip that proves the window stayed
+    responsive; aborts if the browser is not the window under the cursor
 - **`scripts/run-ui-diagnostics.ps1`** – Drives the real app with synthetic input and
     collects its stderr diagnostics
 - **`scripts/with-msvc-env.ps1`** – Runs a command inside a Visual Studio developer
@@ -688,12 +707,31 @@ reports a comfortable 0.00 ms for a page that is visibly stuttering.
 `PerfProbe` forces a sync through the surface lock for that reason.
 
 With `ULTRALIGHT_VERBOSE=1` the app itself reports which renderer the engine
-selected and the presented frame rate. On a discrete GPU the frame counter has
-been observed running at 300–600 fps, i.e. `App::Run()` is not vsync-throttled and
-the UI thread stays busy rather than idling. `AppCore` owns that loop and exposes
-no throttle knob, so it cannot be capped from application code; `Config::
-scroll_timer_delay` (set to 1/60 in `src/Browser.cpp`) is the only related knob
-available.
+selected and the frame rate. Two scripts measure the totals that no single
+diagnostic covers:
+
+```powershell
+# CPU consumed while idle vs. under synthetic wheel/mouse-move traffic, plus a
+# WM_NULL round-trip per interval to prove the window stayed responsive.
+.\scripts\measure-interaction-cost.ps1 -Seconds 14
+```
+
+Reference figures from one run on an i7-12650H with a discrete GPU, driving the
+browser for 14 s:
+
+| Metric | Idle | Under interaction |
+|--------|------|-------------------|
+| Process CPU | 0.6% of one core | 25% of one core (1.6% of a 16-thread machine) |
+| Frame rate | ~450–670/s | ~150–325/s |
+| Scroll handler | — | 0.15–0.22 ms |
+| Mouse handler | — | 0.17 ms |
+| `WM_NULL` round-trip | — | never blocked |
+
+Note that `App::Run()` is not vsync-throttled, so the frame counter reads in the
+hundreds even at idle. That is not a busy loop: idle CPU is under 1% of one core,
+because the loop sleeps between frames. `AppCore` owns that loop and exposes no
+throttle, so it cannot be capped from application code; `Config::scroll_timer_delay`
+(set to 1/60 in `src/Browser.cpp`) is the only related knob available.
 
 ### Ultralight SDK Version
 

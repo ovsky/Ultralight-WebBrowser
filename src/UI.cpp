@@ -2857,7 +2857,15 @@ void UI::OnRequestTabClose(const JSObject &obj, const JSArgs &args)
     ReclaimMemoryIfNeeded();
 
     // Save session after tab close for crash recovery
-    SaveSessionToDisk();
+    //
+    // RequestSessionSave, not the direct call. SaveSessionToDisk() queries
+    // view()->url() and view()->title() for every open tab, and those are
+    // synchronous calls into the engine that block the UI thread until the
+    // renderer answers, followed by an open/truncate/write of session.json. On a
+    // handful of tabs that is a visible hitch exactly when the user is clicking
+    // around. Coalescing to at most one write per second still keeps crash
+    // recovery useful and matches what navigation completion already does.
+    RequestSessionSave();
   }
 }
 
@@ -3510,7 +3518,11 @@ void UI::CreateNewTab()
   ReclaimMemoryIfNeeded();
 
   // Save session after new tab for crash recovery
-  SaveSessionToDisk();
+  //
+  // Coalesced, for the same reason as the tab-close path above: a new tab is one
+  // of the most latency-sensitive moments in the UI, and this write blocks the
+  // thread while it walks every tab for its URL and title.
+  RequestSessionSave();
 }
 
 RefPtr<View> UI::CreateNewTabForChildView(const String &url)
@@ -5547,7 +5559,9 @@ void UI::ReclaimMemory(uint64_t tab_id)
   closeTab({tab_id});
   it->second.reset();
   tabs_.erase(it);
-  SaveSessionToDisk();
+  // Coalesced like the other tab-lifecycle paths: the engine queries this write
+  // performs are synchronous and block the UI thread.
+  RequestSessionSave();
 }
 
 void UI::ReloadChromeUI()
