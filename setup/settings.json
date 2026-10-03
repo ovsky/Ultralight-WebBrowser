@@ -16,7 +16,7 @@
     "show_download_badge": true,
     "auto_open_download_panel": true,
     "ask_download_location": false,
-    "smooth_scrolling": true,
+    "smooth_scrolling": false,
     "hardware_acceleration": true,
     "enable_local_storage": true,
     "enable_database": true,
