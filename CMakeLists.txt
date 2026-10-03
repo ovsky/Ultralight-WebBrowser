@@ -29,6 +29,25 @@ include_directories(
 	"${ULTRALIGHT_SDK_ROOT}/include"
 )
 
+# Embed the application manifest into every executable.
+#
+# Without any DPI awareness declared, Windows treats the process as DPI-unaware:
+# it renders at 96 DPI and stretches the finished bitmap to the real screen size.
+# Every repaint then pays for a full-surface resample, so scrolling and animation
+# degrade the further the display is scaled and text comes out blurry.
+#
+# This has to be declared before the first add_executable, because add_link_options
+# only affects targets created after it. The console test binaries are included so
+# they cannot report a different device scale than the browser under test.
+if(WIN32 AND MSVC)
+	if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/browser.manifest")
+		add_link_options("/MANIFEST:EMBED"
+			"/MANIFESTINPUT:${CMAKE_CURRENT_SOURCE_DIR}/browser.manifest")
+	else()
+		message(WARNING "browser.manifest not found; executables will be DPI-unaware")
+	endif()
+endif()
+
 function(add_app NAME)
 	if (WIN32)
 		add_executable(${NAME} WIN32 ${ARGN})
