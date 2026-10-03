@@ -79,16 +79,10 @@ namespace drm
             out << document;
         }
 
-        void MergeCatalog(std::map<std::string, SiteRule> &target,
-                          const std::map<std::string, SiteRule> &catalog)
-        {
-            // Always include all catalog entries (catalog takes precedence)
-            // This ensures new sites added to the catalog are picked up
-            for (const auto &entry : catalog)
-            {
-                target[entry.first] = entry.second;
-            }
-        }
+        // MergeCatalog() used to live here and assigned every catalog entry over
+        // the stored rules. It is gone because DRMSettings::Load() now inlines
+        // the gap-filling version, and keeping the old helper around invited the
+        // same override bug back the next time it was called.
     }
 
     DRMSettings::DRMSettings(std::filesystem::path storage_path)
@@ -136,8 +130,22 @@ namespace drm
             return Save();
         }
         site_rules_ = std::move(parsed_rules);
-        if (!catalog_rules.empty())
-            MergeCatalog(site_rules_, catalog_rules);
+        // Catalog entries fill in sites the user has not decided about, and never
+        // override one they have.
+        //
+        // This used to be MergeCatalog(), which assigned every catalog entry on
+        // top of the stored rules because "the catalog takes precedence". That
+        // silently discarded explicit per-site opt-outs: a user who switched DRM
+        // off for netflix.com had it switched back on the next launch, since the
+        // bundled catalog lists netflix.com as force=true and was re-applied over
+        // their saved choice every single time settings were loaded. Filling only
+        // the gaps keeps the intent the comment described -- new sites added to
+        // the catalog are picked up -- without making the catalog unoverridable.
+        for (const auto &entry : catalog_rules)
+        {
+            if (site_rules_.find(entry.first) == site_rules_.end())
+                site_rules_[entry.first] = entry.second;
+        }
         return true;
     }
 
@@ -174,7 +182,15 @@ namespace drm
 
     void DRMSettings::ResetToDefaults()
     {
-        enabled_ = false; // Default to disabled - user must opt-in
+        // Enabled, matching the member initializer in DRMSettings.h, the
+        // enable_drm_webview application setting, and the behaviour the tests
+        // assert. This line said false with a "user must opt-in" comment, which
+        // made a fresh profile disagree with every other declaration of the
+        // default: the header initialised enabled_ to true, so a constructed
+        // DRMSettings reported enabled until the first Load() flipped it off.
+        // Whether DRM webview is used at all is gated by the separate
+        // enable_drm_webview setting, which is what users turn off.
+        enabled_ = true;
         site_rules_.clear();
 
         const std::string catalog_document = LoadCatalogDocument(*this);

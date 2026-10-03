@@ -327,6 +327,65 @@ choose, by closing the least-recently-used background tabs. See
 
 ### v0.9.6 (In Development)
 
+#### Fixes
+- **UI responsiveness** – Removed a blocking stderr write from the page console-message handler
+  - Every `console.log` from a loaded page wrote to stderr on the UI thread. When stderr
+    is a pipe, each write blocks until the reader drains it, so a page that logs per
+    interaction serialised the whole event loop behind the log reader
+  - `settings.html` logged from its own toggle handler, which made interacting with the
+    settings list stutter
+  - Warnings and errors are still reported; routine `LOG`/`INFO`/`DEBUG` output now
+    requires `ULTRALIGHT_VERBOSE=1`, matching the existing `ULTRALIGHT_LOG_REQUESTS`
+    and `VerboseLogging()` opt-ins
+- **Clicks landing on the wrong control** – Chrome height is no longer cached from startup
+  - `ui_height_` was computed once in the constructor as `UI_HEIGHT * window->scale()` and
+    never recomputed. It is not only a layout value: it is the offset subtracted from
+    every content-area pointer event to translate window coordinates into the tab view's
+    space, and the threshold used to decide whether an event belongs to the toolbar at all
+  - Now that the process is per-monitor-v2 DPI aware, `window->scale()` changes when the
+    window moves to a monitor with different DPI, so the cached value silently drifted from
+    the scale the toolbar was actually drawn at and shifted hit testing by the difference
+  - `ComputeChromeHeight()` is now the single source of truth, re-derived on every resize
+    and on compact-tabs changes, and applied through `AdjustUIHeight()`, which also resizes
+    the tabs so the bottom of a page cannot fall outside the content area
+- **Missing favicons** – Favicon cache moved to the settings directory
+  - The favicon index and images were written to a working-directory-relative
+    `data/favicons`, so launching the browser from anywhere other than the folder
+    containing `data/` silently created a second, empty cache that was never read. This
+    is the same working-directory fragility already fixed for history, session and settings
+  - Cached `file:///` URLs were built by prefixing the working directory onto a relative
+    path, so they pointed somewhere invalid whenever the browser was launched elsewhere
+  - The old location is still read as a fallback so existing caches survive the change
+- **Session restore bar** – Restored the missing `@keyframes slideDown`
+  - `#session-restore-bar` referenced the animation by name, but the definition had been
+    lost to an earlier brace-truncation edit, leaving a bare `to { ... }` fragment and a
+    stray closing brace in `ui.css`. An orphan block at the top level is a CSS parse error,
+    and error recovery discards rules until it can resync, putting the adjacent
+    `#session-restore-bar.visible` rule (the one that reveals the bar) at risk
+- **Per-site DRM opt-outs** – The bundled DRM site catalog no longer overrides user choices
+  - `Load()` re-applied every catalog entry over the stored rules because "the catalog takes
+    precedence", so a user who switched DRM off for a site had it switched back on at the
+    next launch. Catalog entries now fill in only sites the user has not decided about
+- **DRM default flag** – `ResetToDefaults()` disagreed with every other declaration
+  - It set `enabled_ = false` while the header initialiser, the application setting
+    `enable_drm_webview`, and the tests all specify enabled. A freshly constructed
+    `DRMSettings` reported enabled until the first `Load()` flipped it off
+  - Fixes the two pre-existing `DRMSettingsTest` failures
+
+#### New Developer Tools
+- **`tools/PerfProbe.cpp`** – Offscreen paint-cost probe for the browser's own pages
+  - Measures per-frame time and repaint area without a window, so a suspected CSS or
+    `ViewConfig` regression is reproducible with one command instead of subjective feel
+- **`scripts/run-ui-diagnostics.ps1`** – Drives the real app with synthetic input and
+    collects its stderr diagnostics
+- **`scripts/with-msvc-env.ps1`** – Runs a command inside a Visual Studio developer
+    environment, so builds work from a plain shell
+- **`ULTRALIGHT_VERBOSE` diagnostics** – Which renderer the engine selected (GPU or
+  CPU), the presented frame rate, input-handler timing, and a hit-test probe that reports
+  which element the page believes is under a translated click coordinate. Useful because
+  the input handlers all measure sub-millisecond, so "the UI feels laggy" is ambiguous
+  between a slow handler and a slow frame rate, and only the frame counter separates them
+
 #### New Features
 - **Location Spoofing** – Override browser geolocation with custom coordinates
   - Configurable latitude/longitude in Settings → Privacy
@@ -592,8 +651,65 @@ Major feature sync bringing all development improvements to the stable branch.
 | `PACKAGE_GENERATORS` | CPack generators (`TGZ;DEB;RPM`) |
 | `CREATE_INSTALLER` | Build NSIS installer (Windows) |
 | `ULTRALIGHT_LOG_REQUESTS` | Runtime opt-in. `1` logs every network request to stderr; `0`/`false` disables. Off by default |
-| `ULTRALIGHT_VERBOSE` | Runtime opt-in. `1` enables the UI-thread diagnostic logging (settings changes, tab restore, input diagnostics). Unconditional stderr writes block the UI thread when stderr is a pipe, so these are off by default |
+| `ULTRALIGHT_VERBOSE` | Runtime opt-in. `1` enables the UI-thread diagnostic logging (selected renderer, settings changes, tab restore, input diagnostics, hit-test probes). Unconditional stderr writes block the UI thread when stderr is a pipe, so these are off by default. Page `console.log` output is also suppressed at this level; `console.error`/`console.warn` are always reported |
 | `UL_START_URL` | Runtime opt-in. Opens this URL in the first tab instead of restoring the session or loading the home page. Bypasses session restore, which intentionally ignores `file:///` pages |
+
+### UI Performance Diagnostics
+
+Scroll lag and mis-targeted clicks cannot be diagnosed from source alone, so two
+tools are provided. Both are developer instruments and are not part of a normal
+build.
+
+```powershell
+# Measure the paint cost of a browser page with no window at all.
+# Reports per-frame time and, more usefully, how much of the viewport the engine
+# actually repaints per frame. A small repaint area with slow frames means the
+# bottleneck is elsewhere; a large one means it is paint.
+cmake --build build-win64 --target PerfProbe
+cd build-win64
+.\PerfProbe.exe --page settings.html --ticks 60 --js-scroll
+.\PerfProbe.exe --page settings.html --width 1920 --height 1080 --scale 1.5 --compositor
+
+# Drive the real app with synthetic input and collect its stderr diagnostics.
+# Needs a Visual Studio developer environment when cl.exe is invoked directly.
+.\scripts\run-ui-diagnostics.ps1 -OpenSettings -WheelTicks 240 -MouseMoves 200
+```
+
+`run-ui-diagnostics.ps1` sends real clicks when given `-ClickAt`, and a click on
+the settings page toggles whichever setting is under the cursor and auto-saves it
+to the user profile, so `-ClickAt` requires `-AllowClicks` as well. Windows also
+refuses `SetForegroundWindow` to a background process, so a run that produces no
+`[diag]` output usually means the synthetic input never reached the browser
+rather than that the handlers were silent; click the browser window once by hand
+and rerun if that happens.
+
+Note that `Renderer::Render()` only *schedules* work, so timing the call alone
+reports a comfortable 0.00 ms for a page that is visibly stuttering.
+`PerfProbe` forces a sync through the surface lock for that reason.
+
+With `ULTRALIGHT_VERBOSE=1` the app itself reports which renderer the engine
+selected and the presented frame rate. On a discrete GPU the frame counter has
+been observed running at 300–600 fps, i.e. `App::Run()` is not vsync-throttled and
+the UI thread stays busy rather than idling. `AppCore` owns that loop and exposes
+no throttle knob, so it cannot be capped from application code; `Config::
+scroll_timer_delay` (set to 1/60 in `src/Browser.cpp`) is the only related knob
+available.
+
+### Ultralight SDK Version
+
+The bundled SDK is **1.4.0** (released 21 April 2025, WebKit
+615.1.18.100.1), which is the newest publicly released version of the free
+edition. There is no stable upgrade available: the vendor's API reference and
+download site still serve `1_4_0`, no later release has been announced, and the
+upstream GitHub repository publishes no releases at all. An unreleased
+`1.4.1-dev` build exists in this project's own `base-sdk` branch (used as the CI
+SDK source); it is not a vendor release and is not recommended for adoption.
+
+If an SDK upgrade ever happens, note that the ICU data filename is hardcoded as
+`icudt67l.dat` in several `POST_BUILD` blocks in `CMakeLists.txt`. A new SDK
+version renames it, and those `EXISTS` guards would then silently skip staging
+the file. The engine loads `icudt*.dat` by suffix at runtime, and the install
+rules already glob, so only the `POST_BUILD` copies need attention.
 
 ### Local Verification
 

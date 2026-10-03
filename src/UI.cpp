@@ -181,6 +181,54 @@ namespace
     return ultralight::String(value).utf8();
   }
 
+  // Reports what the page thinks is under a view-local point.
+  //
+  // Exists to settle a class of bug that source review cannot: a click landing on
+  // the wrong control. The window listener has to translate window coordinates
+  // into view coordinates by subtracting the chrome height, and that offset is
+  // only ever checked against other C++ values -- the overlay height, the tab
+  // position, the resize math. If those disagree with the engine's own layout,
+  // the code still looks correct and the symptom is invisible until a user
+  // reports that clicks land somewhere else. Asking the page which element is at
+  // the translated point, and where that element actually is, compares the
+  // translation against the one authority that cannot drift: the rendered layout.
+  //
+  // Returns true when the probe ran. Never called unless verbose logging is on,
+  // because it evaluates script in the page and that is far too expensive for a
+  // per-frame path.
+  bool ReportHitTest(RefPtr<View> v, int view_x, int view_y, int window_x, int window_y)
+  {
+    if (!UI::VerboseLogging() || !v)
+      return false;
+
+    char script[640];
+    std::snprintf(
+        script, sizeof(script),
+        "(function(x,y){try{"
+        "var e=document.elementFromPoint(x,y);"
+        "if(!e)return 'no-element';"
+        "var r=e.getBoundingClientRect();"
+        "var row=e.closest?e.closest('.setting-item'):null;"
+        "var rr=row?row.getBoundingClientRect():null;"
+        "return (e.tagName||'?')"
+        "+'.'+((e.className&&e.className.baseVal!==undefined)?e.className.baseVal:(e.className||'-'))"
+        "+' rect=['+Math.round(r.left)+','+Math.round(r.top)+','+Math.round(r.right)+','+Math.round(r.bottom)+']'"
+        "+' hit='+(x>=r.left&&x<r.right&&y>=r.top&&y<r.bottom)"
+        "+' row='+(row?('['+Math.round(rr.top)+','+Math.round(rr.bottom)+']'):'none')"
+        "+' scrollY='+(window.scrollY||window.pageYOffset||0)"
+        "+' dpr='+(window.devicePixelRatio||1)"
+        "+' inner='+window.innerWidth+'x'+window.innerHeight;"
+        "}catch(err){return 'error:'+err.message;}})(%d,%d)",
+        view_x, view_y);
+
+    String result = v->EvaluateScript(script, nullptr);
+    auto utf8 = result.utf8();
+    std::fprintf(stderr, "[diag] hit: win=(%d,%d) view=(%d,%d) -> %s\n",
+                 window_x, window_y, view_x, view_y,
+                 (utf8.data() && utf8.data()[0]) ? utf8.data() : "(empty)");
+    return true;
+  }
+
   struct SettingDescriptor
   {
     const char *key;
@@ -491,10 +539,12 @@ UI::UI(RefPtr<Window> window)
     media_fallback_("assets/media_sites.json")
   {
   uint32_t window_width = window_->width();
-  ui_height_ = (uint32_t)std::round(UI_HEIGHT * window_->scale());
+  ui_height_ = ComputeChromeHeight();
   base_ui_height_ = ui_height_;
   overlay_ = Overlay::Create(window_, window_width, ui_height_, 0, 0);
   g_ui = this;
+
+  AttachRunLoopDiagnostics();
 
   // Prepare settings and state BEFORE loading the main UI document so the first snapshot reflects persisted values.
   LoadSuggestionsFaviconsFlag();
@@ -567,11 +617,13 @@ UI::UI(RefPtr<Window> window, AdBlocker *adblock, AdBlocker *tracker)
     media_fallback_("assets/media_sites.json")
   {
   uint32_t window_width = window_->width();
-  ui_height_ = (uint32_t)std::round(UI_HEIGHT * window_->scale());
+  ui_height_ = ComputeChromeHeight();
   base_ui_height_ = ui_height_;
   overlay_ = Overlay::Create(window_, window_width, ui_height_, 0, 0);
   g_ui = this;
-   
+
+  AttachRunLoopDiagnostics();
+
   LoadSuggestionsFaviconsFlag();
   EnsureDataDirectoryExists();
   settings_storage_path_ = SettingsFilePath().string();
@@ -944,6 +996,12 @@ void UI::HandleDrmNavigationState(uint64_t tab_id, bool can_back, bool can_forwa
 
 UI::~UI()
 {
+  // Detach from the run loop first. The App outlives UI (Browser holds both),
+  // so leaving the listener installed would let the loop call OnUpdate() on a
+  // destroyed object for as long as it kept spinning during shutdown.
+  if (App::instance())
+    App::instance()->set_listener(nullptr);
+
   // Stop the sampler first so it cannot outlive the monitor it polls.
   StopMemoryWatchdog();
 
@@ -995,6 +1053,35 @@ bool UI::VerboseLogging()
     return env && std::strcmp(env, "0") != 0 && std::string(env) != "false";
   }();
   return enabled;
+}
+
+void UI::OnUpdate()
+{
+  // On the per-frame path. An increment and two comparisons is all this can
+  // afford; anything more shows up in the very number it is measuring.
+  ++frame_count_;
+
+  if (!VerboseLogging())
+    return;
+
+  const auto now = std::chrono::steady_clock::now();
+  if (frame_window_start_.time_since_epoch().count() == 0)
+  {
+    frame_window_start_ = now;
+    return;
+  }
+
+  const double elapsed_s =
+      std::chrono::duration<double>(now - frame_window_start_).count();
+  if (elapsed_s < 2.0)
+    return;
+
+  const double fps = static_cast<double>(frame_count_) / elapsed_s;
+  std::fprintf(stderr, "[diag] frames: %llu in %.2fs = %.1f fps\n",
+               (unsigned long long)frame_count_, elapsed_s, fps);
+
+  frame_count_ = 0;
+  frame_window_start_ = now;
 }
 
 // Window exposes is_fullscreen() but no setter in this SDK, so fullscreen is
@@ -2067,6 +2154,8 @@ bool UI::OnMouseEvent(const ultralight::MouseEvent &evt)
     ultralight::MouseEvent adjusted = evt;
     // The tab view sits below the chrome; translate into its coordinate space.
     adjusted.y = evt.y - ui_height_;
+    if (evt.type == MouseEvent::kType_MouseDown)
+      ReportHitTest(active_tab()->view(), adjusted.x, adjusted.y, evt.x, evt.y);
     active_tab()->view()->FireMouseEvent(adjusted);
     return false;
   }
@@ -2197,6 +2286,20 @@ void UI::OnClose(ultralight::Window *window)
 
 void UI::OnResize(ultralight::Window *window, uint32_t width, uint32_t height)
 {
+  // Re-derive the chrome height before using it anywhere. It used to be a value
+  // captured once in the constructor, which silently went stale as soon as the
+  // window's device scale changed -- the window dragged to a monitor with
+  // different DPI. ui_height_ is not just a layout number: it is the constant
+  // subtracted from every content-area mouse and scroll event to translate window
+  // coordinates into the tab view's space, and it is also compared against the
+  // pointer Y to decide whether an event belongs to the chrome at all. A stale
+  // value does not fail loudly; it shifts hit testing by the difference between
+  // the scale the toolbar is actually drawn at and the scale this number was
+  // computed with, so clicks land on whatever row happens to be that far away.
+  // AdjustUIHeight repositions the tabs when it changes, so the geometry and the
+  // hit-test offset move together.
+  AdjustUIHeight(ComputeChromeHeight());
+
   int tab_height = window->height() - ui_height_;
 
   if (tab_height < 1)
@@ -4841,17 +4944,14 @@ void UI::ApplySettings(bool initial, bool snapshot_is_baseline)
 
   if (was_compact != experimental_compact_tabs_enabled_)
   {
-    // Calculate new UI height based on compact mode
-    double scale = window_ ? window_->scale() : 1.0;
-    uint32_t target_height = experimental_compact_tabs_enabled_ ? (uint32_t)std::round(UI_HEIGHT_COMPACT * scale) : (uint32_t)std::round(UI_HEIGHT * scale);
-
-    if (ui_height_ != target_height)
-    {
-      ui_height_ = target_height;
-      // Trigger resize to reposition all tabs
-      if (window_)
-        OnResize(window_.get(), window_->width(), window_->height());
-    }
+    // ComputeChromeHeight reads the flag just assigned above, so this is the one
+    // place that derives the chrome height. AdjustUIHeight owns applying it: it
+    // resizes the chrome overlay, moves the tabs to the new content top and
+    // resizes them to fill the space, which is the same geometry UI::OnResize
+    // applies. Calling AdjustUIHeight directly instead of hand-rolling the
+    // assignment plus an OnResize call keeps one implementation, so the layout
+    // and the hit-test offset can no longer drift apart.
+    AdjustUIHeight(ComputeChromeHeight());
   }
 
   // Privacy & Security
@@ -5191,6 +5291,39 @@ void UI::HandleSettingMutation(const std::string &key, bool value)
   }
 }
 
+void UI::AttachRunLoopDiagnostics()
+{
+  // Subscribing to the run loop. UI::OnUpdate is the only hook the SDK provides
+  // for observing the frame clock, and a frame counter is the missing half of any
+  // diagnosis that starts with "the UI feels laggy", because every input handler
+  // in this class measures sub-millisecond and the handler numbers alone cannot
+  // distinguish "the handler is slow" from "the engine is not producing frames".
+  if (App::instance())
+    App::instance()->set_listener(this);
+
+  // Report which renderer the engine actually picked. Tab views inherit
+  // is_accelerated from the chrome view, so this one line determines the paint
+  // path for the entire UI. GPU and CPU rendering have very different costs, and
+  // a UI that is only slow on the CPU path is a different problem from one that
+  // is slow either way -- worth knowing before chasing a CSS fix.
+  if (VerboseLogging())
+    std::fprintf(stderr, "[diag] renderer: %s (display_id=%u)\n",
+                 view()->is_accelerated() ? "GPU/accelerated" : "CPU",
+                 view()->display_id());
+}
+
+uint32_t UI::ComputeChromeHeight() const
+{
+  // The chrome height is a CSS-pixel constant multiplied by the device scale.
+  // Both inputs can change while the process is running -- the compact-tabs
+  // setting, and the scale when the window moves between monitors of different
+  // DPI now that the process is per-monitor-v2 aware -- so this must be derived
+  // on demand rather than cached in a member set at construction.
+  const double scale = window_ ? window_->scale() : 1.0;
+  const int css_height = experimental_compact_tabs_enabled_ ? UI_HEIGHT_COMPACT : UI_HEIGHT;
+  return (uint32_t)std::round(css_height * scale);
+}
+
 void UI::AdjustUIHeight(uint32_t new_height)
 {
   if (new_height == (uint32_t)ui_height_)
@@ -5205,13 +5338,23 @@ void UI::AdjustUIHeight(uint32_t new_height)
   // (or up) with it. Leaving them at the old y left a band of stale page
   // content sitting under the toolbar after a compact-tabs toggle.
   //
-  // This uses Tab::Reposition rather than MoveTo because Reposition is
-  // position-only. MoveTo re-ran Tab::Resize, which reflowed the page and reset
-  // scroll; that is why this was previously left as a no-op.
+  // Position and size are both updated. Tab::Reposition is position-only, and
+  // on its own that leaves the content taller than its slot: shrinking the
+  // chrome by 20px moves the tab up by 20px but still ends 20px short of the
+  // window bottom, so the bottom of every page became unreachable until the next
+  // full window resize. Resizing matches what UI::OnResize already does for any
+  // ordinary resize, and the scroll position it costs is the right trade for
+  // correct geometry on an explicit chrome-height change.
+  int tab_height = (int)window_->height() - ui_height_;
+  if (tab_height < 1)
+    tab_height = 1;
   for (auto &entry : tabs_)
   {
     if (entry.second)
+    {
       entry.second->Reposition(0, (uint32_t)ui_height_);
+      entry.second->Resize(window_->width(), (uint32_t)tab_height);
+    }
   }
   // DRM tabs are native child windows rather than Overlays, and they already
   // take an explicit offset, so they are moved here for the same reason.
@@ -7122,19 +7265,32 @@ std::string UI::GetOriginStringFromURL(const std::string &url)
 
 std::string UI::EnsureFaviconCacheDir()
 {
-  // Windows-style path acceptable; assets live under working dir.
-  // Use data/favicons for persisted favicons
-  std::string dir = "data/favicons";
-  // Create directories if missing (best-effort)
-  // We can't use std::filesystem here reliably; try to create via C runtime
-#ifdef _WIN32
-  _mkdir("data");
-  _mkdir("data\\favicons");
-#else
-  mkdir("data", 0755);
-  mkdir("data/favicons", 0755);
-#endif
-  return dir;
+  // Resolved through SettingsDirectory() like history, session and settings,
+  // rather than against the current working directory.
+  //
+  // The working-directory-relative "data/favicons" this used means the favicon
+  // index and images were written wherever the process happened to be launched
+  // from. That is the exact bug already fixed for every other persisted file
+  // (see DataFilePath): launch the browser from somewhere other than the folder
+  // holding "data" and it silently grows a second, empty cache there, while the
+  // real one is never read. The visible effect is that no tab ever shows a
+  // cached favicon, so every site falls back to requesting /favicon.ico over the
+  // network and usually renders nothing.
+  std::error_code ec;
+  std::filesystem::path dir = UI::SettingsDirectory() / "favicons";
+  std::filesystem::create_directories(dir, ec);
+  return dir.string();
+}
+
+// The favicon cache used to live under the working directory. Kept so an
+// existing install keeps the icons it already downloaded instead of appearing to
+// have lost them on upgrade.
+static std::string LegacyFaviconCacheDir()
+{
+  std::error_code ec;
+  std::filesystem::path dir = std::filesystem::path("data") / "favicons";
+  std::filesystem::create_directories(dir, ec);
+  return dir.string();
 }
 
 // simple base64 decoder (RFC 4648) for PNG payloads
@@ -7302,7 +7458,22 @@ void UI::LoadFaviconDiskCache()
   favicon_file_cache_.clear();
   // Ensure directory exists
   EnsureFaviconCacheDir();
-  std::ifstream in("data/favicons/index.json", std::ios::in | std::ios::binary);
+
+  // Read the index from the settings directory, falling back to the old
+  // working-directory-relative location so an existing cache is not discarded.
+  std::string index = EnsureFaviconCacheDir() + "/index.json";
+  {
+    std::ifstream probe(index, std::ios::in | std::ios::binary);
+    if (!probe.is_open())
+    {
+      std::string legacy = LegacyFaviconCacheDir() + "/index.json";
+      std::ifstream legacy_probe(legacy, std::ios::in | std::ios::binary);
+      if (legacy_probe.is_open())
+        index = legacy;
+    }
+  }
+
+  std::ifstream in(index, std::ios::in | std::ios::binary);
   if (!in.is_open())
     return;
   std::ostringstream ss;
@@ -7345,8 +7516,8 @@ void UI::LoadFaviconDiskCache()
 
 void UI::SaveFaviconDiskCache()
 {
-  EnsureFaviconCacheDir();
-  std::ofstream out("data/favicons/index.json", std::ios::out | std::ios::binary | std::ios::trunc);
+  const std::string index = EnsureFaviconCacheDir() + "/index.json";
+  std::ofstream out(index, std::ios::out | std::ios::binary | std::ios::trunc);
   if (!out.is_open())
     return;
   out << "{";
@@ -7460,21 +7631,21 @@ void UI::OnFaviconReady(const JSObject &obj, const JSArgs &args)
       return;
     f.write(bytes.data(), (std::streamsize)bytes.size());
     f.close();
-    // Store as file:/// absolute URL
-    char cwd_buf[1024] = {0};
-#ifdef _WIN32
-    _getcwd(cwd_buf, sizeof(cwd_buf));
-    std::string abs = std::string("file:///") + std::string(cwd_buf) + "/" + file;
-    // replace backslashes
+    // EnsureFaviconCacheDir() returns an absolute path, so it can be turned into
+    // a file URL directly. It used to be relative and needed the working
+    // directory prefixed here; that is also what made the cached URL point
+    // somewhere invalid whenever the browser was not launched from the folder
+    // containing "data", so the icon was resolved but never painted.
+    std::string abs = "file:///" + file;
     for (auto &ch : abs)
     {
       if (ch == '\\')
         ch = '/';
     }
-#else
-    getcwd(cwd_buf, sizeof(cwd_buf));
-    std::string abs = std::string("file://") + std::string(cwd_buf) + "/" + file;
-#endif
+    // Collapse the duplicate slash after the scheme separator for Windows
+    // absolute paths, where the path starts with a drive letter.
+    if (abs.rfind("file:////", 0) == 0)
+      abs = "file:///" + abs.substr(10);
     favicon_file_cache_[origin] = abs;
   }
   else if (data.rfind("http://", 0) == 0 || data.rfind("https://", 0) == 0)

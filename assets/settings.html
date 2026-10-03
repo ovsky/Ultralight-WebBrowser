@@ -100,9 +100,12 @@
         }
 
         .settings-search input:focus {
-            outline: none;
             border-color: var(--accent-color);
-            box-shadow: 0 0 0 3px var(--accent-light);
+            /* Outline replaces the 3px spread shadow that painted a soft
+               halo around the input. outline-offset keeps the ring outside
+               the border without inflating the paint area. */
+            outline: 2px solid var(--accent-color);
+            outline-offset: 2px;
             border-radius: 10px !important;
         }
 
@@ -748,22 +751,52 @@
         const MAX_SETTINGS_RETRIES = 50;
         let settingsRetryCount = 0;
 
+        // Debug log lines are buffered in memory and flushed to the panel at
+        // most once per frame.
+        //
+        // log() is called from the toggle/save/restore handlers, so it sits
+        // directly on the interaction path. It used to write textContent on every
+        // single call, which re-reads and re-creates the whole text node, forces
+        // a synchronous layout for the scrollHeight read, and invalidates paint
+        // for an on-screen panel. A burst of interactions therefore paid for a
+        // full text-node rebuild each time.
+        //
+        // Buffering keeps the per-call cost to one string push and collapses a
+        // burst into a single rebuild on the next frame, which is the same
+        // coalescing the native download/history notification paths use.
+        const debugLogLines = [];
+        let debugLogFlushScheduled = false;
+
+        function scheduleDebugLogFlush(debug) {
+            if (debugLogFlushScheduled) return;
+            debugLogFlushScheduled = true;
+            requestAnimationFrame(function () {
+                debugLogFlushScheduled = false;
+                if (debugLogLines.length === 0) return;
+                debug.textContent = debugLogLines.join('\n');
+                debug.scrollTop = debug.scrollHeight;
+            });
+        }
+
         function log(msg) {
-            console.log('[Settings]', msg);
+            // console.debug reaches the native console-message listener, which
+            // forwards warnings and errors to stderr unconditionally but drops
+            // routine DEBUG-level messages unless ULTRALIGHT_VERBOSE=1. A DEBUG
+            // call here is therefore free by default, where console.log used to
+            // put a blocking stderr write on the UI thread for every settings
+            // interaction.
+            console.debug('[Settings]', msg);
+
             const debug = document.getElementById('debug-info');
             if (!debug) return;
 
-            // Appending to textContent re-reads and re-creates the whole text
-            // node every call, so this got progressively more expensive as the
-            // buffer filled. Trimming to a fixed window keeps it constant-cost
-            // and stops the panel growing without bound over a long session.
-            let lines = debug.textContent ? debug.textContent.split('\n') : [];
-            lines.push(new Date().toLocaleTimeString() + ': ' + msg);
-            if (lines.length > MAX_DEBUG_LINES) {
-                lines = lines.slice(lines.length - MAX_DEBUG_LINES);
+            debugLogLines.push(new Date().toLocaleTimeString() + ': ' + msg);
+            // Trimmed to a fixed window so the buffer stays constant-cost and the
+            // panel does not grow without bound over a long session.
+            if (debugLogLines.length > MAX_DEBUG_LINES) {
+                debugLogLines.splice(0, debugLogLines.length - MAX_DEBUG_LINES);
             }
-            debug.textContent = lines.join('\n');
-            debug.scrollTop = debug.scrollHeight;
+            scheduleDebugLogFlush(debug);
         }
 
         const settingsDefinitions = {

@@ -267,7 +267,42 @@ void Tab::OnChangeCursor(View *caller, Cursor cursor)
 
 void Tab::OnAddConsoleMessage(View *caller, const ConsoleMessage &msg)
 {
-  // Log console messages to stderr for debugging
+  // Forward console messages to Quick Inspector if visible
+  //
+  // Done first and unconditionally: it is a pure in-page DOM update, whereas
+  // the stderr write below has a real cost on the UI thread.
+  if (inspector_overlay_ && !inspector_overlay_->is_hidden())
+  {
+    auto iv = inspector_overlay_->view();
+    if (iv)
+    {
+      String smsg = msg.message();
+      auto u = smsg.utf8();
+      std::string m = u.data() ? u.data() : "";
+      // Minimal escaping for safe JS string literal
+      std::string js = std::string("(function(m){ if(window.__qi && __qi.onConsole){ __qi.onConsole({message:m}); } })(\"") + util::EscapeJsStringLiteral(m) + "\")";
+      iv->EvaluateScript(String(js.c_str()), nullptr);
+    }
+  }
+
+  // Writing every console message to stderr from the UI thread is not free.
+  // When stderr is a pipe -- a terminal, an IDE console, a CI log -- each write
+  // blocks until the reader drains it, so a page that logs per interaction
+  // serialises the whole event loop behind the log reader. settings.html logs
+  // from its own toggle handler, which made interacting with the settings list
+  // visibly stutter, and any page that logs in a loop was worse.
+  //
+  // This is the same trade-off already made for per-request network logging
+  // (ULTRALIGHT_LOG_REQUESTS in Browser.cpp) and for the stderr writes behind
+  // UI::VerboseLogging. Warnings and errors stay: they are rare, they are the
+  // ones worth having by default, and they are what a report of "the page is
+  // broken" actually needs. Routine LOG/INFO/DEBUG output is opt-in via
+  // ULTRALIGHT_VERBOSE=1.
+  const bool always_report = msg.level() == kMessageLevel_Error ||
+                             msg.level() == kMessageLevel_Warning;
+  if (!always_report && !UI::VerboseLogging())
+    return;
+
   String smsg = msg.message();
   auto u = smsg.utf8();
   std::string m = u.data() ? u.data() : "";
@@ -293,18 +328,6 @@ void Tab::OnAddConsoleMessage(View *caller, const ConsoleMessage &msg)
     break;
   }
   std::fprintf(stderr, "[CONSOLE:%s] %s (line %u, %s)\n", level_str, m.c_str(), msg.line_number(), source.c_str());
-
-  // Forward console messages to Quick Inspector if visible
-  if (inspector_overlay_ && !inspector_overlay_->is_hidden())
-  {
-    auto iv = inspector_overlay_->view();
-    if (iv)
-    {
-      // Minimal escaping for safe JS string literal
-      std::string js = std::string("(function(m){ if(window.__qi && __qi.onConsole){ __qi.onConsole({message:m}); } })(\"") + util::EscapeJsStringLiteral(m) + "\")";
-      iv->EvaluateScript(String(js.c_str()), nullptr);
-    }
-  }
 }
 
 RefPtr<View> Tab::OnCreateChildView(ultralight::View *caller,

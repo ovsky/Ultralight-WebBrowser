@@ -316,6 +316,61 @@ if(WIN32 AND MSVC)
 	endforeach()
 endif()
 
+# Offscreen paint-cost probe for the browser's own pages.
+#
+# The UI lag reports (scroll stalls, hover repaints, stutter on the settings
+# page) are all paint cost, and paint cost is measurable without a window: the
+# probe drives Renderer::Update/Render directly and reports per-frame time plus
+# the repaint area taken from the Surface dirty bounds. That makes a suspected
+# CSS or ViewConfig regression reproducible with a single command instead of
+# relying on subjective feel, and it is the only way to tell "the input handler
+# is slow" apart from "the engine is redrawing the whole page for a 120px
+# scroll".
+#
+# Built on demand rather than as part of ALL: it is a developer instrument, and
+# adding it to the default build would link a second copy of the SDK into every
+# build. Stage the assets next to it, since the probe loads pages by URL.
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tools/PerfProbe.cpp")
+	add_executable(PerfProbe tools/PerfProbe.cpp)
+	find_library(PROBE_APP_CORE_LIB NAMES AppCore PATHS "${ULTRALIGHT_SDK_ROOT}/lib" "${ULTRALIGHT_SDK_ROOT}/bin" NO_DEFAULT_PATH)
+	find_library(PROBE_ULTRALIGHT_LIB NAMES Ultralight PATHS "${ULTRALIGHT_SDK_ROOT}/lib" "${ULTRALIGHT_SDK_ROOT}/bin" NO_DEFAULT_PATH)
+	find_library(PROBE_ULTRALIGHT_CORE_LIB NAMES UltralightCore PATHS "${ULTRALIGHT_SDK_ROOT}/lib" "${ULTRALIGHT_SDK_ROOT}/bin" NO_DEFAULT_PATH)
+	find_library(PROBE_WEB_CORE_LIB NAMES WebCore PATHS "${ULTRALIGHT_SDK_ROOT}/lib" "${ULTRALIGHT_SDK_ROOT}/bin" NO_DEFAULT_PATH)
+	if(PROBE_APP_CORE_LIB AND PROBE_ULTRALIGHT_LIB AND PROBE_ULTRALIGHT_CORE_LIB AND PROBE_WEB_CORE_LIB)
+		target_link_libraries(PerfProbe PRIVATE
+			${PROBE_APP_CORE_LIB}
+			${PROBE_ULTRALIGHT_LIB}
+			${PROBE_ULTRALIGHT_CORE_LIB}
+			${PROBE_WEB_CORE_LIB}
+		)
+		target_include_directories(PerfProbe PRIVATE "${ULTRALIGHT_SDK_ROOT}/include")
+		if(APPLE OR UNIX)
+			set_target_properties(PerfProbe PROPERTIES BUILD_RPATH "$ORIGIN" INSTALL_RPATH "$ORIGIN")
+		endif()
+		add_dependencies(PerfProbe ultralight_stage_assets)
+		if(WIN32)
+			add_custom_command(TARGET PerfProbe POST_BUILD
+				COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/assets" "$<TARGET_FILE_DIR:PerfProbe>/assets"
+			)
+			foreach(_probe_dll IN ITEMS AppCore.dll Ultralight.dll UltralightCore.dll WebCore.dll)
+				add_custom_command(TARGET PerfProbe POST_BUILD
+					COMMAND ${CMAKE_COMMAND} -E copy_if_different "${ULTRALIGHT_SDK_ROOT}/bin/${_probe_dll}" "$<TARGET_FILE_DIR:PerfProbe>/${_probe_dll}"
+				)
+			endforeach()
+			add_custom_command(TARGET PerfProbe POST_BUILD
+				COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:PerfProbe>/assets/resources"
+			)
+			foreach(_probe_res IN ITEMS icudt67l.dat cacert.pem)
+				add_custom_command(TARGET PerfProbe POST_BUILD
+					COMMAND ${CMAKE_COMMAND} -E copy_if_different "${ULTRALIGHT_SDK_ROOT}/bin/ICU/${_probe_res}" "$<TARGET_FILE_DIR:PerfProbe>/assets/resources/${_probe_res}"
+				)
+			endforeach()
+		endif()
+	else()
+		message(WARNING "PerfProbe skipped: Ultralight SDK libraries not found")
+	endif()
+endif()
+
 # Install/package settings
 set(INSTALL_DIR_NAME "UltralightWebBrowser")
 install(TARGETS Ultralight-WebBrowser RUNTIME DESTINATION ${INSTALL_DIR_NAME})

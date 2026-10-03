@@ -123,22 +123,26 @@ svg#icon_defs path {
      border-radius: 100%;
 }
 
-/* Keyboard focus ring for toolbar icons (rounded) */
+/* Keyboard focus ring for toolbar icons (rounded).
+   An outline is used instead of a spread box-shadow: the shadow
+   inflates the paint bounding box and forces a larger dirty region
+   on every focus cycle, while outline stays inside the element's
+   own geometry and still meets the 4:1 contrast-free indicator need. */
 .icon:focus-visible {
-     outline: none;
-     box-shadow: 0 0 0 4px var(--accent-light, var(--color-accent-light, rgba(108,99,255,0.15)));
-     border-radius: 100%;
+      outline: 2px solid var(--accent-color, var(--color-accent-primary, #6C63FF));
+      outline-offset: 2px;
 }
 
-/* Rounded focus for inline menu items so selection outlines are not square */
+/* Rounded focus for inline menu items so selection outlines are not square.
+   Same rationale as the icon ring: outline keeps the paint area tight and
+   avoids the soft halo a spread shadow paints around the element. */
 .menu-item {
-     border-radius: 6px;
+      border-radius: 6px;
 }
 .menu-item:focus-visible {
-     outline: none;
-     box-shadow: 0 0 0 4px var(--accent-light, var(--color-accent-light, rgba(108,99,255,0.15)));
-     border-radius: 6px;
-} 
+      outline: 2px solid var(--accent-color, var(--color-accent-primary, #6C63FF));
+      outline-offset: 2px;
+}
 
 #toggle-downloads {
      position: relative;
@@ -505,7 +509,11 @@ header .header-actions { z-index: 2; }
      background: linear-gradient(135deg, var(--accent-color, var(--color-accent-primary, #6C63FF)), var(--color-accent-secondary, #7c6aef));
      color: #fff;
      border-color: transparent;
-     box-shadow: 0 4px 15px var(--accent-shadow, rgba(108,99,255,0.30));
+     /* Accent-tinted lift shadow. Blur radius was 15px, which painted a
+         soft purple halo around the button and cost a full blur pass on
+         every hover. A 6px blur is enough to read as elevation without the
+         glow, and the smaller paint box keeps hover compositing cheap. */
+      box-shadow: 0 2px 6px var(--accent-shadow, rgba(108,99,255,0.30));
      padding: 10px 20px;
      border-radius: 12px;
      font-weight: 600;
@@ -513,7 +521,9 @@ header .header-actions { z-index: 2; }
 
 .btn-primary:hover {
      transform: translateY(-2px);
-     box-shadow: 0 6px 20px var(--accent-shadow-strong, rgba(108,99,255,0.40));
+     /* Hover lift: same reasoning as the base shadow — 8px blur gives a
+         visible accent glow without the 20px halo that dominated the button. */
+      box-shadow: 0 4px 8px var(--accent-shadow-strong, rgba(108,99,255,0.40));
      background: linear-gradient(135deg, var(--accent-hover, var(--color-accent-hover, #8a83ff)), var(--color-accent-secondary, #7c6aef));
 }
 
@@ -537,7 +547,9 @@ header .header-actions { z-index: 2; }
 
 .btn-secondary:hover {
      transform: translateY(-1px);
-     box-shadow: 0 4px 14px var(--accent-shadow, var(--accent-shadow-subtle, rgba(0,0,0,0.12)));
+     /* Hover lift. Blur was 14px, which read as a soft halo on these
+         smaller controls; 8px keeps the elevation cue without the glow. */
+      box-shadow: 0 4px 8px var(--accent-shadow, var(--accent-shadow-subtle, rgba(0,0,0,0.12)));
      background: var(--btn-secondary-hover, rgba(255,255,255,0.06));
 } 
 
@@ -557,16 +569,21 @@ header .header-actions { z-index: 2; }
      box-shadow: none !important;
 }
 
-/* Keyboard focus ring for accessibility (uses derived accent light) */
+/* Keyboard focus ring for accessibility (uses derived accent color).
+   Replaces the spread shadow that painted a soft halo: outline is
+   cheaper to paint and does not inflate the element's bounding box. */
 .btn:focus-visible {
-     outline: none;
-     box-shadow: 0 0 0 4px var(--accent-light, var(--color-accent-light, rgba(108,99,255,0.15)));
+      outline: 2px solid var(--accent-color, var(--color-accent-primary, #6C63FF));
+      outline-offset: 2px;
 }
 
-/* Active (pressed) state */
+/* Active (pressed) state. Dark shadow, so it is a depth cue rather than
+         a glow, but the 10px blur still painted a wide soft region around
+         the small button; 6px keeps the pressed look at a fraction of the
+         paint cost. */
 .btn:active {
-     transform: translateY(0);
-     box-shadow: 0 3px 10px rgba(0,0,0,0.12);
+      transform: translateY(0);
+      box-shadow: 0 3px 6px rgba(0,0,0,0.12);
 }
 
 /* Ensure destructive buttons keep sizing parity and consistent shadow */
@@ -580,7 +597,9 @@ header .header-actions { z-index: 2; }
 
 .btn-danger:hover {
      transform: translateY(-2px);
-     box-shadow: 0 6px 18px rgba(239, 106, 106, 0.32);
+     /* Hover lift. Blur was 18px, which painted a wide red halo around the
+         button; 8px keeps the danger tint as an elevation cue. */
+      box-shadow: 0 4px 8px rgba(239, 106, 106, 0.32);
      background: var(--color-danger, #ef6a6a);
 }
 
@@ -609,17 +628,49 @@ header .header-actions { z-index: 2; }
     .btn, .btn-primary, .btn-danger { transition: none !important; transform: none !important; }
 }
 
-/* Slightly stronger focus ring for keyboard users */
+/* Slightly stronger focus ring for keyboard users.
+   Kept as a separate, wider outline rather than re-declaring the
+   base rule so the two rings are clearly distinct in the cascade. */
 .btn:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 6px var(--accent-light, var(--color-accent-light, rgba(108,99,255,0.18)));
+      outline: 3px solid var(--accent-color, var(--color-accent-primary, #6C63FF));
+      outline-offset: 3px;
 }
 
-/* Soften shadows on small screens for better readability */
+/* Soften shadows on small screens for better readability. Blur was 10px,
+         which still read as a halo on the cramped small-screen button; 6px
+         matches the base rule above and keeps the paint area small. */
 @media (max-width: 720px) {
-    .btn-primary { box-shadow: 0 3px 10px var(--accent-shadow, rgba(108,99,255,0.30)); }
+    .btn-primary { box-shadow: 0 3px 6px var(--accent-shadow, rgba(108,99,255,0.30)); }
 }
 
+/* Slide the session restore bar in from above the viewport.
+   #session-restore-bar references this by name, but the definition was lost to
+   an earlier brace-truncation edit, which left a bare "to { ... }" fragment and
+   a stray closing brace sitting here. An orphan block at the top level is a
+   parse error, and CSS error recovery discards rules until it can resync --
+   which put the immediately following #session-restore-bar.visible rule, the one
+   that actually reveals the bar, at risk of being swallowed along with it.
+
+   Only the bar's own transform and opacity animate, so the compositor can run it
+   off the main thread. Animating height or padding here would relayout the
+   toolbar underneath on every frame, which is the kind of cost that makes the
+   whole UI feel sluggish. */
+@keyframes slideDown {
+     from {
+          transform: translateY(-100%);
+          opacity: 0;
+     }
+     to {
+          transform: translateY(0);
+          opacity: 1;
+     }
+}
+
+@-webkit-keyframes slideDown {
+     from {
+          transform: translateY(-100%);
+          opacity: 0;
+     }
      to {
           transform: translateY(0);
           opacity: 1;

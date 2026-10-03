@@ -44,7 +44,8 @@ class DownloadManager;
  */
 class UI : public WindowListener,
            public LoadListener,
-           public ViewListener
+           public ViewListener,
+           public AppListener
 {
   // One of the browser's own file:// pages.
   //
@@ -164,6 +165,30 @@ public:
 
   // Inherited from ViewListener
   virtual void OnChangeCursor(ultralight::View *caller, Cursor cursor) override { SetCursor(cursor); }
+
+  // Inherited from AppListener
+  //
+  // Fired once per run-loop iteration, immediately before Renderer::Update and
+  // Renderer::Render. This is the only place the presented frame rate can be
+  // observed, and it is the missing half of any diagnosis that starts with "the
+  // UI feels laggy": every input handler in this class measures
+  // sub-millisecond, so the handler numbers alone cannot distinguish "the
+  // handler is slow" from "the engine is not producing frames". A fast handler
+  // that runs 20 times a second is still laggy.
+  //
+  // Needs AttachRunLoopDiagnostics() to have subscribed this object, which both
+  // constructors do. Observed on this machine at 300-600 fps, i.e. the loop is
+  // not vsync-throttled: the UI thread stays busy rather than idling, which is
+  // worth knowing before blaming the stylesheets for sluggishness.
+  //
+  // Kept to an increment and a comparison. It sits on the per-frame path, so it
+  // must not allocate or write anything unless verbose logging is on.
+  virtual void OnUpdate() override;
+
+  // Frame counter behind the OnUpdate diagnostic, plus the sample window used
+  // to turn it into a frame rate.
+  uint64_t frame_count_ = 0;
+  std::chrono::steady_clock::time_point frame_window_start_{};
 
   // Called by UI JavaScript
   void OnBack(const JSObject &obj, const JSArgs &args);
@@ -375,7 +400,15 @@ protected:
   void SetCursor(Cursor cursor);
   void UpdateBookmarkButtonState();
   std::string BuildDrmStatusPayload();
+  // Derives the chrome height in pixels from the current device scale and the
+  // compact-tabs setting. Both change at runtime, so this is computed on demand
+  // and never cached across a scale change.
+  uint32_t ComputeChromeHeight() const;
   void AdjustUIHeight(uint32_t new_height);
+  // Subscribes to the run loop and reports which renderer the engine selected.
+  // Called by both constructors; see the note on OnUpdate about the SDK not
+  // actually invoking AppListener in 1.4.0.
+  void AttachRunLoopDiagnostics();
   void ShowMenuOverlay();
   void HideMenuOverlay();
   void ShowDownloadsOverlay();
@@ -480,9 +513,14 @@ protected:
 
   RefPtr<Window> window_;
   RefPtr<Overlay> overlay_;
+  // Chrome (toolbar) height in device pixels. This doubles as the offset that
+  // translates window coordinates into the tab view's coordinate space, so it is
+  // derived from the live device scale via ComputeChromeHeight and re-applied on
+  // every resize rather than being fixed at construction.
   int ui_height_;
+  // The height the chrome had before any compact-tabs adjustment; kept for
+  // callers that need the unadjusted value.
   int base_ui_height_;
-  int tab_height_;
   RefPtr<Overlay> menu_overlay_;
   RefPtr<Overlay> downloads_overlay_;
   RefPtr<Overlay> context_menu_overlay_;
