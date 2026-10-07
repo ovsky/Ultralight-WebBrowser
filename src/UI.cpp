@@ -3629,6 +3629,7 @@ void UI::ApplySettings(bool initial, bool snapshot_is_baseline)
   // Accessibility
   reduce_motion_enabled_ = settings_.reduce_motion;
   high_contrast_ui_enabled_ = settings_.high_contrast_ui;
+  bool caret_browsing_enabled = settings_.enable_caret_browsing;
 
   // Apply accessibility CSS to all views
   auto apply_accessibility = [&](RefPtr<View> v)
@@ -3643,6 +3644,10 @@ void UI::ApplySettings(bool initial, bool snapshot_is_baseline)
       ApplyHighContrastToView(v);
     else
       RemoveHighContrastFromView(v);
+    if (caret_browsing_enabled)
+      ApplyCaretBrowsingToView(v);
+    else
+      RemoveCaretBrowsingFromView(v);
   };
 
   apply_accessibility(view());
@@ -3651,7 +3656,6 @@ void UI::ApplySettings(bool initial, bool snapshot_is_baseline)
     if (entry.second)
       apply_accessibility(entry.second->view());
   }
-  // enable_caret_browsing would require page-level script injection
 
   // Developer
   // enable_remote_inspector, show_performance_overlay
@@ -4414,6 +4418,36 @@ void UI::RemoveHighContrastFromView(RefPtr<View> v)
   const char *js = R"JS((function(){
     try{
       var s=document.getElementById('__ul_high_contrast'); if(s) s.remove();
+      return true;
+    }catch(e){return false;}
+  })())JS";
+  v->EvaluateScript(js, nullptr);
+}
+
+void UI::ApplyCaretBrowsingToView(RefPtr<View> v)
+{
+  if (!v)
+    return;
+  const char *js = R"JS((function(){
+    try{
+      var sid='__ul_caret_browsing';
+      if(document.getElementById(sid)) return false;
+      document.body.setAttribute('contenteditable', 'true');
+      document.designMode = 'on';
+      return true;
+    }catch(e){return false;}
+  })())JS";
+  v->EvaluateScript(js, nullptr);
+}
+
+void UI::RemoveCaretBrowsingFromView(RefPtr<View> v)
+{
+  if (!v)
+    return;
+  const char *js = R"JS((function(){
+    try{
+      document.body.removeAttribute('contenteditable');
+      document.designMode = 'off';
       return true;
     }catch(e){return false;}
   })())JS";

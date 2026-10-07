@@ -481,6 +481,8 @@ protected:
   void RemoveReduceMotionFromView(RefPtr<View> v);
   void ApplyHighContrastToView(RefPtr<View> v);
   void RemoveHighContrastFromView(RefPtr<View> v);
+  void ApplyCaretBrowsingToView(RefPtr<View> v);
+  void RemoveCaretBrowsingFromView(RefPtr<View> v);
 
   // Performance CSS injections
   void ApplySmoothScrollingToView(RefPtr<View> v);
