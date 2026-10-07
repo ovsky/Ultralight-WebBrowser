@@ -298,3 +298,100 @@ body.compact-tabs .chrome-tabs .chrome-tab-close {
   line-height: 1;
   display: block;
 }
+
+/* Tab Groups */
+.chrome-tabs .chrome-tab-group {
+  position: relative;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  z-index: 2;
+}
+
+.chrome-tabs .chrome-tab-group-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  padding: 0 0.8em;
+  height: 32px;
+  border-radius: 8px 8px 0 0;
+  background: var(--tab-group-bg, rgba(108, 99, 255, 0.15));
+  border: 1px solid var(--tab-group-border, rgba(108, 99, 255, 0.3));
+  margin-right: 4px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.chrome-tabs .chrome-tab-group-header:hover {
+  background: var(--tab-group-hover-bg, rgba(108, 99, 255, 0.25));
+  border-color: var(--tab-group-hover-border, rgba(108, 99, 255, 0.5));
+}
+
+.chrome-tabs .chrome-tab-group-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.chrome-tabs .chrome-tab-group-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--tab-group-text, #c4c2d0);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+}
+
+.chrome-tabs .chrome-tab-group-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  background: transparent;
+  border: none;
+  color: var(--tab-group-text, #c4c2d0);
+  cursor: pointer;
+  padding: 0;
+  margin-left: 0.3em;
+  transition: background 0.15s ease;
+}
+
+.chrome-tabs .chrome-tab-group-toggle:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.chrome-tabs .chrome-tab-group-toggle svg {
+  width: 14px;
+  height: 14px;
+}
+
+.chrome-tabs .chrome-tab-group-toggle.collapsed svg {
+  transform: rotate(-90deg);
+}
+
+/* Tab group indicator on tabs */
+.chrome-tabs .chrome-tab.is-in-group .chrome-tab-favicon::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border-radius: 4px;
+  border: 2px solid var(--tab-group-color, #6C63FF);
+  pointer-events: none;
+  z-index: 4;
+}
+
+/* Collapsed group tabs hidden */
+.chrome-tabs .chrome-tab-group.collapsed ~ .chrome-tab.in-group-hidden {
+  display: none;
+}
+
+.chrome-tabs .chrome-tab-group + .chrome-tab-group {
+  margin-left: 8px;
+}

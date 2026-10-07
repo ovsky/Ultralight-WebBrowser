@@ -209,6 +209,16 @@ public:
   void OnExportBookmarks(const JSObject &obj, const JSArgs &args);
   void OnImportBookmarks(const JSObject &obj, const JSArgs &args);
 
+  // Tab Group callbacks
+  ultralight::JSValue OnGetTabGroups(const JSObject &obj, const JSArgs &args);
+  void OnCreateTabGroup(const JSObject &obj, const JSArgs &args);
+  void OnDeleteTabGroup(const JSObject &obj, const JSArgs &args);
+  void OnUpdateTabGroup(const JSObject &obj, const JSArgs &args);
+  void OnAddTabToGroup(const JSObject &obj, const JSArgs &args);
+  void OnRemoveTabFromGroup(const JSObject &obj, const JSArgs &args);
+  void OnMoveTabInGroup(const JSObject &obj, const JSArgs &args);
+  void OnToggleTabGroupCollapsed(const JSObject &obj, const JSArgs &args);
+
   // Password Manager callbacks
   ultralight::JSValue OnGetPasswords(const JSObject &obj, const JSArgs &args);
   ultralight::JSValue OnGetPasswordStats(const JSObject &obj, const JSArgs &args);
@@ -299,6 +309,18 @@ protected:
   int GetSavedSessionTabCount() const;                            // Get number of saved tabs
   int GetMeaningfulSavedTabCount() const;                         // Get count of non-internal tabs
   bool IsInternalBrowserPage(const std::string &url) const;       // Check if URL is internal
+
+  // Tab Group management helpers
+  std::string GetTabGroupsJSON() const;
+  uint64_t CreateTabGroup(const std::string &title, const std::string &color);
+  bool DeleteTabGroup(uint64_t group_id);
+  bool UpdateTabGroup(uint64_t group_id, const std::string &title, const std::string &color, bool collapsed);
+  bool AddTabToGroup(uint64_t tab_id, uint64_t group_id);
+  bool RemoveTabFromGroup(uint64_t tab_id);
+  bool MoveTabInGroup(uint64_t tab_id, uint64_t group_id, size_t new_index);
+  bool ToggleTabGroupCollapsed(uint64_t group_id);
+  uint64_t GetTabGroupForTab(uint64_t tab_id) const;
+  void RemoveTabFromGroups(uint64_t tab_id); // Called when tab is closed
 
   // Downloads management helpers
   String GetDownloadsJSON();
@@ -460,6 +482,19 @@ protected:
   };
   std::vector<HistoryEntry> history_;
   // Always enabled (disable-history feature removed)
+
+  // Tab Groups
+  struct TabGroup
+  {
+    uint64_t id;
+    std::string title;
+    std::string color; // CSS color string (e.g., "#ff0000")
+    std::vector<uint64_t> tab_ids; // Ordered list of tab IDs in this group
+    bool collapsed = false;
+  };
+  std::map<uint64_t, TabGroup> tab_groups_;
+  std::map<uint64_t, uint64_t> tab_to_group_; // tab_id -> group_id
+  uint64_t tab_group_id_counter_ = 0;
 
   // Popular sites loaded from assets/popular_sites.json
   std::vector<std::string> popular_sites_;

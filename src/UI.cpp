@@ -1492,6 +1492,15 @@ void UI::OnDOMReady(View *caller, uint64_t frame_id, bool is_main_frame, const S
   global["OnToggleBookmark"] = BindJSCallback(&UI::OnToggleBookmark);
   global["OnExportBookmarks"] = BindJSCallback(&UI::OnExportBookmarks);
   global["OnImportBookmarks"] = BindJSCallback(&UI::OnImportBookmarks);
+  // Tab Group bindings
+  global["GetTabGroups"] = BindJSCallbackWithRetval(&UI::OnGetTabGroups);
+  global["OnCreateTabGroup"] = BindJSCallback(&UI::OnCreateTabGroup);
+  global["OnDeleteTabGroup"] = BindJSCallback(&UI::OnDeleteTabGroup);
+  global["OnUpdateTabGroup"] = BindJSCallback(&UI::OnUpdateTabGroup);
+  global["OnAddTabToGroup"] = BindJSCallback(&UI::OnAddTabToGroup);
+  global["OnRemoveTabFromGroup"] = BindJSCallback(&UI::OnRemoveTabFromGroup);
+  global["OnMoveTabInGroup"] = BindJSCallback(&UI::OnMoveTabInGroup);
+  global["OnToggleTabGroupCollapsed"] = BindJSCallback(&UI::OnToggleTabGroupCollapsed);
   global["OnOpenSettingsPanel"] = BindJSCallback(&UI::OnOpenSettingsPanel);
   global["OnCloseSettingsPanel"] = BindJSCallback(&UI::OnCloseSettingsPanel);
   // Password save bar callback
@@ -1789,6 +1798,9 @@ void UI::OnRequestTabClose(const JSObject &obj, const JSArgs &args)
       drm_tab_urls_.erase(id);
     }
 
+    // Remove tab from any tab group
+    RemoveTabFromGroups(id);
+
     if (id != active_tab_id_)
     {
       tabs_[id].reset();
@@ -1829,6 +1841,7 @@ void UI::OnActiveTabChange(const JSObject &obj, const JSArgs &args)
 
     if (tabs_[active_tab_id_]->ready_to_close())
     {
+      RemoveTabFromGroups(active_tab_id_);
       tabs_[active_tab_id_].reset();
       tabs_.erase(active_tab_id_);
     }
@@ -6689,4 +6702,325 @@ void UI::OnImportBookmarks(const JSObject &obj, const JSArgs &args)
   bookmark_store_->ImportFromJSON(temp_path.string());
 
   std::filesystem::remove(temp_path);
+}
+
+// ============================================================================
+// Tab Group Implementation
+// ============================================================================
+
+ultralight::JSValue UI::OnGetTabGroups(const JSObject &obj, const JSArgs &args)
+{
+  std::ostringstream ss;
+  ss << "[";
+  bool first = true;
+  for (const auto &entry : tab_groups_)
+  {
+    const auto &group = entry.second;
+    if (!first)
+      ss << ",";
+    first = false;
+    ss << "{";
+    ss << "\"id\":" << group.id << ",";
+    ss << "\"title\":\"" << util::EscapeJsonString(group.title) << "\",";
+    ss << "\"color\":\"" << util::EscapeJsonString(group.color) << "\",";
+    ss << "\"collapsed\":" << (group.collapsed ? "true" : "false") << ",";
+    ss << "\"tab_ids\":[";
+    for (size_t i = 0; i < group.tab_ids.size(); ++i)
+    {
+      if (i > 0)
+        ss << ",";
+      ss << group.tab_ids[i];
+    }
+    ss << "]";
+    ss << "}";
+  }
+  ss << "]";
+  return JSValue(String(ss.str().c_str()));
+}
+
+void UI::OnCreateTabGroup(const JSObject &obj, const JSArgs &args)
+{
+  if (args.size() < 2)
+    return;
+
+  ultralight::String title_ul = args[0].ToString();
+  auto title_str = title_ul.utf8();
+  std::string title = title_str.data() ? title_str.data() : "New Group";
+
+  ultralight::String color_ul = args[1].ToString();
+  auto color_str = color_ul.utf8();
+  std::string color = color_str.data() ? color_str.data() : "#6C63FF";
+
+  uint64_t group_id = CreateTabGroup(title, color);
+
+  // Notify UI of new group
+  RefPtr<JSContext> lock(view()->LockJSContext());
+  JSContextRef ctx = lock->ctx();
+  ultralight::String js = ultralight::String("if(typeof onTabGroupCreated === 'function') onTabGroupCreated(") +
+                          ultralight::String(std::to_string(group_id).c_str()) +
+                          ultralight::String(");");
+  view()->EvaluateScript(js, nullptr);
+}
+
+void UI::OnDeleteTabGroup(const JSObject &obj, const JSArgs &args)
+{
+  if (args.empty())
+    return;
+
+  uint64_t group_id = static_cast<uint64_t>((double)args[0]);
+  DeleteTabGroup(group_id);
+
+  // Notify UI
+  RefPtr<JSContext> lock(view()->LockJSContext());
+  JSContextRef ctx = lock->ctx();
+  ultralight::String js = ultralight::String("if(typeof onTabGroupDeleted === 'function') onTabGroupDeleted(") +
+                          ultralight::String(std::to_string(group_id).c_str()) +
+                          ultralight::String(");");
+  view()->EvaluateScript(js, nullptr);
+}
+
+void UI::OnUpdateTabGroup(const JSObject &obj, const JSArgs &args)
+{
+  if (args.size() < 2)
+    return;
+
+  uint64_t group_id = static_cast<uint64_t>((double)args[0]);
+  ultralight::String title_ul = args[1].ToString();
+  auto title_str = title_ul.utf8();
+  std::string title = title_str.data() ? title_str.data() : "";
+
+  std::string color = "";
+  if (args.size() > 2)
+  {
+    ultralight::String color_ul = args[2].ToString();
+    auto color_str = color_ul.utf8();
+    color = color_str.data() ? color_str.data() : "";
+  }
+
+  bool collapsed = false;
+  if (args.size() > 3)
+  {
+    collapsed = (bool)args[3];
+  }
+
+  UpdateTabGroup(group_id, title, color, collapsed);
+
+  // Notify UI
+  RefPtr<JSContext> lock(view()->LockJSContext());
+  JSContextRef ctx = lock->ctx();
+  ultralight::String js = ultralight::String("if(typeof onTabGroupUpdated === 'function') onTabGroupUpdated(") +
+                          ultralight::String(std::to_string(group_id).c_str()) +
+                          ultralight::String(");");
+  view()->EvaluateScript(js, nullptr);
+}
+
+void UI::OnAddTabToGroup(const JSObject &obj, const JSArgs &args)
+{
+  if (args.size() < 2)
+    return;
+
+  uint64_t tab_id = static_cast<uint64_t>((double)args[0]);
+  uint64_t group_id = static_cast<uint64_t>((double)args[1]);
+
+  AddTabToGroup(tab_id, group_id);
+
+  // Notify UI
+  RefPtr<JSContext> lock(view()->LockJSContext());
+  JSContextRef ctx = lock->ctx();
+  ultralight::String js = ultralight::String("if(typeof onTabGroupChanged === 'function') onTabGroupChanged();");
+  view()->EvaluateScript(js, nullptr);
+}
+
+void UI::OnRemoveTabFromGroup(const JSObject &obj, const JSArgs &args)
+{
+  if (args.empty())
+    return;
+
+  uint64_t tab_id = static_cast<uint64_t>((double)args[0]);
+  RemoveTabFromGroup(tab_id);
+
+  // Notify UI
+  RefPtr<JSContext> lock(view()->LockJSContext());
+  JSContextRef ctx = lock->ctx();
+  ultralight::String js = ultralight::String("if(typeof onTabGroupChanged === 'function') onTabGroupChanged();");
+  view()->EvaluateScript(js, nullptr);
+}
+
+void UI::OnMoveTabInGroup(const JSObject &obj, const JSArgs &args)
+{
+  if (args.size() < 3)
+    return;
+
+  uint64_t tab_id = static_cast<uint64_t>((double)args[0]);
+  uint64_t group_id = static_cast<uint64_t>((double)args[1]);
+  size_t new_index = static_cast<size_t>((double)args[2]);
+
+  MoveTabInGroup(tab_id, group_id, new_index);
+
+  // Notify UI
+  RefPtr<JSContext> lock(view()->LockJSContext());
+  JSContextRef ctx = lock->ctx();
+  ultralight::String js = ultralight::String("if(typeof onTabGroupChanged === 'function') onTabGroupChanged();");
+  view()->EvaluateScript(js, nullptr);
+}
+
+void UI::OnToggleTabGroupCollapsed(const JSObject &obj, const JSArgs &args)
+{
+  if (args.empty())
+    return;
+
+  uint64_t group_id = static_cast<uint64_t>((double)args[0]);
+  ToggleTabGroupCollapsed(group_id);
+
+  // Notify UI
+  RefPtr<JSContext> lock(view()->LockJSContext());
+  JSContextRef ctx = lock->ctx();
+  ultralight::String js = ultralight::String("if(typeof onTabGroupChanged === 'function') onTabGroupChanged();");
+  view()->EvaluateScript(js, nullptr);
+}
+
+std::string UI::GetTabGroupsJSON() const
+{
+  std::ostringstream ss;
+  ss << "[";
+  bool first = true;
+  for (const auto &entry : tab_groups_)
+  {
+    const auto &group = entry.second;
+    if (!first)
+      ss << ",";
+    first = false;
+    ss << "{";
+    ss << "\"id\":" << group.id << ",";
+    ss << "\"title\":\"" << util::EscapeJsonString(group.title) << "\",";
+    ss << "\"color\":\"" << util::EscapeJsonString(group.color) << "\",";
+    ss << "\"collapsed\":" << (group.collapsed ? "true" : "false") << ",";
+    ss << "\"tab_ids\":[";
+    for (size_t i = 0; i < group.tab_ids.size(); ++i)
+    {
+      if (i > 0)
+        ss << ",";
+      ss << group.tab_ids[i];
+    }
+    ss << "]";
+    ss << "}";
+  }
+  ss << "]";
+  return ss.str();
+}
+
+uint64_t UI::CreateTabGroup(const std::string &title, const std::string &color)
+{
+  uint64_t group_id = ++tab_group_id_counter_;
+  TabGroup group;
+  group.id = group_id;
+  group.title = title.empty() ? "New Group" : title;
+  group.color = color.empty() ? "#6C63FF" : color;
+  group.collapsed = false;
+  tab_groups_[group_id] = std::move(group);
+  return group_id;
+}
+
+bool UI::DeleteTabGroup(uint64_t group_id)
+{
+  auto it = tab_groups_.find(group_id);
+  if (it == tab_groups_.end())
+    return false;
+
+  // Remove all tabs from this group
+  for (uint64_t tab_id : it->second.tab_ids)
+  {
+    tab_to_group_.erase(tab_id);
+  }
+
+  tab_groups_.erase(it);
+  return true;
+}
+
+bool UI::UpdateTabGroup(uint64_t group_id, const std::string &title, const std::string &color, bool collapsed)
+{
+  auto it = tab_groups_.find(group_id);
+  if (it == tab_groups_.end())
+    return false;
+
+  if (!title.empty())
+    it->second.title = title;
+  if (!color.empty())
+    it->second.color = color;
+  it->second.collapsed = collapsed;
+  return true;
+}
+
+bool UI::AddTabToGroup(uint64_t tab_id, uint64_t group_id)
+{
+  auto group_it = tab_groups_.find(group_id);
+  if (group_it == tab_groups_.end())
+    return false;
+
+  // Remove tab from any existing group first
+  RemoveTabFromGroup(tab_id);
+
+  // Add to new group
+  group_it->second.tab_ids.push_back(tab_id);
+  tab_to_group_[tab_id] = group_id;
+  return true;
+}
+
+bool UI::RemoveTabFromGroup(uint64_t tab_id)
+{
+  auto it = tab_to_group_.find(tab_id);
+  if (it == tab_to_group_.end())
+    return false;
+
+  uint64_t group_id = it->second;
+  auto group_it = tab_groups_.find(group_id);
+  if (group_it != tab_groups_.end())
+  {
+    auto &tab_ids = group_it->second.tab_ids;
+    tab_ids.erase(std::remove(tab_ids.begin(), tab_ids.end(), tab_id), tab_ids.end());
+  }
+
+  tab_to_group_.erase(it);
+  return true;
+}
+
+bool UI::MoveTabInGroup(uint64_t tab_id, uint64_t group_id, size_t new_index)
+{
+  auto group_it = tab_groups_.find(group_id);
+  if (group_it == tab_groups_.end())
+    return false;
+
+  auto &tab_ids = group_it->second.tab_ids;
+  auto it = std::find(tab_ids.begin(), tab_ids.end(), tab_id);
+  if (it == tab_ids.end())
+    return false;
+
+  tab_ids.erase(it);
+  if (new_index > tab_ids.size())
+    new_index = tab_ids.size();
+  tab_ids.insert(tab_ids.begin() + new_index, tab_id);
+  return true;
+}
+
+bool UI::ToggleTabGroupCollapsed(uint64_t group_id)
+{
+  auto it = tab_groups_.find(group_id);
+  if (it == tab_groups_.end())
+    return false;
+
+  it->second.collapsed = !it->second.collapsed;
+  return true;
+}
+
+uint64_t UI::GetTabGroupForTab(uint64_t tab_id) const
+{
+  auto it = tab_to_group_.find(tab_id);
+  if (it != tab_to_group_.end())
+    return it->second;
+  return 0;
+}
+
+void UI::RemoveTabFromGroups(uint64_t tab_id)
+{
+  RemoveTabFromGroup(tab_id);
 }
