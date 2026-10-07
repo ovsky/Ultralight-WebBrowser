@@ -715,93 +715,23 @@
             }
         }
 
-        const settingsDefinitions = {
-            general: {
-                title: 'General', settings: [
-                    {
-                        key: 'auto_save_settings',
-                        name: 'Auto Save Settings',
-                        description: 'Automatically save settings changes without requiring the Save button'
-                    }
-                ]
-            },
-            appearance: {
-                title: 'Appearance', settings: [
-                    { key: 'launch_dark_theme', name: 'Dark Theme', description: 'Use dark theme on startup' },
-                    { key: 'vibrant_window_theme', name: 'Vibrant Window', description: 'Color window frame' },
-                    { key: 'experimental_transparent_toolbar', name: 'Transparent Toolbar (experimental)', description: 'Experimental glass effect' },
-                    { key: 'experimental_compact_tabs', name: 'Compact Tabs', description: 'Reduce tab height' }
-                ]
-            },
-            privacy: {
-                title: 'Privacy & Security', settings: [
-                    { key: 'enable_adblock', name: 'Ad Blocking', description: 'Block ads and trackers' },
-                    { key: 'log_blocked_requests', name: 'Log Blocked Requests', description: 'Show blocked in console' },
-                    { key: 'clear_history_on_exit', name: 'Clear History on Exit', description: 'Delete history when closing' },
-                    { key: 'enable_javascript', name: 'Enable JavaScript', description: 'Allow JavaScript execution' },
-                    { key: 'enable_web_security', name: 'Web Security', description: 'Enforce same-origin policy' },
-                    { key: 'block_third_party_cookies', name: 'Block Third-Party Cookies', description: 'Prevent cross-site tracking' },
-                    { key: 'do_not_track', name: 'Do Not Track', description: 'Send DNT header' },
-                    { key: 'enable_location_spoofing', name: 'Location Spoofing', description: 'Override GPS coordinates sent to websites' }
-                ]
-            },
-            drm: {
-                title: 'DRM WebView', settings: [
-                    { key: 'enable_drm_webview', name: 'Enable DRM WebView', description: 'Switch DRM sites to native WebView (requires runtime install)' }
-                ]
-            },
-            suggestions: {
-                title: 'Address Bar', settings: [
-                    { key: 'enable_suggestions', name: 'Show Suggestions', description: 'Display history and popular sites' },
-                    { key: 'enable_suggestion_favicons', name: 'Show Favicons', description: 'Display site icons' }
-                ]
-            },
-            downloads: {
-                title: 'Downloads', settings: [
-                    { key: 'show_download_badge', name: 'Download Badge', description: 'Show active download count' },
-                    { key: 'auto_open_download_panel', name: 'Auto-open Panel', description: 'Open downloads panel auto' },
-                    { key: 'ask_download_location', name: 'Ask Where to Save', description: 'Show file picker for downloads' }
-                ]
-            },
-            performance: {
-                title: 'Performance', settings: [
-                    { key: 'smooth_scrolling', name: 'Smooth Scrolling', description: 'Enable animated scrolling' },
-                    { key: 'hardware_acceleration', name: 'Hardware Acceleration', description: 'Use GPU for rendering' },
-                    { key: 'enable_local_storage', name: 'Local Storage', description: 'Allow websites to store data' },
-                    { key: 'enable_database', name: 'Database Storage', description: 'Enable IndexedDB and Web SQL' }
-                ]
-            },
-            accessibility: {
-                title: 'Accessibility', settings: [
-                    { key: 'reduce_motion', name: 'Reduce Motion', description: 'Minimize animations' },
-                    { key: 'high_contrast_ui', name: 'High Contrast', description: 'Increase contrast' },
-                    { key: 'enable_caret_browsing', name: 'Caret Browsing', description: 'Navigate with keyboard cursor' }
-                ]
-            },
-            developer: {
-                title: 'Developer', settings: [
-                    { key: 'enable_remote_inspector', name: 'Remote Inspector', description: 'Enable Chrome DevTools Protocol' },
-                    { key: 'show_performance_overlay', name: 'Performance Overlay', description: 'Show FPS counter' }
-                ]
-            },
-            userAgent: {
-                title: 'User Agent Settings', settings: [
-                    {
-                        key: 'use_custom_user_agent',
-                        name: 'Use Custom User Agent',
-                        description: 'Use the custom UA string below instead of the Chromium default'
-                    }
-                ]
-            }
-        };
-
-        let currentSettings = {}, originalSettings = {}, isDirty = false;
-        let targetUserAgent = '', originalTargetUserAgent = '';
-        let darkThemeExcludedSites = '', originalDarkThemeExcludedSites = '';
-        let spoofedLatitude = 0, originalSpoofedLatitude = 0;
-        let spoofedLongitude = 0, originalSpoofedLongitude = 0;
         const drmElements = {};
         let drmStatusSnapshot = null;
+
+        // Group title mapping for nicer display
+        const groupTitleMap = {
+            'general': 'General',
+            'appearance': 'Appearance',
+            'privacy': 'Privacy & Security',
+            'drm': 'DRM WebView',
+            'suggestions': 'Address Bar',
+            'downloads': 'Downloads',
+            'performance': 'Performance',
+            'accessibility': 'Accessibility',
+            'developer': 'Developer',
+            'useragent': 'User Agent Settings',
+            'userAgent': 'User Agent Settings'
+        };
 
         document.addEventListener('DOMContentLoaded', () => {
             log('Page loaded');
@@ -907,9 +837,25 @@
             const container = document.getElementById('settings-container');
             container.innerHTML = '';
             const query = (window.__settingsSearchTerm || '').trim().toLowerCase();
-            let anyRendered = false;
-            Object.keys(settingsDefinitions).forEach(groupKey => {
-                const group = settingsDefinitions[groupKey];
+
+            // Build groups from metadata (dynamic from native)
+            const groups = {};
+            if (window.__settingMeta) {
+                Object.values(window.__settingMeta).forEach(meta => {
+                    const cat = meta.category || 'general';
+                    if (!groups[cat]) groups[cat] = { title: groupTitleMap[cat] || cat.charAt(0).toUpperCase() + cat.slice(1), settings: [] };
+                    groups[cat].settings.push(meta);
+                });
+            }
+
+            // If no metadata yet, we'll just wait for it (initial load populates it before render)
+            if (Object.keys(groups).length === 0) {
+                log('No metadata yet, skipping render');
+                return;
+            }
+
+            Object.keys(groups).forEach(groupKey => {
+                const group = groups[groupKey];
                 // Filter group's settings by search query
                 const matchedSettings = (query.length === 0) ? group.settings : group.settings.filter(s => {
                     const hay = ((s.name || '') + ' ' + (s.description || '') + ' ' + (s.key || '')).toLowerCase();
@@ -924,6 +870,7 @@
                 matchedSettings.forEach(setting => {
                     const itemDiv = document.createElement('div');
                     itemDiv.className = 'setting-item';
+                    itemDiv.dataset.settingKey = setting.key;
                     const infoDiv = document.createElement('div');
                     infoDiv.className = 'setting-info';
                     const nameDiv = document.createElement('div');
@@ -964,9 +911,14 @@
                                     window.OnReloadChromeUI();
                             }
                         }
-                        // Re-hydrate from latest snapshot so UA input instantly
-                        // reflects the updated Custom UA toggle state.
-                        setTimeout(loadSettings, 50);
+                        // NOTE: Removed setTimeout(loadSettings, 50) - it caused full reload on every toggle
+                        // The native side already has the updated value. Just update UA/location editors if needed.
+                        if (setting.key === 'use_custom_user_agent') {
+                            hydrateUserAgentEditor();
+                        }
+                        if (setting.key === 'enable_location_spoofing') {
+                            hydrateLocationEditor();
+                        }
                     });
                     itemDiv.appendChild(infoDiv);
                     itemDiv.appendChild(toggleDiv);
