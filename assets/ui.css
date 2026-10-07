@@ -46,59 +46,57 @@ body {
 
 #bar {
      background: var(--toolbar-bg, linear-gradient(0deg, #232330, #282836));
-     height: 32px;
-     padding: 4px 9px;
-     border-bottom: 0.8px solid var(--toolbar-border, #252532);
+     height: 44px;
+     padding: 0 10px;
+     border-bottom: 1px solid var(--toolbar-border, #252532);
      cursor: default;
      display: flex;
      align-items: center; /* vertically center the address bar and icons */
-}
+     gap: 6px;
+  }
 
 #address {
 
      border-radius: var(--radius-pill, 9999px);
      border: none;
-     height: 32px;
+     height: 40px;
      flex: 1;
      font-size: var(--font-size-md, 14px);
      color: var(--address-text, #c4c2d0);
-     background-color: var(--address-bg, #16151d);
+     background-color: var(--address-bg, #1e1e2e);
      display: inline-block;
-     padding: 2px 16px 2px 16px; /* restored original vertical padding */
-     margin-top: 0px;
-     margin-left: 9px;
-     margin-right: 9px;
+     padding: 0 18px;
+     margin: 0 6px;
      user-select: auto !important;
      -webkit-user-select: text !important;
      outline: none;
-} 
+  }
 
 /* Ensure toolbar icons are vertically centered too */
 #bar .icon { align-self: center; }
 
 #address:focus {
-     background-color: var(--address-bg, #16151d);
+     background-color: var(--address-focus-bg, #282836);
      color: var(--address-focus-text, #FFF);
-     /* Rounded focus ring */
-     box-shadow: 0 0 0 2px var(--address-focus-ring, #343446) inset;
-} 
+     /* Subtle border highlight like Chrome */
+     box-shadow: 0 0 0 1px var(--accent-color, var(--color-accent-primary, #6C63FF)) inset;
+ }
 
 .icon {
-     fill: var(--toolbar-icon-color, rgba(200, 200, 200, 1.0));
+     fill: var(--toolbar-icon-color, rgba(180, 180, 180, 1.0));
      vertical-align: middle;
-     /* margin-top: -1px; */
-     padding: 5px;
-     height: 18px;
-     width: 18px;
+     padding: 6px;
+     height: 24px;
+     width: 24px;
      transition: fill 0.2s ease, background-color 0.2s ease;
      border-radius: 100%;
-}
+ }
 
-/* Slightly smaller settings/toolbar tools icon (90% of 18px ~= 16px) */
-#toggle-tools svg {
-     width: 16px;
-     height: 16px;
-}
+/* Slightly smaller settings/toolbar tools icon */
+ #toggle-tools svg {
+     width: 18px;
+     height: 18px;
+ }
 
 /* Show hand cursor for clickable icons */
 .icon:not(.disabled) {
@@ -106,8 +104,8 @@ body {
 }
 
 #back {
-     margin-left: 0px;
-}
+     margin-left: 4px;
+ }
 
 .icon.disabled {
      cursor: default;
@@ -351,19 +349,21 @@ body.transparent-toolbar .chrome-tabs {
 }
 
 body.compact-tabs #bar {
-     height: 28px;
-     padding: 2px 8px;
-}
+     height: 36px;
+     padding: 0 8px;
+ }
 
 body.compact-tabs #address {
-     height: 28px;
+     height: 32px;
      font-size: 13px;
-     padding: 1px 14px 1px 14px;
-}
+     padding: 0 14px;
+ }
 
 body.compact-tabs .icon {
      padding: 4px;
-}
+     height: 18px;
+     width: 18px;
+ }
 
 body.compact-tabs #toggle-downloads .downloads-badge {
      top: 0;
@@ -677,7 +677,7 @@ header .header-actions { z-index: 2; }
 
 /* When the session restore bar is visible, push the toolbar down so it doesn't overlap */
 body.session-restore-visible #bar {
-     margin-top: calc(var(--session-restore-height, 48px) + 6px);
+     margin-top: calc(var(--session-restore-height, 48px) + 0px);
      transition: margin-top 0.18s ease-out;
 }
 
