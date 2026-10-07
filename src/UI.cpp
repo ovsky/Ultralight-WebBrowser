@@ -1490,6 +1490,8 @@ void UI::OnDOMReady(View *caller, uint64_t frame_id, bool is_main_frame, const S
   global["OnToggleAdblock"] = BindJSCallback(&UI::OnToggleAdblock);
   global["GetAdblockEnabled"] = BindJSCallbackWithRetval(&UI::OnGetAdblockEnabled);
   global["OnToggleBookmark"] = BindJSCallback(&UI::OnToggleBookmark);
+  global["OnExportBookmarks"] = BindJSCallback(&UI::OnExportBookmarks);
+  global["OnImportBookmarks"] = BindJSCallback(&UI::OnImportBookmarks);
   global["OnOpenSettingsPanel"] = BindJSCallback(&UI::OnOpenSettingsPanel);
   global["OnCloseSettingsPanel"] = BindJSCallback(&UI::OnCloseSettingsPanel);
   // Password save bar callback
@@ -6619,4 +6621,38 @@ void UI::OnUpdateBookmark(const JSObject &obj, const JSArgs &args)
   bool show_on_bar = args.size() > 4 ? (bool)args[4] : true;
 
   bookmark_store_->UpdateBookmark(id, url, title, favicon, show_on_bar);
+}
+
+void UI::OnExportBookmarks(const JSObject &obj, const JSArgs &args)
+{
+  if (!bookmark_store_)
+    return;
+
+  std::string filename = "bookmarks_export.json";
+  std::filesystem::path export_path = SettingsDirectory() / filename;
+
+  bookmark_store_->ExportToJSON(export_path.string());
+}
+
+void UI::OnImportBookmarks(const JSObject &obj, const JSArgs &args)
+{
+  if (!bookmark_store_ || args.empty())
+    return;
+
+  ultralight::String content_ul = args[0].ToString();
+  auto content_str = content_ul.utf8();
+  std::string content = content_str.data() ? content_str.data() : "";
+
+  // Write to temp file and import
+  std::filesystem::path temp_path = SettingsDirectory() / "temp_bookmarks_import.json";
+  {
+    std::ofstream out(temp_path, std::ios::binary);
+    if (!out.is_open())
+      return;
+    out << content;
+  }
+
+  bookmark_store_->ImportFromJSON(temp_path.string());
+
+  std::filesystem::remove(temp_path);
 }

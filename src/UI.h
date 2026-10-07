@@ -206,6 +206,8 @@ public:
   ultralight::JSValue OnIsBookmarked(const JSObject &obj, const JSArgs &args);
   void OnToggleBookmark(const JSObject &obj, const JSArgs &args);
   void OnUpdateBookmark(const JSObject &obj, const JSArgs &args);
+  void OnExportBookmarks(const JSObject &obj, const JSArgs &args);
+  void OnImportBookmarks(const JSObject &obj, const JSArgs &args);
 
   // Password Manager callbacks
   ultralight::JSValue OnGetPasswords(const JSObject &obj, const JSArgs &args);

@@ -503,3 +503,116 @@ std::string BookmarkStore::NormalizeUrl(const std::string &url)
 
     return result;
 }
+
+bool BookmarkStore::ExportToJSON(const std::filesystem::path &filepath) const
+{
+    std::ofstream file(filepath);
+    if (!file.is_open())
+        return false;
+
+    file << "{\n  \"bookmarks\": [\n";
+
+    bool first = true;
+    for (const auto &bm : bookmarks_)
+    {
+        if (!first)
+            file << ",\n";
+        first = false;
+
+        file << "    {\n"
+             << "      \"url\": \"" << EscapeJSON(bm.url) << "\",\n"
+             << "      \"title\": \"" << EscapeJSON(bm.title) << "\",\n"
+             << "      \"favicon\": \"" << EscapeJSON(bm.favicon) << "\",\n"
+             << "      \"created_at\": " << bm.created_at << ",\n"
+             << "      \"show_on_bar\": " << (bm.show_on_bar ? "true" : "false") << ",\n"
+             << "      \"position\": " << bm.position << "\n"
+             << "    }";
+    }
+
+    file << "\n  ]\n}\n";
+
+    return true;
+}
+
+bool BookmarkStore::ImportFromJSON(const std::filesystem::path &filepath)
+{
+    std::ifstream file(filepath);
+    if (!file.is_open())
+        return false;
+
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+    std::string json = buffer.str();
+
+    // Find bookmarks array
+    size_t arr_start = json.find("\"bookmarks\":");
+    if (arr_start == std::string::npos)
+        return false;
+
+    arr_start = json.find('[', arr_start);
+    if (arr_start == std::string::npos)
+        return false;
+
+    // Parse each bookmark object
+    size_t pos = arr_start + 1;
+    int imported = 0;
+
+    while (pos < json.length())
+    {
+        // Find next object start
+        size_t obj_start = json.find('{', pos);
+        if (obj_start == std::string::npos)
+            break;
+
+        // Find object end
+        int brace_count = 1;
+        size_t obj_end = obj_start + 1;
+        while (obj_end < json.length() && brace_count > 0)
+        {
+            if (json[obj_end] == '{')
+                brace_count++;
+            else if (json[obj_end] == '}')
+                brace_count--;
+            obj_end++;
+        }
+
+        if (brace_count != 0)
+            break;
+
+        std::string obj_json = json.substr(obj_start, obj_end - obj_start);
+
+        Bookmark bm;
+        bm.url = ExtractString(obj_json, "url");
+        bm.title = ExtractString(obj_json, "title");
+        bm.favicon = ExtractString(obj_json, "favicon");
+        bm.created_at = ExtractUint64(obj_json, "created_at");
+        if (bm.created_at == 0)
+            bm.created_at = GetCurrentTimestamp();
+        bm.show_on_bar = ExtractBool(obj_json, "show_on_bar", true);
+        bm.position = static_cast<int>(ExtractUint64(obj_json, "position"));
+
+        if (!bm.url.empty())
+        {
+            // Check if already exists
+            if (!IsBookmarked(bm.url))
+            {
+                bm.id = next_id_++;
+                bookmarks_.push_back(bm);
+                imported++;
+            }
+        }
+
+        pos = obj_end;
+
+        // Check for end of array
+        size_t next_comma = json.find(',', pos);
+        size_t arr_end = json.find(']', pos);
+        if (arr_end != std::string::npos && (next_comma == std::string::npos || arr_end < next_comma))
+            break;
+    }
+
+    if (imported > 0)
+        SaveToDisk();
+
+    return imported > 0;
+}

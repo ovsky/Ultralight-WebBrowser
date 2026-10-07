@@ -266,6 +266,9 @@
             </h1>
             <div class="controls">
                 <span class="muted" id="count"></span>
+                <button class="btn btn-primary" id="exportBookmarks">Export</button>
+                <button class="btn btn-primary" id="importBookmarksBtn">Import</button>
+                <input type="file" id="importBookmarks" accept=".json" style="display: none;">
                 <button class="btn btn-primary" id="clearAll" style="display: none;">Clear All</button>
             </div>
         </header>
@@ -456,6 +459,36 @@
                 });
                 loadBookmarks();
             }
+        };
+
+        // Export bookmarks
+        document.getElementById('exportBookmarks').onclick = function () {
+            if (window.exportBookmarks) {
+                window.exportBookmarks();
+            }
+        };
+
+        // Import bookmarks
+        document.getElementById('importBookmarksBtn').onclick = function () {
+            document.getElementById('importBookmarks').click();
+        };
+
+        document.getElementById('importBookmarks').onchange = function (e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (event) {
+                const content = event.target.result;
+                if (window.importBookmarks) {
+                    window.importBookmarks(content);
+                    loadBookmarks(); // Reload after import
+                }
+            };
+            reader.readAsText(file);
+
+            // Reset file input so same file can be selected again
+            e.target.value = '';
         };
 
         // Load bookmarks when page is ready

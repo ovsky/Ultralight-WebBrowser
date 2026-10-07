@@ -69,6 +69,10 @@ public:
     // Get bookmark bar items as JSON string
     std::string BookmarkBarToJSON() const;
 
+    // Export/Import
+    bool ExportToJSON(const std::filesystem::path &filepath) const;
+    bool ImportFromJSON(const std::filesystem::path &filepath);
+
 private:
     std::vector<Bookmark> bookmarks_;
     std::filesystem::path storage_path_;
