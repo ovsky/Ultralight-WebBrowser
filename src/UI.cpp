@@ -505,6 +505,10 @@ UI::UI(RefPtr<Window> window)
   bookmark_store_ = std::make_unique<BookmarkStore>();
   bookmark_store_->Initialize(SettingsDirectory());
 
+  // Initialize profile manager
+  profile_manager_ = std::make_unique<ProfileManager>(this);
+  profile_manager_->Initialize();
+
   // Apply runtime toggles (visual sync happens on DOMReady via SyncSettingsStateToUI)
   ApplySettings(true, true);
 
@@ -564,6 +568,10 @@ UI::UI(RefPtr<Window> window, AdBlocker *adblock, AdBlocker *tracker)
   // Initialize bookmark store
   bookmark_store_ = std::make_unique<BookmarkStore>();
   bookmark_store_->Initialize(SettingsDirectory());
+
+  // Initialize profile manager
+  profile_manager_ = std::make_unique<ProfileManager>(this);
+  profile_manager_->Initialize();
 
   // Apply runtime toggles (visual sync happens on DOMReady via SyncSettingsStateToUI)
   ApplySettings(true, true);
@@ -1577,6 +1585,17 @@ void UI::OnDOMReady(View *caller, uint64_t frame_id, bool is_main_frame, const S
   global["OnImportThemeFile"] = BindJSCallback(&UI::OnImportThemeFile);
   global["OnExportThemeFile"] = BindJSCallback(&UI::OnExportThemeFile);
   global["OnSaveThemeToFile"] = BindJSCallback(&UI::OnSaveThemeToFile);
+  // Profile management callbacks
+  global["OnOpenProfilesNewTab"] = BindJSCallback(&UI::OnOpenProfilesNewTab);
+  global["GetProfiles"] = BindJSCallbackWithRetval(&UI::OnGetProfiles);
+  global["OnCreateProfile"] = BindJSCallback(&UI::OnCreateProfile);
+  global["OnSwitchProfile"] = BindJSCallback(&UI::OnSwitchProfile);
+  global["OnDeleteProfile"] = BindJSCallback(&UI::OnDeleteProfile);
+  global["OnUpdateProfile"] = BindJSCallback(&UI::OnUpdateProfile);
+  global["OnToggleMultiProfile"] = BindJSCallback(&UI::OnToggleMultiProfile);
+  global["GetMultiProfileEnabled"] = BindJSCallbackWithRetval(&UI::OnGetMultiProfileEnabled);
+  global["OnExportProfile"] = BindJSCallback(&UI::OnExportProfile);
+  global["OnImportProfile"] = BindJSCallback(&UI::OnImportProfile);
   global["GetDownloadsSnapshot"] = BindJSCallbackWithRetval(&UI::OnDownloadsOverlayGet);
   global["ClearDownloadsSnapshot"] = BindJSCallback(&UI::OnDownloadsOverlayClear);
   global["OnAddressBarBlur"] = BindJSCallback(&UI::OnAddressBarBlur);
@@ -2067,6 +2086,227 @@ void UI::OnOpenThemesDirectory(const JSObject &obj, const JSArgs &args)
   std::string cmd = "xdg-open " + util::EscapeShellArg(path_str);
   system(cmd.c_str());
 #endif
+}
+
+// ============================================================================
+// Profile Management Implementation
+// ============================================================================
+
+void UI::OnOpenProfilesNewTab(const JSObject &obj, const JSArgs &args)
+{
+  CreateNewTabForChildView(String("file:///profiles.html"));
+}
+
+ultralight::JSValue UI::OnGetProfiles(const JSObject &obj, const JSArgs &args)
+{
+  if (!profile_manager_)
+    return JSValue("[]");
+
+  const auto& profiles = profile_manager_->GetProfiles();
+  std::ostringstream ss;
+  ss << "[";
+  bool first = true;
+  for (const auto& profile : profiles) {
+    if (!first) ss << ",";
+    first = false;
+    ss << "{";
+    ss << "\"id\":\"" << util::EscapeJsonString(profile.id) << "\",";
+    ss << "\"name\":\"" << util::EscapeJsonString(profile.name) << "\",";
+    ss << "\"avatar_color\":\"" << util::EscapeJsonString(profile.avatar_color) << "\",";
+    ss << "\"is_default\":" << (profile.is_default ? "true" : "false") << ",";
+    ss << "\"data_dir\":\"" << util::EscapeJsonString(profile.data_dir.string()) << "\",";
+    ss << "\"created_at\":" << profile.created_at << ",";
+    ss << "\"last_used_at\":" << profile.last_used_at;
+    ss << "}";
+  }
+  ss << "]";
+  return JSValue(String(ss.str().c_str()));
+}
+
+void UI::OnCreateProfile(const JSObject &obj, const JSArgs &args)
+{
+  if (!profile_manager_ || args.size() < 1)
+    return;
+
+  ultralight::String name_ul = args[0].ToString();
+  auto name_str = name_ul.utf8();
+  std::string name = name_str.data() ? name_str.data() : "";
+
+  std::string avatar_color = "";
+  if (args.size() >= 2 && args[1].IsString()) {
+    ultralight::String color_ul = args[1].ToString();
+    auto color_str = color_ul.utf8();
+    avatar_color = color_str.data() ? color_str.data() : "";
+  }
+
+  profile_manager_->CreateProfile(name, avatar_color);
+}
+
+void UI::OnSwitchProfile(const JSObject &obj, const JSArgs &args)
+{
+  if (!profile_manager_ || args.size() < 1)
+    return;
+
+  ultralight::String profile_id_ul = args[0].ToString();
+  auto profile_id_str = profile_id_ul.utf8();
+  std::string profile_id = profile_id_str.data() ? profile_id_str.data() : "";
+
+  if (!profile_id.empty()) {
+    profile_manager_->SwitchProfile(profile_id);
+  }
+}
+
+void UI::OnDeleteProfile(const JSObject &obj, const JSArgs &args)
+{
+  if (!profile_manager_ || args.size() < 1)
+    return;
+
+  ultralight::String profile_id_ul = args[0].ToString();
+  auto profile_id_str = profile_id_ul.utf8();
+  std::string profile_id = profile_id_str.data() ? profile_id_str.data() : "";
+
+  if (!profile_id.empty()) {
+    profile_manager_->DeleteProfile(profile_id);
+  }
+}
+
+void UI::OnUpdateProfile(const JSObject &obj, const JSArgs &args)
+{
+  if (!profile_manager_ || args.size() < 1)
+    return;
+
+  ultralight::String profile_id_ul = args[0].ToString();
+  auto profile_id_str = profile_id_ul.utf8();
+  std::string profile_id = profile_id_str.data() ? profile_id_str.data() : "";
+
+  std::string name = "";
+  if (args.size() >= 2 && args[1].IsString()) {
+    ultralight::String name_ul = args[1].ToString();
+    auto name_str = name_ul.utf8();
+    name = name_str.data() ? name_str.data() : "";
+  }
+
+  std::string avatar_color = "";
+  if (args.size() >= 3 && args[2].IsString()) {
+    ultralight::String color_ul = args[2].ToString();
+    auto color_str = color_ul.utf8();
+    avatar_color = color_str.data() ? color_str.data() : "";
+  }
+
+  if (!profile_id.empty()) {
+    profile_manager_->UpdateProfile(profile_id, name, avatar_color);
+  }
+}
+
+void UI::OnToggleMultiProfile(const JSObject &obj, const JSArgs &args)
+{
+  if (!profile_manager_)
+    return;
+
+  bool new_value = !profile_manager_->IsMultiProfileEnabled();
+  profile_manager_->SetMultiProfileEnabled(new_value);
+  profile_manager_->SaveProfiles();
+}
+
+ultralight::JSValue UI::OnGetMultiProfileEnabled(const JSObject &obj, const JSArgs &args)
+{
+  if (!profile_manager_)
+    return JSValue(false);
+
+  return JSValue(profile_manager_->IsMultiProfileEnabled() ? 1.0 : 0.0);
+}
+
+void UI::OnExportProfile(const JSObject &obj, const JSArgs &args)
+{
+  if (!profile_manager_)
+    return;
+
+  std::string json = profile_manager_->ExportCurrentProfile();
+
+  // Send to JavaScript to trigger download
+  if (overlay_ && overlay_->view())
+  {
+    std::string js = "if (window.triggerProfileDownload) window.triggerProfileDownload(" + util::EscapeJsonString(json) + ");";
+    overlay_->view()->EvaluateScript(js.c_str());
+  }
+}
+
+void UI::OnImportProfile(const JSObject &obj, const JSArgs &args)
+{
+  // Open file dialog to select a profile JSON file
+  // Implementation similar to OnImportThemeFile
+  std::string file_path;
+#ifdef _WIN32
+  OPENFILENAMEW ofn = {0};
+  wchar_t file_name[MAX_PATH] = {0};
+  ofn.lStructSize = sizeof(ofn);
+  ofn.hwndOwner = static_cast<HWND>(window_->native_handle());
+  ofn.lpstrFilter = L"JSON Files\0*.json\0All Files\0*.*\0";
+  ofn.lpstrFile = file_name;
+  ofn.nMaxFile = MAX_PATH;
+  ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR;
+  ofn.lpstrTitle = L"Import Profile";
+
+  if (GetOpenFileNameW(&ofn))
+  {
+    int len = WideCharToMultiByte(CP_UTF8, 0, file_name, -1, nullptr, 0, nullptr, nullptr);
+    if (len > 0)
+    {
+      std::vector<char> buf(len);
+      WideCharToMultiByte(CP_UTF8, 0, file_name, -1, buf.data(), len, nullptr, nullptr);
+      file_path = std::string(buf.data(), buf.size() - 1);
+    }
+  }
+#elif defined(__APPLE__)
+  std::string script = "POSIX path of (choose file with prompt \"Import Profile\" of type {\"public.json\"})";
+  FILE *pipe = popen(("osascript -e " + util::EscapeShellArg(script)).c_str(), "r");
+  if (pipe)
+  {
+    char buffer[1024];
+    if (fgets(buffer, sizeof(buffer), pipe))
+    {
+      file_path = buffer;
+      if (!file_path.empty() && file_path.back() == '\n')
+        file_path.pop_back();
+    }
+    pclose(pipe);
+  }
+#else
+  std::string cmd = "zenity --file-selection --title=\"Import Profile\" --file-filter=\"*.json\" 2>/dev/null || kdialog --getopenfilename . \"*.json\" 2>/dev/null";
+  FILE *pipe = popen(cmd.c_str(), "r");
+  if (pipe)
+  {
+    char buffer[1024];
+    if (fgets(buffer, sizeof(buffer), pipe))
+    {
+      file_path = buffer;
+      if (!file_path.empty() && file_path.back() == '\n')
+        file_path.pop_back();
+    }
+    pclose(pipe);
+  }
+#endif
+
+  if (file_path.empty())
+    return;
+
+  // Read the file content
+  std::ifstream file(file_path);
+  if (!file.is_open())
+    return;
+
+  std::stringstream buffer;
+  buffer << file.rdbuf();
+  std::string json_content = buffer.str();
+  file.close();
+
+  // Parse and create profile from JSON
+  // For now, we'll just notify JavaScript
+  if (overlay_ && overlay_->view())
+  {
+    std::string js = "if (window.importProfileFromJSON) window.importProfileFromJSON(" + util::EscapeJsonString(json_content) + ");";
+    overlay_->view()->EvaluateScript(js.c_str());
+  }
 }
 
 // ============================================================================

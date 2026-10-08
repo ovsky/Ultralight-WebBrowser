@@ -200,13 +200,21 @@
     "note": null,
     "default": true
   },
-  {
-    "key": "enable_drm_webview",
-    "name": "Enable DRM WebView",
-    "description": "Automatically switch DRM-protected sites to a native OS WebView with Widevine support.",
+{
+    "key": "drm_license_detection",
+    "name": "Detect DRM via license requests",
+    "description": "Monitor network requests for Widevine/PlayReady license URLs to detect DRM content even without EME API calls.",
     "category": "drm",
-    "note": "Requires native runtime",
+    "note": "Experimental",
     "default": true
+  },
+  {
+    "key": "enable_multi_profile",
+    "name": "Enable multi-profile support",
+    "description": "Allow multiple user profiles with separate settings, history, bookmarks, and extensions.",
+    "category": "general",
+    "note": "Experimental - requires restart",
+    "default": false
   },
   {
     "key": "auto_switch_drm",

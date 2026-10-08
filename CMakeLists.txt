@@ -79,6 +79,8 @@ set(SOURCES
 	"src/ExtensionManager.cpp"
 	"src/PasswordManager.h"
 	"src/PasswordManager.cpp"
+	"src/ProfileManager.h"
+	"src/ProfileManager.cpp"
 	"src/Tab.h"
 	"src/Tab.cpp"
 	"src/UI.h"
