@@ -174,6 +174,10 @@ public:
   // Reader mode
   void OnToggleReaderMode(const JSObject &obj, const JSArgs &args);
   ultralight::JSValue OnGetReaderModeEnabled(const JSObject &obj, const JSArgs &args);
+  // Custom Themes
+  void OnImportThemeFile(const JSObject &obj, const JSArgs &args);
+  void OnExportThemeFile(const JSObject &obj, const JSArgs &args);
+  void OnSaveThemeToFile(const JSObject &obj, const JSArgs &args);
   void OnOpenSettingsPanel(const JSObject &obj, const JSArgs &args);
   void OnCloseSettingsPanel(const JSObject &obj, const JSArgs &args);
   ultralight::JSValue OnGetSettings(const JSObject &obj, const JSArgs &args);
@@ -544,6 +548,9 @@ protected:
   void ApplyVibrantWindowTheme(bool enabled);
   void ApplyTransparentToolbar(bool enabled);
   void RemoveTransparentToolbar();
+
+  // Custom themes
+  void SaveThemeToFile(const std::string &theme_id, const std::string &json_content);
 
   // Cached page HTML for instant loading (avoids file I/O delay)
   std::string cached_start_page_html_;

@@ -1572,6 +1572,9 @@ void UI::OnDOMReady(View *caller, uint64_t frame_id, bool is_main_frame, const S
   global["OnOpenExtensionsNewTab"] = BindJSCallback(&UI::OnOpenExtensionsNewTab);
   global["OnOpenThemesNewTab"] = BindJSCallback(&UI::OnOpenThemesNewTab);
   global["OnOpenThemesDirectory"] = BindJSCallback(&UI::OnOpenThemesDirectory);
+  global["OnImportThemeFile"] = BindJSCallback(&UI::OnImportThemeFile);
+  global["OnExportThemeFile"] = BindJSCallback(&UI::OnExportThemeFile);
+  global["OnSaveThemeToFile"] = BindJSCallback(&UI::OnSaveThemeToFile);
   global["GetDownloadsSnapshot"] = BindJSCallbackWithRetval(&UI::OnDownloadsOverlayGet);
   global["ClearDownloadsSnapshot"] = BindJSCallback(&UI::OnDownloadsOverlayClear);
   global["OnAddressBarBlur"] = BindJSCallback(&UI::OnAddressBarBlur);
@@ -3299,6 +3302,197 @@ void UI::OnToggleReaderMode(const JSObject &, const JSArgs &)
 ultralight::JSValue UI::OnGetReaderModeEnabled(const JSObject &, const JSArgs &)
 {
   return ultralight::JSValue(settings_.enable_reader_mode ? 1.0 : 0.0);
+}
+
+void UI::OnImportThemeFile(const JSObject &, const JSArgs &args)
+{
+  // Open file dialog to select a theme JSON file
+  std::string file_path;
+#ifdef _WIN32
+  OPENFILENAMEW ofn = {0};
+  wchar_t file_name[MAX_PATH] = {0};
+  ofn.lStructSize = sizeof(ofn);
+  ofn.hwndOwner = static_cast<HWND>(window_->native_handle());
+  ofn.lpstrFilter = L"JSON Files\0*.json\0All Files\0*.*\0";
+  ofn.lpstrFile = file_name;
+  ofn.nMaxFile = MAX_PATH;
+  ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR;
+  ofn.lpstrTitle = L"Import Theme";
+
+  if (GetOpenFileNameW(&ofn))
+  {
+    int len = WideCharToMultiByte(CP_UTF8, 0, file_name, -1, nullptr, 0, nullptr, nullptr);
+    if (len > 0)
+    {
+      std::vector<char> buf(len);
+      WideCharToMultiByte(CP_UTF8, 0, file_name, -1, buf.data(), len, nullptr, nullptr);
+      file_path = std::string(buf.data(), buf.size() - 1); // Exclude null terminator
+    }
+  }
+#elif defined(__APPLE__)
+  // Use osascript for file dialog on macOS
+  std::string script = "POSIX path of (choose file with prompt \"Import Theme\" of type {\"public.json\"})";
+  FILE *pipe = popen(("osascript -e " + util::EscapeShellArg(script)).c_str(), "r");
+  if (pipe)
+  {
+    char buffer[1024];
+    if (fgets(buffer, sizeof(buffer), pipe))
+    {
+      file_path = buffer;
+      // Trim newline
+      if (!file_path.empty() && file_path.back() == '\n')
+        file_path.pop_back();
+    }
+    pclose(pipe);
+  }
+#else
+  // Linux - use zenity or kdialog
+  std::string cmd = "zenity --file-selection --title=\"Import Theme\" --file-filter=\"*.json\" 2>/dev/null || kdialog --getopenfilename . \"*.json\" 2>/dev/null";
+  FILE *pipe = popen(cmd.c_str(), "r");
+  if (pipe)
+  {
+    char buffer[1024];
+    if (fgets(buffer, sizeof(buffer), pipe))
+    {
+      file_path = buffer;
+      if (!file_path.empty() && file_path.back() == '\n')
+        file_path.pop_back();
+    }
+    pclose(pipe);
+  }
+#endif
+
+  if (file_path.empty())
+    return;
+
+  // Read the file content
+  std::ifstream file(file_path);
+  if (!file.is_open())
+    return;
+
+  std::stringstream buffer;
+  buffer << file.rdbuf();
+  std::string json_content = buffer.str();
+  file.close();
+
+  // Send the JSON content to the JavaScript side for import
+  if (overlay_ && overlay_->view())
+  {
+    std::string js = "if (window.ThemeManager) { const theme = window.ThemeManager.importTheme(" + util::EscapeJsStringLiteral(json_content) + "); if (theme) { window.ThemeManager.applyTheme(theme.id); window.dispatchEvent(new CustomEvent('theme-imported', { detail: theme })); } }";
+    overlay_->view()->EvaluateScript(js.c_str());
+  }
+}
+
+void UI::OnExportThemeFile(const JSObject &, const JSArgs &args)
+{
+  // Get theme ID from args
+  if (args.size() < 1 || !args[0].IsString())
+    return;
+
+  ultralight::String theme_id_ul = args[0].ToString();
+  auto theme_id_str = theme_id_ul.utf8();
+  std::string theme_id = theme_id_str.data() ? theme_id_str.data() : "";
+  if (theme_id.empty())
+    return;
+
+  // Get theme from ThemeManager in JavaScript and call OnSaveThemeToFile
+  if (overlay_ && overlay_->view())
+  {
+    std::string js = "if (window.ThemeManager && window.OnSaveThemeToFile) { const theme = window.ThemeManager.getTheme('" + util::EscapeJsStringLiteral(theme_id) + "'); if (theme) { const json = JSON.stringify(theme, null, 2); window.OnSaveThemeToFile('" + util::EscapeJsStringLiteral(theme_id) + "', json); } }";
+    overlay_->view()->EvaluateScript(js.c_str());
+  }
+}
+
+void UI::OnSaveThemeToFile(const JSObject &, const JSArgs &args)
+{
+  // Get theme ID and JSON content from args
+  if (args.size() < 2 || !args[0].IsString() || !args[1].IsString())
+    return;
+
+  ultralight::String theme_id_ul = args[0].ToString();
+  auto theme_id_str = theme_id_ul.utf8();
+  std::string theme_id = theme_id_str.data() ? theme_id_str.data() : "";
+
+  ultralight::String json_ul = args[1].ToString();
+  auto json_str = json_ul.utf8();
+  std::string json_content = json_str.data() ? json_str.data() : "";
+
+  if (theme_id.empty() || json_content.empty())
+    return;
+
+  SaveThemeToFile(theme_id, json_content);
+}
+
+// Helper to save theme JSON to file via native dialog
+void UI::SaveThemeToFile(const std::string &theme_id, const std::string &json_content)
+{
+  std::string file_path;
+#ifdef _WIN32
+  OPENFILENAMEW ofn = {0};
+  wchar_t file_name[MAX_PATH] = {0};
+  // Default filename
+  std::wstring default_name(theme_id.begin(), theme_id.end());
+  default_name += L".json";
+  wcscpy_s(file_name, default_name.c_str());
+  ofn.lStructSize = sizeof(ofn);
+  ofn.hwndOwner = static_cast<HWND>(window_->native_handle());
+  ofn.lpstrFilter = L"JSON Files\0*.json\0All Files\0*.*\0";
+  ofn.lpstrFile = file_name;
+  ofn.nMaxFile = MAX_PATH;
+  ofn.Flags = OFN_OVERWRITEPROMPT | OFN_NOCHANGEDIR;
+  ofn.lpstrTitle = L"Export Theme";
+  ofn.lpstrDefExt = L"json";
+
+  if (GetSaveFileNameW(&ofn))
+  {
+    int len = WideCharToMultiByte(CP_UTF8, 0, file_name, -1, nullptr, 0, nullptr, nullptr);
+    if (len > 0)
+    {
+      std::vector<char> buf(len);
+      WideCharToMultiByte(CP_UTF8, 0, file_name, -1, buf.data(), len, nullptr, nullptr);
+      file_path = std::string(buf.data(), buf.size() - 1); // Exclude null terminator
+    }
+  }
+#elif defined(__APPLE__)
+  std::string script = "POSIX path of (choose file name with prompt \"Export Theme\" default name \"" + theme_id + ".json\")";
+  FILE *pipe = popen(("osascript -e " + util::EscapeShellArg(script)).c_str(), "r");
+  if (pipe)
+  {
+    char buffer[1024];
+    if (fgets(buffer, sizeof(buffer), pipe))
+    {
+      file_path = buffer;
+      if (!file_path.empty() && file_path.back() == '\n')
+        file_path.pop_back();
+    }
+    pclose(pipe);
+  }
+#else
+  std::string cmd = "zenity --file-selection --save --title=\"Export Theme\" --filename=\"" + theme_id + ".json\" --file-filter=\"*.json\" 2>/dev/null || kdialog --getsavefilename . \"" + theme_id + ".json\" 2>/dev/null";
+  FILE *pipe = popen(cmd.c_str(), "r");
+  if (pipe)
+  {
+    char buffer[1024];
+    if (fgets(buffer, sizeof(buffer), pipe))
+    {
+      file_path = buffer;
+      if (!file_path.empty() && file_path.back() == '\n')
+        file_path.pop_back();
+    }
+    pclose(pipe);
+  }
+#endif
+
+  if (file_path.empty())
+    return;
+
+  // Write the JSON content to file
+  std::ofstream file(file_path);
+  if (file.is_open())
+  {
+    file << json_content;
+    file.close();
+  }
 }
 
 void UI::OnToggleAdblock(const JSObject &, const JSArgs &)
