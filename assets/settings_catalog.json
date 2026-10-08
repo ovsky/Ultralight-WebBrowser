@@ -209,6 +209,22 @@
     "default": true
   },
   {
+    "key": "auto_switch_drm",
+    "name": "Auto-switch to DRM WebView on EME detection",
+    "description": "When Encrypted Media Extensions (EME) usage is detected on a page, automatically switch to the DRM WebView if available.",
+    "category": "drm",
+    "note": "Requires DRM WebView enabled",
+    "default": true
+  },
+  {
+    "key": "drm_license_detection",
+    "name": "Detect DRM via license requests",
+    "description": "Monitor network requests for Widevine/PlayReady license URLs to detect DRM content even without EME API calls.",
+    "category": "drm",
+    "note": "Experimental",
+    "default": true
+  },
+  {
     "key": "enable_remote_inspector",
     "name": "Enable remote inspector",
     "description": "Allow remote debugging via Chrome DevTools Protocol.",

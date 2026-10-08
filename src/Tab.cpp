@@ -701,7 +701,8 @@ void Tab::OnDOMReady(View *caller, uint64_t frame_id, bool is_main_frame, const 
     global["reorderBookmarks"] = BindJSCallback(&Tab::JS_ReorderBookmarks);
     global["updateBookmark"] = BindJSCallbackWithRetval(&Tab::JS_UpdateBookmark);
 
-    const char *attachScript = R"JS((function(){
+    // Build attach script with tab ID
+    std::string attachScript = R"JS((function(){
       try{
         var n = (window.__ul = window.__ul || {});
         n.back = window.__ul_back;
@@ -717,13 +718,16 @@ void Tab::OnDOMReady(View *caller, uint64_t frame_id, bool is_main_frame, const 
         n.toggleDarkMode = window.__ul_toggleDarkMode;
         n.isDarkModeEnabled = window.__ul_isDarkModeEnabled;
         n.getAppInfo = window.__ul_getAppInfo;
+        n.tabId = )JS";
+    attachScript += std::to_string(id_);
+    attachScript += R"JS(;
         // Trigger bookmark loading if function exists (with delay to ensure page JS is loaded)
         setTimeout(function() {
           if(typeof loadBookmarks === 'function') loadBookmarks();
         }, 50);
       }catch(e){}
     })())JS";
-    caller->EvaluateScript(attachScript, nullptr);
+    caller->EvaluateScript(String(attachScript.c_str()), nullptr);
   }
 
   // Inject a contextmenu handler into the page to capture link/image/selection info
@@ -794,6 +798,52 @@ void Tab::OnDOMReady(View *caller, uint64_t frame_id, bool is_main_frame, const 
   // Inject extension scripts for matching URLs (only for non-internal pages)
   if (is_main_frame)
   {
+    // Inject EME/DRM detection script
+    {
+      RefPtr<JSContext> ctx = caller->LockJSContext();
+      SetJSContext(ctx->ctx());
+      JSObject global = JSGlobalObject();
+      global["NativeDrmDetected"] = BindJSCallback(&Tab::OnDrmDetected);
+
+      const char *emeDetectionScript = R"JS((function(){
+        if (window.__ul_eme_detection_installed) return;
+        window.__ul_eme_detection_installed = true;
+
+        // Store original requestMediaKeySystemAccess
+        var originalRequestMediaKeySystemAccess = navigator.requestMediaKeySystemAccess;
+        if (originalRequestMediaKeySystemAccess) {
+          navigator.requestMediaKeySystemAccess = function(keySystem, supportedConfigurations) {
+            // Report DRM detection to native
+            if (window.NativeDrmDetected) {
+              var url = window.location.href;
+              var tabId = (window.__ul && window.__ul.tabId) || 0;
+              window.NativeDrmDetected(url, keySystem, tabId);
+            }
+            // Call original function
+            return originalRequestMediaKeySystemAccess.apply(this, arguments);
+          };
+        }
+
+        // Also check if EME is already being used by checking for media elements with encrypted content
+        function checkForEncryptedMedia() {
+          var mediaElements = document.querySelectorAll('video, audio');
+          for (var i = 0; i < mediaElements.length; i++) {
+            var media = mediaElements[i];
+            if (media.src && media.src.length > 0) {
+              // Check if the source is from a known DRM domain
+              // This is a heuristic - the real detection is via requestMediaKeySystemAccess
+            }
+          }
+        }
+
+        // Run check after a delay
+        setTimeout(checkForEncryptedMedia, 1000);
+
+        console.log('[Ultralight] EME/DRM detection installed');
+      })())JS";
+      caller->EvaluateScript(emeDetectionScript, nullptr);
+    }
+
     auto url_str = url.utf8();
     const char *c = url_str.data();
     // Skip internal pages (file:/// URLs)
@@ -1268,6 +1318,48 @@ void Tab::OnNetworkEvent(const JSObject &obj, const JSArgs &args)
 {
   if (args.size() < 1)
     return;
+
+  // Parse the network event payload for DRM license detection
+  if (ui_ && ui_->settings_.drm_license_detection)
+  {
+    ultralight::String payload = args[0];
+    auto u = payload.utf8();
+    std::string s = u.data() ? u.data() : "{}";
+
+    // Check for DRM license URLs in the request
+    // Widevine license URLs typically contain "license", "widevine", "cenc", "playready"
+    std::string lower = s;
+    std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+
+    if (lower.find("license") != std::string::npos &&
+        (lower.find("widevine") != std::string::npos ||
+         lower.find("playready") != std::string::npos ||
+         lower.find("cenc") != std::string::npos ||
+         lower.find("clearkey") != std::string::npos))
+    {
+      // Extract URL from payload (simple JSON parsing)
+      size_t url_pos = s.find("\"url\"");
+      if (url_pos != std::string::npos)
+      {
+        size_t colon = s.find(':', url_pos);
+        size_t quote1 = s.find('"', colon);
+        size_t quote2 = s.find('"', quote1 + 1);
+        if (quote1 != std::string::npos && quote2 != std::string::npos && quote2 > quote1)
+        {
+          std::string url = s.substr(quote1 + 1, quote2 - quote1 - 1);
+          if (!url.empty())
+          {
+            // Report DRM license request
+            std::string js = "if (window.NativeDrmDetected) window.NativeDrmDetected(" +
+                             util::EscapeJsonString(url) + ", \"license-request\", " + std::to_string(id_) + ");";
+            if (view())
+              view()->EvaluateScript(String(js.c_str()), nullptr);
+          }
+        }
+      }
+    }
+  }
+
   if (!(inspector_overlay_ && inspector_overlay_->view()))
     return;
   ultralight::String payload = args[0];
@@ -2223,6 +2315,19 @@ void Tab::OnFaviconFetched(const JSObject &obj, const JSArgs &args)
     ultralight::String url = view()->url();
     ui_->UpdateTabFavicon(id_, data_url);
   }
+}
+
+void Tab::OnDrmDetected(const JSObject &obj, const JSArgs &args)
+{
+  // Called from JavaScript when EME/Drm content is detected
+  // args[0] = URL of the page
+  // args[1] = key system (e.g., "com.widevine.alpha")
+  // args[2] = tab ID
+  if (!ui_ || args.size() < 3)
+    return;
+
+  // Forward to UI for handling
+  ui_->OnDrmContentDetected(obj, args);
 }
 
 // ============================================================================

@@ -1519,6 +1519,8 @@ void UI::OnDOMReady(View *caller, uint64_t frame_id, bool is_main_frame, const S
   global["OnPasswordSaveBarResponse"] = BindJSCallback(&UI::OnPasswordSaveBarResponse);
   // DRM prompt bar callback
   global["OnDrmPromptResponse"] = BindJSCallback(&UI::OnDrmPromptResponse);
+  // DRM content detection callback
+  global["OnDrmContentDetected"] = BindJSCallback(&UI::OnDrmContentDetected);
   // Session restore bar callbacks
   global["OnRestoreSession"] = BindJSCallback(&UI::OnRestoreSession);
   global["OnDismissSession"] = BindJSCallback(&UI::OnDismissSession);
@@ -6930,6 +6932,39 @@ void UI::OnDrmPromptResponse(const JSObject &obj, const JSArgs &args)
     }
   }
   // "dismiss" action - do nothing, just close the bar
+}
+
+void UI::OnDrmContentDetected(const JSObject &obj, const JSArgs &args)
+{
+  // Called from JavaScript when EME/Drm content is detected on a page
+  // args[0] = URL of the page
+  // args[1] = key system (e.g., "com.widevine.alpha")
+  // args[2] = tab ID
+  if (args.size() < 3)
+    return;
+
+  ultralight::String url_ul = args[0].ToString();
+  ultralight::String key_system_ul = args[1].ToString();
+  int64_t tab_id_int = args[2].ToInteger();
+
+  auto url_str = url_ul.utf8();
+  auto key_system_str = key_system_ul.utf8();
+
+  std::string url = url_str.data() ? url_str.data() : "";
+  std::string key_system = key_system_str.data() ? key_system_str.data() : "";
+  uint64_t tab_id = static_cast<uint64_t>(tab_id_int);
+
+  if (url.empty() || tab_id == 0)
+    return;
+
+  AppendDrmLog("DRM content detected on: " + url + " (key system: " + key_system + ")");
+
+  // If DRM WebView is enabled and auto-switch is on, try to switch to it
+  if (settings_.enable_drm_webview && settings_.auto_switch_drm && tabs_.count(tab_id))
+  {
+    MaybeOpenDrmTab(tab_id, url, true);
+  }
+  // If not enabled, we could show a prompt bar here in the future
 }
 
 ultralight::JSValue UI::OnGetAutofillSuggestions(const JSObject &obj, const JSArgs &args)

@@ -104,6 +104,10 @@ public:
 
     // DRM WebView subsystem toggle (disabled by default, user must opt-in)
     bool enable_drm_webview = false;
+    // Auto-switch to DRM WebView when EME is detected
+    bool auto_switch_drm = true;
+    // Detect DRM via license request monitoring
+    bool drm_license_detection = true;
 
     // Session restore settings
     bool restore_session_on_startup = true; // Restore previous session tabs on startup
@@ -251,6 +255,9 @@ public:
   void OnDrmPromptResponse(const JSObject &obj, const JSArgs &args);
   void ShowDrmPrompt(const std::string &url, uint64_t tab_id);
   void HideDrmPrompt();
+
+  // DRM content detection
+  void OnDrmContentDetected(const JSObject &obj, const JSArgs &args);
 
   // Password save prompt methods (called from Tab)
   void ShowPasswordSavePrompt(const std::string &origin, const std::string &username);
