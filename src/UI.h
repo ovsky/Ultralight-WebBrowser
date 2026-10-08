@@ -4,6 +4,7 @@
 #include "drm/DRMSettings.h"
 #include "ExtensionManager.h"
 #include "BookmarkStore.h"
+#include "ProfileManager.h"
 #include <map>
 #include <memory>
 #include <string>
@@ -108,6 +109,8 @@ public:
     bool auto_switch_drm = true;
     // Detect DRM via license request monitoring
     bool drm_license_detection = true;
+    // Multi-profile support
+    bool enable_multi_profile = false;
 
     // Session restore settings
     bool restore_session_on_startup = true; // Restore previous session tabs on startup
@@ -251,6 +254,18 @@ public:
   ultralight::JSValue OnGetAutofillSuggestions(const JSObject &obj, const JSArgs &args);
   ultralight::JSValue OnIsDarkModeEnabled(const JSObject &obj, const JSArgs &args);
 
+  // Profile Management callbacks
+  void OnOpenProfilesNewTab(const JSObject &obj, const JSArgs &args);
+  ultralight::JSValue OnGetProfiles(const JSObject &obj, const JSArgs &args);
+  void OnCreateProfile(const JSObject &obj, const JSArgs &args);
+  void OnSwitchProfile(const JSObject &obj, const JSArgs &args);
+  void OnDeleteProfile(const JSObject &obj, const JSArgs &args);
+  void OnUpdateProfile(const JSObject &obj, const JSArgs &args);
+  void OnToggleMultiProfile(const JSObject &obj, const JSArgs &args);
+  ultralight::JSValue OnGetMultiProfileEnabled(const JSObject &obj, const JSArgs &args);
+  void OnExportProfile(const JSObject &obj, const JSArgs &args);
+  void OnImportProfile(const JSObject &obj, const JSArgs &args);
+
   // DRM prompt methods
   void OnDrmPromptResponse(const JSObject &obj, const JSArgs &args);
   void ShowDrmPrompt(const std::string &url, uint64_t tab_id);
@@ -267,6 +282,7 @@ public:
   DownloadManager *download_manager() { return download_manager_.get(); }
   password::PasswordManager *password_manager() { return password_manager_.get(); }
   BookmarkStore *bookmark_store() { return bookmark_store_.get(); }
+  ProfileManager *profile_manager() { return profile_manager_.get(); }
   AdBlocker *network_blocker() { return adblock_; }
 
   // Privacy settings accessors for Tab's JavaScript injection
@@ -283,6 +299,11 @@ protected:
   static std::filesystem::path SettingsDirectory();
   static std::filesystem::path SettingsFilePath();
   static std::filesystem::path LegacySettingsFilePath();
+
+public:
+  // Public accessor for ProfileManager
+  std::filesystem::path GetSettingsDirectoryForProfile() const { return SettingsDirectory(); }
+
   void CreateNewTab();
   RefPtr<View> CreateNewTabForChildView(const String &url);
   void UpdateTabTitle(uint64_t id, const String &title);
@@ -425,6 +446,7 @@ protected:
   std::unique_ptr<DownloadManager> download_manager_;
   std::unique_ptr<password::PasswordManager> password_manager_;
   std::unique_ptr<BookmarkStore> bookmark_store_;
+  std::unique_ptr<ProfileManager> profile_manager_;
   bool downloads_overlay_had_active_ = false;
   bool downloads_overlay_user_dismissed_ = false;
   uint64_t downloads_last_sequence_seen_ = 0;
