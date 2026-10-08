@@ -84,6 +84,7 @@ public:
     bool reduce_motion = false;
     bool high_contrast_ui = false;
     bool enable_caret_browsing = false;
+    bool enable_reader_mode = false;
 
     // Developer
     bool enable_remote_inspector = false;
@@ -170,6 +171,9 @@ public:
   ultralight::JSValue OnGetPerformanceOverlayEnabled(const JSObject &obj, const JSArgs &args);
   void OnToggleAdblock(const JSObject &obj, const JSArgs &args);
   ultralight::JSValue OnGetAdblockEnabled(const JSObject &obj, const JSArgs &args);
+  // Reader mode
+  void OnToggleReaderMode(const JSObject &obj, const JSArgs &args);
+  ultralight::JSValue OnGetReaderModeEnabled(const JSObject &obj, const JSArgs &args);
   void OnOpenSettingsPanel(const JSObject &obj, const JSArgs &args);
   void OnCloseSettingsPanel(const JSObject &obj, const JSArgs &args);
   ultralight::JSValue OnGetSettings(const JSObject &obj, const JSArgs &args);
@@ -528,6 +532,9 @@ protected:
   void RemoveHighContrastFromView(RefPtr<View> v);
   void ApplyCaretBrowsingToView(RefPtr<View> v);
   void RemoveCaretBrowsingFromView(RefPtr<View> v);
+  // Reader mode CSS injections
+  void ApplyReaderModeToView(RefPtr<View> v);
+  void RemoveReaderModeFromView(RefPtr<View> v);
 
   // Performance CSS injections
   void ApplySmoothScrollingToView(RefPtr<View> v);

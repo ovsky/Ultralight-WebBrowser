@@ -1241,6 +1241,12 @@ bool UI::RunShortcutAction(const std::string &action)
     CreateNewTabForChildView(String("file:///themes.html"));
     return true;
   }
+  if (action == "toggle-reader-mode")
+  {
+    // Toggle reader mode on active tab
+    OnToggleReaderMode({}, {});
+    return true;
+  }
   return false;
 }
 
@@ -1492,6 +1498,9 @@ void UI::OnDOMReady(View *caller, uint64_t frame_id, bool is_main_frame, const S
   global["GetPerformanceOverlayEnabled"] = BindJSCallbackWithRetval(&UI::OnGetPerformanceOverlayEnabled);
   global["OnToggleAdblock"] = BindJSCallback(&UI::OnToggleAdblock);
   global["GetAdblockEnabled"] = BindJSCallbackWithRetval(&UI::OnGetAdblockEnabled);
+  // Reader mode callbacks
+  global["OnToggleReaderMode"] = BindJSCallback(&UI::OnToggleReaderMode);
+  global["GetReaderModeEnabled"] = BindJSCallbackWithRetval(&UI::OnGetReaderModeEnabled);
   global["OnToggleBookmark"] = BindJSCallback(&UI::OnToggleBookmark);
   global["OnExportBookmarks"] = BindJSCallback(&UI::OnExportBookmarks);
   global["OnImportBookmarks"] = BindJSCallback(&UI::OnImportBookmarks);
@@ -3270,6 +3279,28 @@ ultralight::JSValue UI::OnGetPerformanceOverlayEnabled(const JSObject &, const J
   return ultralight::JSValue(performance_overlay_enabled_ ? 1.0 : 0.0);
 }
 
+void UI::OnToggleReaderMode(const JSObject &, const JSArgs &)
+{
+  bool new_value = !settings_.enable_reader_mode;
+  settings_.enable_reader_mode = new_value;
+  if (settings_.auto_save_settings)
+    SaveSettingsToDisk();
+
+  // Apply reader mode to active tab
+  if (active_tab() && active_tab()->view())
+  {
+    if (new_value)
+      ApplyReaderModeToView(active_tab()->view());
+    else
+      RemoveReaderModeFromView(active_tab()->view());
+  }
+}
+
+ultralight::JSValue UI::OnGetReaderModeEnabled(const JSObject &, const JSArgs &)
+{
+  return ultralight::JSValue(settings_.enable_reader_mode ? 1.0 : 0.0);
+}
+
 void UI::OnToggleAdblock(const JSObject &, const JSArgs &)
 {
   HandleSettingMutation("enable_adblock", !settings_.enable_adblock);
@@ -4495,6 +4526,83 @@ void UI::RemoveCaretBrowsingFromView(RefPtr<View> v)
     try{
       document.body.removeAttribute('contenteditable');
       document.designMode = 'off';
+      return true;
+    }catch(e){return false;}
+  })())JS";
+  v->EvaluateScript(js, nullptr);
+}
+
+// Reader mode CSS injections
+void UI::ApplyReaderModeToView(RefPtr<View> v)
+{
+  if (!v)
+    return;
+  const char *js = R"JS((function(){
+    try{
+      var sid='__ul_reader_mode';
+      if(document.getElementById(sid)) return false;
+      
+      // Clone the main content
+      var article = document.querySelector('article') || document.querySelector('main') || document.body;
+      if (!article) return false;
+      
+      // Create reader mode overlay
+      var readerDiv = document.createElement('div');
+      readerDiv.id = '__ul_reader_overlay';
+      readerDiv.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#fefefe;z-index:2147483647;overflow:auto;padding:2rem;font-family:Georgia,serif;line-height:1.7;color:#333;';
+      
+      // Extract content
+      var content = article.cloneNode(true);
+      // Remove scripts, styles, nav, aside, footer, header
+      var toRemove = content.querySelectorAll('script,style,nav,aside,footer,header,.nav,.sidebar,.ads,.advertisement,[class*="ad-"],[id*="ad-"]');
+      toRemove.forEach(function(el){ el.remove(); });
+      
+      readerDiv.innerHTML = content.innerHTML;
+      
+      // Style the content
+      var style = document.createElement('style');
+      style.textContent = 
+        '#__ul_reader_overlay * { max-width: 800px; margin-left:auto; margin-right:auto; }' +
+        '#__ul_reader_overlay h1, #__ul_reader_overlay h2, #__ul_reader_overlay h3 { color:#1a1a1a; margin-top:2em; margin-bottom:0.5em; }' +
+        '#__ul_reader_overlay p { margin-bottom:1.2em; text-align:justify; }' +
+        '#__ul_reader_overlay img, #__ul_reader_overlay video { max-width:100%; height:auto; display:block; margin:1.5em auto; }' +
+        '#__ul_reader_overlay a { color:#0066cc; text-decoration:underline; }' +
+        '#__ul_reader_overlay blockquote { border-left:4px solid #ddd; margin:1.5em 0; padding-left:1em; color:#666; font-style:italic; }' +
+        '#__ul_reader_overlay pre { background:#f5f5f5; padding:1em; overflow:auto; border-radius:4px; }' +
+        '#__ul_reader_overlay code { background:#f5f5f5; padding:0.2em 0.4em; border-radius:3px; font-family:monospace; }' +
+        '@media (prefers-color-scheme: dark) { ' +
+        '  #__ul_reader_overlay { background:#1a1a2e; color:#e0e0e0; } ' +
+        '  #__ul_reader_overlay h1, #__ul_reader_overlay h2, #__ul_reader_overlay h3 { color:#fff; } ' +
+        '  #__ul_reader_overlay a { color:#6ab0f3; } ' +
+        '  #__ul_reader_overlay blockquote { border-left-color:#444; color:#aaa; } ' +
+        '  #__ul_reader_overlay pre, #__ul_reader_overlay code { background:#2a2a3e; } ' +
+        '}';
+      
+      document.head.appendChild(style);
+      document.body.innerHTML = '';
+      document.body.appendChild(readerDiv);
+      document.body.style.margin = '0';
+      document.body.style.overflow = 'hidden';
+      
+      return true;
+    }catch(e){console.error(e); return false;}
+  })())JS";
+  v->EvaluateScript(js, nullptr);
+}
+
+void UI::RemoveReaderModeFromView(RefPtr<View> v)
+{
+  if (!v)
+    return;
+  const char *js = R"JS((function(){
+    try{
+      var overlay = document.getElementById('__ul_reader_overlay');
+      if (overlay) overlay.remove();
+      var style = document.querySelector('style[text-content*="__ul_reader_overlay"]');
+      if (style) style.remove();
+      document.body.style.margin = '';
+      document.body.style.overflow = '';
+      location.reload();
       return true;
     }catch(e){return false;}
   })())JS";

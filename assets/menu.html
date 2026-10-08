@@ -105,6 +105,10 @@
                 <span class="menu-label">Performance overlay</span>
                 <span class="menu-value" id="perf-overlay-value">OFF</span>
             </div>
+            <div class="menu-item menu-toggle" data-action="toggle-reader-mode">
+                <span class="menu-label">Reader mode</span>
+                <span class="menu-value" id="reader-mode-value">OFF</span>
+            </div>
             <div class="menu-separator"></div>
             <div class="menu-item" data-action="history">
                 <span class="menu-label">History</span>
@@ -169,6 +173,13 @@
                         perfOverlayValue.textContent = perfOverlayEnabled ? 'ON' : 'OFF';
                     }
                 }
+                if (window.GetReaderModeEnabled) {
+                    const readerModeEnabled = GetReaderModeEnabled();
+                    const readerModeValue = document.getElementById('reader-mode-value');
+                    if (readerModeValue) {
+                        readerModeValue.textContent = readerModeEnabled ? 'ON' : 'OFF';
+                    }
+                }
             }
 
             // Refresh on load
@@ -213,6 +224,12 @@
                     case 'toggle-performance-overlay':
                         if (window.OnTogglePerformanceOverlay) {
                             OnTogglePerformanceOverlay();
+                            setTimeout(refreshToggles, 50);
+                        }
+                        return; // Don't close menu on toggle
+                    case 'toggle-reader-mode':
+                        if (window.OnToggleReaderMode) {
+                            OnToggleReaderMode();
                             setTimeout(refreshToggles, 50);
                         }
                         return; // Don't close menu on toggle

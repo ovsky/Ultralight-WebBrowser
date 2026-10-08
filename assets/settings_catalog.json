@@ -225,6 +225,14 @@
     "default": false
   },
   {
+    "key": "enable_reader_mode",
+    "name": "Enable reader mode",
+    "description": "Simplify web pages for distraction-free reading with customizable font, theme, and width.",
+    "category": "accessibility",
+    "note": "Experimental",
+    "default": false
+  },
+  {
     "key": "restore_session_on_startup",
     "name": "Restore previous session",
     "description": "Reopen tabs from your last browsing session when starting the browser.",
