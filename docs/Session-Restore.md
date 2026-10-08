@@ -194,7 +194,7 @@ The following internal browser pages are **excluded** from session restore:
 
 | URL Pattern | Description |
 |-------------|-------------|
-| `file:///static-sties/google-static.html` | Default home page |
+| `file:///static-sites/google-static.html` | Default home page |
 | `file:///new_tab_page.html` | New tab page |
 | `file:///settings.html` | Settings page |
 | `file:///history.html` | History page |

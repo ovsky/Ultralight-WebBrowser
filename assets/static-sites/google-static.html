@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ultralight | Home Page</title>
+
+  <!-- Favicon (Lightning Bolt) -->
+  <link rel="icon" href="./favicon.webp">
+
+  <style>
+    /* Universal Box Sizing for Responsive Layouts */
+    * {
+      box-sizing: border-box;
+    }
+
+    /* Reset & Base Styles */
+    body,
+    html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      /* Takes full height of browser */
+      width: 100%;
+      /* Takes full width of browser */
+      font-family: arial, sans-serif;
+      background-color: #202124;
+      /* Google Dark Background */
+      color: #202124;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+      /* Do NOT animate the document root's opacity; keep the page background
+        constant so we avoid a white flash. We'll fade only the main content. */
+    }
+
+    /* Main Content Area */
+    .main-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      /* Padding to prevent touching edges on mobile */
+      padding-bottom: 120px;
+      /* Visual balance */
+      width: 100%;
+      /* Fade the visible content in while leaving the page background unchanged */
+      opacity: 0;
+      animation: ul_fade_in 0.2s ease-in forwards;
+      -webkit-animation: ul_fade_in 0.2s ease-in forwards;
+    }
+
+    /* Google Logo SVG Container */
+    .logo-svg {
+      width: 272px;
+      max-width: 100%;
+      /* Responsive: shrinks on very small screens */
+      height: auto;
+      margin-bottom: 20px;
+      margin-top: 140px;
+      /* Increased top spacing again */
+      fill: #ffffff;
+    }
+
+    /* Search Bar Container */
+    .search-container {
+      width: 100%;
+      max-width: 584px;
+    }
+
+    /* The Search Form */
+    .search-bar {
+      background-color: #303134;
+      border: 1px solid #5f6368;
+      border-radius: 24px;
+      display: flex;
+      align-items: center;
+      padding: 0 14px;
+      height: 46px;
+      width: 100%;
+      /* Smoother Transition */
+      transition: background-color 300ms cubic-bezier(0.4, 0, 0.2, 1),
+        border-color 300ms cubic-bezier(0.4, 0, 0.2, 1),
+        box-shadow 300ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .search-bar:hover,
+    .search-bar:focus-within {
+      background-color: #303134;
+      border-color: rgba(223, 225, 229, 0);
+      box-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Magnifying Glass Icon */
+    .search-icon {
+      fill: #9aa0a6;
+      width: 20px;
+      height: 20px;
+      margin-right: 12px;
+      flex-shrink: 0;
+      /* Prevents icon from squishing */
+    }
+
+    /* Input Field */
+    input[type="text"] {
+      background-color: transparent;
+      border: none;
+      color: #e8eaed;
+      font-size: 16px;
+      width: 100%;
+      height: 100%;
+      outline: none;
+    }
+
+    /* Buttons Area */
+    .buttons {
+      margin-top: 18px;
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+      /* Buttons wrap on tiny screens */
+    }
+
+    button {
+      background-color: #303134;
+      border: 1px solid #303134;
+      color: #e8eaed;
+      font-size: 14px;
+      padding: 0 24px;
+      height: 36px;
+      border-radius: 100px;
+      cursor: pointer;
+      transition: background-color 200ms ease,
+        border-color 200ms ease,
+        color 200ms ease,
+        transform 100ms ease;
+    }
+
+    button:hover {
+      background-color: #3c4043;
+      border: 1px solid #5f6368;
+      color: #fff;
+    }
+
+    button:active {
+      transform: scale(0.96);
+      background-color: #45494d;
+    }
+
+    /* Footer */
+    footer {
+      background-color: #171717;
+      padding: 15px;
+      text-align: center;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      color: #8ab4f8;
+      border-top: 1px solid #303134;
+      flex-shrink: 0;
+      /* Prevents footer from collapsing */
+    }
+
+    .footer-icon {
+      width: 18px;
+      height: 18px;
+      fill: #a142f4;
+      transition: filter 300ms ease;
+    }
+
+    footer:hover .footer-icon {
+      filter: drop-shadow(0 0 4px #a142f4);
+    }
+  </style>
+
+  <style>
+    @keyframes ul_fade_in {
+      from {
+        opacity: 0;
+      }
+
+      to {
+        opacity: 1;
+      }
+    }
+
+    @-webkit-keyframes ul_fade_in {
+      from {
+        opacity: 0;
+      }
+
+      to {
+        opacity: 1;
+      }
+    }
+  </style>
+
+  <style>
+    /* Bookmark Bar Styles */
+    .bookmark-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: rgba(29, 29, 33, 0.92);
+      padding: 6px 16px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-wrap: nowrap;
+      min-height: 36px;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(60, 60, 70, 0.4);
+      z-index: 1000;
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+
+    .bookmark-bar::-webkit-scrollbar {
+      height: 4px;
+    }
+
+    .bookmark-bar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .bookmark-bar::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 2px;
+    }
+
+    .bookmark-bar-empty {
+      color: #9aa0a6;
+      font-size: 0.8em;
+      padding: 4px 8px;
+      white-space: nowrap;
+    }
+
+    .bookmark-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      text-decoration: none;
+      color: #e8eaed;
+      font-size: 0.8em;
+      transition: all 0.15s ease;
+      max-width: 160px;
+      background: transparent;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .bookmark-item:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+    }
+
+    .bookmark-item:active {
+      transform: scale(0.97);
+    }
+
+    .bookmark-item img {
+      width: 16px;
+      height: 16px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+
+    .bookmark-item .default-icon {
+      width: 16px;
+      height: 16px;
+      background: linear-gradient(135deg, #4285f4, #5e35b1);
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      color: white;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    .bookmark-item span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .bookmark-item .remove-btn {
+      display: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: rgba(255, 100, 100, 0.8);
+      color: white;
+      font-size: 10px;
+      line-height: 14px;
+      text-align: center;
+      cursor: pointer;
+      margin-left: 2px;
+      flex-shrink: 0;
+    }
+
+    .bookmark-item:hover .remove-btn {
+      display: block;
+    }
+
+    .bookmark-item .remove-btn:hover {
+      background: rgba(255, 60, 60, 1);
+    }
+
+    /* Drag and drop styles */
+    .bookmark-item {
+      cursor: grab;
+    }
+
+    .bookmark-item.dragging {
+      opacity: 0.5;
+      background: rgba(100, 100, 255, 0.3);
+      cursor: grabbing;
+    }
+
+    .bookmark-item.drag-over {
+      border-left: 3px solid #6C63FF;
+      padding-left: 7px;
+    }
+
+    .bookmark-item.drag-over-right {
+      border-right: 3px solid #6C63FF;
+      padding-right: 7px;
+    }
+
+    .bookmark-bar.drag-active {
+      background: rgba(29, 29, 33, 0.98);
+    }
+
+    /* Adjust main container for bookmark bar */
+    .main-container {
+      padding-top: 50px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Bookmark Bar -->
+  <div class="bookmark-bar" id="bookmarkBar">
+    <span class="bookmark-bar-empty" id="emptyMessage">Click the ★ icon to add bookmarks</span>
+  </div>
+
+  <div class="main-container">
+    <!-- Official Google Logo Geometry (SVG) -->
+    <svg class="logo-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 272 92">
+      <path
+        d="M115.75 47.18c0 12.77-9.99 22.18-22.25 22.18s-22.25-9.41-22.25-22.18C71.25 34.32 81.25 25 93.5 25s22.25 9.32 22.25 22.18zm-9.74 0c0-7.98-5.79-13.44-12.51-13.44S80.99 39.2 80.99 47.18c0 7.9 5.79 13.44 12.51 13.44s12.51-5.55 12.51-13.44z" />
+      <path
+        d="M163.75 47.18c0 12.77-9.99 22.18-22.25 22.18s-22.25-9.41-22.25-22.18c0-12.85 9.99-22.18 22.25-22.18s22.25 9.32 22.25 22.18zm-9.74 0c0-7.98-5.79-13.44-12.51-13.44s-12.51 5.46-12.51 13.44c0 7.9 5.79 13.44 12.51 13.44s12.51-5.55 12.51-13.44z" />
+      <path
+        d="M209.75 26.34v39.82c0 16.38-9.66 23.07-21.08 23.07-10.75 0-17.22-7.19-19.66-13.07l8.48-3.53c1.51 3.61 5.21 7.87 11.17 7.87 7.31 0 11.84-4.51 11.84-13v-3.19h-.34c-2.18 2.69-6.38 5.04-11.68 5.04-11.09 0-21.25-9.66-21.25-22.09 0-12.52 10.16-22.26 21.25-22.26 5.29 0 9.49 2.35 11.68 4.96h.34v-3.61h9.25zm-8.56 20.92c0-7.81-5.21-13.52-11.84-13.52-6.72 0-12.35 5.71-12.35 13.52 0 7.73 5.63 13.36 12.35 13.36 6.63 0 11.84-5.63 11.84-13.36z" />
+      <path d="M225 3v65h-9.5V3h9.5z" />
+      <path
+        d="M262.02 54.48l7.56 5.04c-2.44 3.61-8.32 9.66-18.48 9.66-12.6 0-22.01-9.58-22.01-22.18 0-13.19 9.49-22.18 20.92-22.18 11.51 0 17.14 9.16 18.99 14.12l1.01 2.52-29.65 12.28c2.27 4.45 5.8 6.72 10.75 6.72 4.96 0 8.4-2.44 10.92-6.14zm-23.27-7.98l19.82-8.23c-1.09-2.77-4.37-4.7-8.23-4.7-4.95 0-11.84 4.37-11.59 12.93z" />
+      <path
+        d="M35.29 41.41V32H67c.31 1.64.47 3.58.47 5.68 0 7.06-1.93 15.79-8.15 22.01-6.05 6.3-13.78 9.66-24.02 9.66C16.32 69.35.5 53.73.5 35.35S16.32 1.35 35.29 1.35c10.5 0 17.98 4.12 23.6 9.49l-6.64 6.64c-4.03-3.78-9.49-6.72-16.97-6.72-13.86 0-24.7 11.17-24.7 25.03 0 13.86 10.84 25.03 24.7 25.03 8.99 0 14.11-3.61 17.39-6.89 2.66-2.66 4.41-6.46 5.1-11.65l-22.49.01z" />
+    </svg>
+
+    <!-- Search Form -->
+    <form action="https://www.google.com/search" method="GET" class="search-container">
+      <div class="search-bar">
+        <svg class="search-icon" focusable="false" viewBox="0 0 24 24">
+          <path
+            d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z">
+          </path>
+        </svg>
+        <input type="text" name="q" autocomplete="off">
+      </div>
+
+      <div class="buttons">
+        <button type="submit">Google Search</button>
+      </div>
+    </form>
+  </div>
+
+  <footer>
+    <img src="./favicon.webp" class="Pb9hCb" alt="" data-csiid="__UJaeHBH_CjptQP-eqXgA0_11" data-atf="1"
+      data-iml="1763607175169" style="max-width: 0.9rem; ">
+    <a href="https://github.com/ovsky/Ultralight-WebBrowser" target="_blank" rel="noopener noreferrer"
+      style="color:#8ab4f8;text-decoration:none;">
+      Ultralight - Web Browser
+    </a>
+  </footer>
+
+  <script>
+    // Helper to get first letter of domain for default icon
+    function getFirstLetter(url) {
+      try {
+        const hostname = new URL(url).hostname;
+        return hostname.replace('www.', '').charAt(0).toUpperCase();
+      } catch (e) {
+        return url.charAt(0).toUpperCase();
+      }
+    }
+
+    // Mouse-based drag and drop state
+    let dragState = {
+      isDragging: false,
+      element: null,
+      bookmarkId: null,
+      startX: 0,
+      startY: 0,
+      offsetX: 0,
+      clone: null,
+      moved: false
+    };
+
+    // Create a bookmark element with mouse drag support
+    function createBookmarkElement(bookmark) {
+      const item = document.createElement('div');
+      item.className = 'bookmark-item';
+      item.dataset.bookmarkId = bookmark.id;
+      item.dataset.url = bookmark.url;
+
+      // Icon (favicon or default)
+      if (bookmark.favicon && bookmark.favicon.startsWith('data:')) {
+        const img = document.createElement('img');
+        img.src = bookmark.favicon;
+        img.draggable = false;
+        img.onerror = function () {
+          const defaultIcon = document.createElement('div');
+          defaultIcon.className = 'default-icon';
+          defaultIcon.textContent = getFirstLetter(bookmark.url);
+          this.replaceWith(defaultIcon);
+        };
+        item.appendChild(img);
+      } else {
+        const defaultIcon = document.createElement('div');
+        defaultIcon.className = 'default-icon';
+        defaultIcon.textContent = getFirstLetter(bookmark.url);
+        item.appendChild(defaultIcon);
+      }
+
+      // Title
+      const title = document.createElement('span');
+      title.textContent = bookmark.title || bookmark.url;
+      item.appendChild(title);
+
+      // Remove button
+      const removeBtn = document.createElement('div');
+      removeBtn.className = 'remove-btn';
+      removeBtn.textContent = '×';
+      removeBtn.onmousedown = function (e) {
+        e.stopPropagation();
+      };
+      removeBtn.onclick = function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (window.removeBookmark) {
+          window.removeBookmark(bookmark.id);
+          loadBookmarks();
+        }
+      };
+      item.appendChild(removeBtn);
+
+      // Mouse down to start drag
+      item.addEventListener('mousedown', function (e) {
+        if (e.button !== 0) return;
+        if (e.target.classList.contains('remove-btn')) return;
+
+        e.preventDefault();
+
+        dragState.isDragging = true;
+        dragState.element = item;
+        dragState.bookmarkId = bookmark.id;
+        dragState.startX = e.clientX;
+        dragState.startY = e.clientY;
+        dragState.moved = false;
+
+        const rect = item.getBoundingClientRect();
+        dragState.offsetX = e.clientX - rect.left;
+
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+      });
+
+      // Middle click opens in new tab
+      item.addEventListener('auxclick', function (e) {
+        if (e.button === 1) { // Middle mouse button
+          e.preventDefault();
+          openInNewTab(bookmark.url);
+        }
+      });
+
+      // Click to navigate (only if not dragged)
+      item.addEventListener('click', function (e) {
+        if (dragState.moved) {
+          e.preventDefault();
+          return;
+        }
+        // Ctrl+Click opens in new tab
+        if (e.ctrlKey) {
+          e.preventDefault();
+          e.stopPropagation();
+          openInNewTab(bookmark.url);
+          return;
+        }
+        // Regular click navigates in current tab
+        window.location.href = bookmark.url;
+      });
+
+      return item;
+    }
+
+    // Open URL in new tab using native bridge
+    function openInNewTab(url) {
+      if (window.__ul_newTab) {
+        window.__ul_newTab(url);
+      } else if (window.__ul && window.__ul.newTab) {
+        window.__ul.newTab(url);
+      } else {
+        // Fallback: just navigate
+        window.location.href = url;
+      }
+    }
+
+    function handleMouseMove(e) {
+      if (!dragState.isDragging || !dragState.element) return;
+
+      const dx = e.clientX - dragState.startX;
+      const dy = e.clientY - dragState.startY;
+
+      // Only start visual drag after moving a bit
+      if (!dragState.moved && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) {
+        dragState.moved = true;
+        dragState.element.classList.add('dragging');
+        document.getElementById('bookmarkBar').classList.add('drag-active');
+      }
+
+      if (!dragState.moved) return;
+
+      // Find the bookmark item we're hovering over
+      const bar = document.getElementById('bookmarkBar');
+      const items = Array.from(bar.querySelectorAll('.bookmark-item'));
+
+      // Clear all drag-over states
+      items.forEach(item => item.classList.remove('drag-over', 'drag-over-right'));
+
+      // Find which item we're over
+      for (const item of items) {
+        if (item === dragState.element) continue;
+
+        const rect = item.getBoundingClientRect();
+        const midX = rect.left + rect.width / 2;
+
+        if (e.clientX >= rect.left && e.clientX <= rect.right) {
+          if (e.clientX < midX) {
+            item.classList.add('drag-over');
+          } else {
+            item.classList.add('drag-over-right');
+          }
+          break;
+        }
+      }
+    }
+
+    function handleMouseUp(e) {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+
+      if (!dragState.isDragging) return;
+
+      const bar = document.getElementById('bookmarkBar');
+      const items = Array.from(bar.querySelectorAll('.bookmark-item'));
+
+      // Find drop target
+      let dropTarget = null;
+      let insertAfter = false;
+
+      for (const item of items) {
+        if (item.classList.contains('drag-over')) {
+          dropTarget = item;
+          insertAfter = false;
+          break;
+        }
+        if (item.classList.contains('drag-over-right')) {
+          dropTarget = item;
+          insertAfter = true;
+          break;
+        }
+      }
+
+      // Move the element
+      if (dropTarget && dropTarget !== dragState.element && dragState.moved) {
+        if (insertAfter) {
+          dropTarget.parentNode.insertBefore(dragState.element, dropTarget.nextSibling);
+        } else {
+          dropTarget.parentNode.insertBefore(dragState.element, dropTarget);
+        }
+        // Save new order
+        saveBookmarkOrder();
+      }
+
+      // Clean up
+      items.forEach(item => {
+        item.classList.remove('dragging', 'drag-over', 'drag-over-right');
+      });
+      bar.classList.remove('drag-active');
+
+      // Reset state after a short delay to prevent click from firing
+      setTimeout(() => {
+        dragState.isDragging = false;
+        dragState.element = null;
+        dragState.bookmarkId = null;
+        dragState.moved = false;
+      }, 10);
+    }
+
+    function saveBookmarkOrder() {
+      const bar = document.getElementById('bookmarkBar');
+      const items = bar.querySelectorAll('.bookmark-item');
+      const orderedIds = Array.from(items).map(item => parseInt(item.dataset.bookmarkId));
+
+      if (window.reorderBookmarks && orderedIds.length > 0) {
+        window.reorderBookmarks(JSON.stringify(orderedIds));
+      }
+    }
+
+    // Load and display bookmarks
+    function loadBookmarks() {
+      const bar = document.getElementById('bookmarkBar');
+      const emptyMsg = document.getElementById('emptyMessage');
+
+      bar.querySelectorAll('.bookmark-item').forEach(el => el.remove());
+
+      let bookmarks = [];
+      if (window.getBookmarkBar) {
+        try {
+          const json = window.getBookmarkBar();
+          bookmarks = JSON.parse(json);
+        } catch (e) {
+          console.error('Error parsing bookmarks:', e);
+        }
+      }
+
+      if (bookmarks.length === 0) {
+        emptyMsg.style.display = 'block';
+      } else {
+        emptyMsg.style.display = 'none';
+        bookmarks.forEach(bm => {
+          const item = createBookmarkElement(bm);
+          bar.appendChild(item);
+        });
+      }
+    }
+
+    // Load bookmarks when page is ready
+    document.addEventListener('DOMContentLoaded', function () {
+      setTimeout(loadBookmarks, 100);
+    });
+
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      setTimeout(loadBookmarks, 100);
+    }
+  </script>
+
+</body>
+
+</html>

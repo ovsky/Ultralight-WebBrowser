@@ -1021,13 +1021,13 @@ void UI::LoadCachedStartPage()
 #endif
   
   std::string cwd(cwd_buf);
-  std::string file_path = cwd + "/assets/static-sties/google-static.html";
-  
+std::string file_path = cwd + "/assets/static-sites/google-static.html";
+
   std::ifstream in(file_path, std::ios::in | std::ios::binary);
   if (!in.is_open())
   {
     // Try alternative path (in case assets folder is in a different location)
-    std::string alt_path = cwd + "/../assets/static-sties/google-static.html";
+    std::string alt_path = cwd + "/../assets/static-sites/google-static.html";
     in.open(alt_path, std::ios::in | std::ios::binary);
     
     if (!in.is_open())
@@ -2360,7 +2360,7 @@ void UI::CreateNewTab()
 
   // Use cached HTML for instant page display (no file I/O delay)
   // This eliminates the white flash before page content loads
-  const char *kStartPageURL = "file:///static-sties/google-static.html";
+  const char *kStartPageURL = "file:///static-sites/google-static.html";
   if (!cached_start_page_html_.empty())
   {
     tabs_[id]->view()->LoadHTML(String(cached_start_page_html_.c_str()), String(kStartPageURL));
@@ -2583,7 +2583,7 @@ String UI::GetFaviconURL(const String &page_url)
   if (url_view.find("file:///") == 0)
   {
     // Start page / Google static page - home icon
-    if (url_view.find("static-sties/") != std::string_view::npos ||
+    if (url_view.find("static-sites/") != std::string_view::npos ||
         url_view.find("google-static") != std::string_view::npos)
       return String("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAyNCAyNCcgZmlsbD0nI2MyYmNlOCc+PHBhdGggZD0nTTEwIDIwdi02aDR2Nmg1di04aDNMMTIgMyAyIDEyaDN2OHonLz48L3N2Zz4=");
 
@@ -4231,7 +4231,7 @@ bool UI::IsBrowserInternalPage(const std::string &url)
       "about.html",
       "new_tab_page.html",
       "release_notes.html",
-      "static-sties/"};
+      "static-sites/"};
 
   for (const char *page : internal_pages)
   {
@@ -5124,7 +5124,7 @@ bool UI::IsInternalBrowserPage(const std::string &url) const
 {
   // List of internal/default browser pages that don't need to be restored
   static const std::vector<std::string> internal_pages = {
-      "file:///static-sties/google-static.html",
+      "file:///static-sites/google-static.html",
       "file:///new_tab_page.html",
       "file:///settings.html",
       "file:///history.html",
@@ -5150,7 +5150,7 @@ bool UI::IsInternalBrowserPage(const std::string &url) const
   if (url.find("file:///") == 0)
   {
     // Check if it's a local static site or internal page
-    if (url.find("static-sties") != std::string::npos)
+    if (url.find("static-sites") != std::string::npos)
       return true;
   }
 
