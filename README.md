@@ -374,6 +374,15 @@ Major feature sync bringing all development improvements to the stable branch.
 - Password Manager
 - Extension/Plugin API
 - Persistent History
+- Bookmark System + Import/Export
+- Directories Organization
+- Accessibility Enhancements (Reduce Motion, High Contrast, Caret Browsing)
+- Performance Optimizations (Overlay, Smooth Scrolling)
+- Tab Groups
+- Reader Mode (F9 shortcut, content extraction)
+- Custom Themes (native import/export)
+- DRM Detection Improvements (EME + license monitoring)
+- Multi-Profile Support
 
 </td>
 <td width="33%" valign="top">
