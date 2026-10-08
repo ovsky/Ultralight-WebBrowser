@@ -101,6 +101,10 @@
                 <span class="menu-label">Ad blocking</span>
                 <span class="menu-value" id="adblock-value">OFF</span>
             </div>
+            <div class="menu-item menu-toggle" data-action="toggle-performance-overlay">
+                <span class="menu-label">Performance overlay</span>
+                <span class="menu-value" id="perf-overlay-value">OFF</span>
+            </div>
             <div class="menu-separator"></div>
             <div class="menu-item" data-action="history">
                 <span class="menu-label">History</span>
@@ -158,6 +162,13 @@
                         adblockValue.textContent = adblockEnabled ? 'ON' : 'OFF';
                     }
                 }
+                if (window.GetPerformanceOverlayEnabled) {
+                    const perfOverlayEnabled = GetPerformanceOverlayEnabled();
+                    const perfOverlayValue = document.getElementById('perf-overlay-value');
+                    if (perfOverlayValue) {
+                        perfOverlayValue.textContent = perfOverlayEnabled ? 'ON' : 'OFF';
+                    }
+                }
             }
 
             // Refresh on load
@@ -196,6 +207,12 @@
                     case 'toggle-adblock':
                         if (window.OnToggleAdblock) {
                             OnToggleAdblock();
+                            setTimeout(refreshToggles, 50);
+                        }
+                        return; // Don't close menu on toggle
+                    case 'toggle-performance-overlay':
+                        if (window.OnTogglePerformanceOverlay) {
+                            OnTogglePerformanceOverlay();
                             setTimeout(refreshToggles, 50);
                         }
                         return; // Don't close menu on toggle

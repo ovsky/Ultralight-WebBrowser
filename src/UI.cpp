@@ -1487,6 +1487,9 @@ void UI::OnDOMReady(View *caller, uint64_t frame_id, bool is_main_frame, const S
   global["OnDownloadsOverlayClose"] = BindJSCallback(&UI::OnDownloadsOverlayClose);
   global["OnToggleDarkMode"] = BindJSCallback(&UI::OnToggleDarkMode);
   global["GetDarkModeEnabled"] = BindJSCallbackWithRetval(&UI::OnGetDarkModeEnabled);
+  // Performance overlay callbacks
+  global["OnTogglePerformanceOverlay"] = BindJSCallback(&UI::OnTogglePerformanceOverlay);
+  global["GetPerformanceOverlayEnabled"] = BindJSCallbackWithRetval(&UI::OnGetPerformanceOverlayEnabled);
   global["OnToggleAdblock"] = BindJSCallback(&UI::OnToggleAdblock);
   global["GetAdblockEnabled"] = BindJSCallbackWithRetval(&UI::OnGetAdblockEnabled);
   global["OnToggleBookmark"] = BindJSCallback(&UI::OnToggleBookmark);
@@ -3244,6 +3247,29 @@ ultralight::JSValue UI::OnGetDarkModeEnabled(const JSObject &, const JSArgs &)
   return ultralight::JSValue(dark_mode_enabled_ ? 1.0 : 0.0);
 }
 
+void UI::OnTogglePerformanceOverlay(const JSObject &, const JSArgs &)
+{
+  if (performance_overlay_enabled_)
+  {
+    performance_overlay_enabled_ = false;
+    HidePerformanceOverlay();
+  }
+  else
+  {
+    performance_overlay_enabled_ = true;
+    ShowPerformanceOverlay();
+  }
+  // Persist to settings
+  settings_.show_performance_overlay = performance_overlay_enabled_;
+  if (settings_.auto_save_settings)
+    SaveSettingsToDisk();
+}
+
+ultralight::JSValue UI::OnGetPerformanceOverlayEnabled(const JSObject &, const JSArgs &)
+{
+  return ultralight::JSValue(performance_overlay_enabled_ ? 1.0 : 0.0);
+}
+
 void UI::OnToggleAdblock(const JSObject &, const JSArgs &)
 {
   HandleSettingMutation("enable_adblock", !settings_.enable_adblock);
@@ -3671,8 +3697,16 @@ void UI::ApplySettings(bool initial, bool snapshot_is_baseline)
   }
 
   // Developer
-  // enable_remote_inspector, show_performance_overlay
-  // These would require additional implementation
+  // enable_remote_inspector
+  // show_performance_overlay - handled below
+  if (settings_.show_performance_overlay != performance_overlay_enabled_)
+  {
+    performance_overlay_enabled_ = settings_.show_performance_overlay;
+    if (performance_overlay_enabled_)
+      ShowPerformanceOverlay();
+    else
+      HidePerformanceOverlay();
+  }
 
   // Networking / User Agent
   // Compute the active user agent string whenever settings change.
@@ -5940,6 +5974,141 @@ void UI::HideSuggestionsOverlay()
   suggestions_overlay_ = nullptr;
   pending_sugg_json_ = "";
   // NOTE: Don't restore DRM tab here - suggestions don't hide it in the first place
+}
+
+// Performance overlay
+void UI::ShowPerformanceOverlay()
+{
+  if (performance_overlay_)
+    return;
+
+  if (!window_)
+    return;
+
+  RefPtr<Overlay> overlay = Overlay::Create(window_, window_->width(), window_->height(), 0, 0);
+  if (!overlay)
+    return;
+
+  RefPtr<View> view = overlay->view();
+  if (!view)
+    return;
+
+  view->set_load_listener(this);
+  view->set_view_listener(this);
+
+  // Create a simple HTML for the performance overlay
+  std::string html = R"HTML(
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Performance Overlay</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: monospace;
+            font-size: 12px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #0f0;
+            padding: 10px;
+            pointer-events: none;
+            user-select: none;
+        }
+        .perf-container {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 20, 0, 0.9);
+            border: 1px solid #0f0;
+            border-radius: 4px;
+            padding: 10px;
+            min-width: 200px;
+        }
+        .perf-row { display: flex; justify-content: space-between; margin: 4px 0; }
+        .perf-label { color: #8f8; }
+        .perf-value { color: #0f0; font-weight: bold; }
+        .perf-value.warning { color: #ff0; }
+        .perf-value.danger { color: #f00; }
+        h3 { margin: 0 0 8px 0; font-size: 13px; color: #0f0; border-bottom: 1px solid #0f0; padding-bottom: 4px; }
+    </style>
+</head>
+<body>
+    <div class="perf-container">
+        <h3>Performance Overlay</h3>
+        <div class="perf-row"><span class="perf-label">FPS:</span><span id="fps" class="perf-value">--</span></div>
+        <div class="perf-row"><span class="perf-label">Frame Time:</span><span id="frameTime" class="perf-value">--</span></div>
+        <div class="perf-row"><span class="perf-label">JS Heap:</span><span id="jsHeap" class="perf-value">--</span></div>
+        <div class="perf-row"><span class="perf-label">Total Heap:</span><span id="totalHeap" class="perf-value">--</span></div>
+        <div class="perf-row"><span class="perf-label">Tabs:</span><span id="tabCount" class="perf-value">--</span></div>
+    </div>
+    <script>
+        let frames = 0;
+        let lastTime = performance.now();
+        let fps = 0;
+        let frameTime = 0;
+
+        function update() {
+            const now = performance.now();
+            frames++;
+            frameTime = now - lastTime;
+            
+            if (frameTime >= 1000) {
+                fps = frames;
+                frames = 0;
+                lastTime = now;
+            }
+
+            document.getElementById('fps').textContent = fps;
+            document.getElementById('fps').className = 'perf-value' + (fps < 30 ? ' danger' : fps < 55 ? ' warning' : '');
+            
+            document.getElementById('frameTime').textContent = frameTime.toFixed(2) + ' ms';
+            document.getElementById('frameTime').className = 'perf-value' + (frameTime > 33 ? ' danger' : frameTime > 18 ? ' warning' : '');
+
+            // Memory info (if available)
+            if (performance.memory) {
+                const jsHeap = (performance.memory.usedJSHeapSize / 1024 / 1024).toFixed(2);
+                const totalHeap = (performance.memory.totalJSHeapSize / 1024 / 1024).toFixed(2);
+                document.getElementById('jsHeap').textContent = jsHeap + ' MB';
+                document.getElementById('totalHeap').textContent = totalHeap + ' MB';
+                document.getElementById('jsHeap').className = 'perf-value' + (jsHeap > 100 ? ' danger' : jsHeap > 50 ? ' warning' : '');
+            }
+
+            requestAnimationFrame(update);
+        }
+
+        update();
+    </script>
+</body>
+</html>
+)HTML";
+
+  view->LoadHTML(String(html.c_str()), String("about:performance-overlay"));
+  
+  performance_overlay_ = overlay;
+  performance_overlay_->Show();
+}
+
+void UI::HidePerformanceOverlay()
+{
+  if (!performance_overlay_)
+    return;
+  performance_overlay_->Hide();
+  performance_overlay_->Unfocus();
+  if (performance_overlay_->view())
+    performance_overlay_->view()->set_load_listener(nullptr);
+  performance_overlay_ = nullptr;
+}
+
+void UI::UpdatePerformanceOverlay()
+{
+  // The overlay updates itself via requestAnimationFrame
+  if (performance_overlay_ && performance_overlay_->view())
+  {
+    // Could send tab count or other info from native side
+    int tab_count = static_cast<int>(tabs_.size()) + static_cast<int>(drm_tabs_.size());
+    std::string js = "(function(){ if(document.getElementById('tabCount')) document.getElementById('tabCount').textContent = '" + std::to_string(tab_count) + "'; })();";
+    performance_overlay_->view()->EvaluateScript(ultralight::String(js.c_str()), nullptr);
+  }
 }
 
 void UI::OnOpenSuggestionsOverlay(const JSObject &obj, const JSArgs &args)

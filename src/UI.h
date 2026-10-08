@@ -165,6 +165,9 @@ public:
   void OnDownloadsOverlayPauseItem(const JSObject &obj, const JSArgs &args);
   void OnDownloadsOverlayRemoveItem(const JSObject &obj, const JSArgs &args);
   ultralight::JSValue OnGetDarkModeEnabled(const JSObject &obj, const JSArgs &args);
+  // Performance overlay
+  void OnTogglePerformanceOverlay(const JSObject &obj, const JSArgs &args);
+  ultralight::JSValue OnGetPerformanceOverlayEnabled(const JSObject &obj, const JSArgs &args);
   void OnToggleAdblock(const JSObject &obj, const JSArgs &args);
   ultralight::JSValue OnGetAdblockEnabled(const JSObject &obj, const JSArgs &args);
   void OnOpenSettingsPanel(const JSObject &obj, const JSArgs &args);
@@ -290,6 +293,11 @@ protected:
   // Suggestions overlay (above all UI)
   void ShowSuggestionsOverlay(int x, int y, int width, const ultralight::String &json_items);
   void HideSuggestionsOverlay();
+
+  // Performance overlay
+  void ShowPerformanceOverlay();
+  void HidePerformanceOverlay();
+  void UpdatePerformanceOverlay();
 
   // History management
   void RecordHistory(const String &url, const String &title);
@@ -441,6 +449,8 @@ protected:
   bool high_contrast_ui_enabled_ = false;
   bool vibrant_window_theme_enabled_ = false;
   bool smooth_scrolling_enabled_ = true;
+  bool performance_overlay_enabled_ = false;
+  RefPtr<Overlay> performance_overlay_;
 
   // Session restore state
   bool session_restore_pending_ = false;     // True if we should prompt to restore session
