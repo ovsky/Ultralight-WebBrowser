@@ -181,6 +181,9 @@ public:
   // Favicon callback
   void OnFaviconFetched(const JSObject &obj, const JSArgs &args);
 
+  // DRM/EME detection callback
+  void OnDrmDetected(const JSObject &obj, const JSArgs &args);
+
 protected:
   UI *ui_;
   RefPtr<Overlay> overlay_;
