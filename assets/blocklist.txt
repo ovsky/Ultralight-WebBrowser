@@ -23,9 +23,11 @@
 0.0.0.0 www.googletagmanager.com
 0.0.0.0 www.googletagservices.com
 
-0.0.0.0 connect.facebook.net
-0.0.0.0 static.xx.fbcdn.net
-0.0.0.0 graph.facebook.com
+# Facebook tracking pixels (login-required domains excluded)
+# NOTE: connect.facebook.net, graph.facebook.com, fbcdn.net are needed for FB login
+# 0.0.0.0 connect.facebook.net
+# 0.0.0.0 static.xx.fbcdn.net
+# 0.0.0.0 graph.facebook.com
 
 0.0.0.0 ads.yahoo.com
 0.0.0.0 analytics.yahoo.com

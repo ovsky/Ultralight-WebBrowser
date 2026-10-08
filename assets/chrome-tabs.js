@@ -10,7 +10,10 @@
       </div>
       <div class="chrome-tab-favicon"></div>
       <div class="chrome-tab-spinner"></div>
-      <div class="chrome-tab-title"></div>
+      <div class="chrome-tab-title">
+        <span class="chrome-tab-title-text"></span>
+        <span class="chrome-tab-badge" aria-hidden="true"></span>
+      </div>
       <div class="chrome-tab-close"></div>
     </div>
   `
@@ -222,10 +225,10 @@
 
       const tabWidth = this.tabWidth
       const tabEffectiveWidth = tabWidth - this.options.tabOverlapDistance
-      tabEl.style.width = `${ tabWidth }px`
+      tabEl.style.width = `${tabWidth}px`
       const lastIndex = this.tabEls.length - 1
       const initialLeft = Math.max(0, lastIndex * tabEffectiveWidth)
-      tabEl.style.transform = `translate3d(${ initialLeft }px, 0, 0)`
+      tabEl.style.transform = `translate3d(${initialLeft}px, 0, 0)`
 
       this.emit('tabAdd', { tabEl })
       this.setCurrentTab(tabEl)
@@ -258,7 +261,8 @@
     }
 
     updateTab(tabEl, tabProperties) {
-      tabEl.querySelector('.chrome-tab-title').textContent = tabProperties.title
+      const titleEl = tabEl.querySelector('.chrome-tab-title-text') || tabEl.querySelector('.chrome-tab-title')
+      if (titleEl) titleEl.textContent = tabProperties.title
       tabEl.querySelector('.chrome-tab-favicon').style.backgroundImage = `url(${tabProperties.favicon})`
       tabEl.querySelector('.chrome-tab-favicon').style.display = tabProperties.loading ? 'none' : 'inline-block'
       tabEl.querySelector('.chrome-tab-spinner').style.display = tabProperties.loading ? 'inline-block' : 'none'

@@ -43,6 +43,27 @@ std::string EscapeJsStringLiteral(const std::string &input)
   return EscapeJsonString(input);
 }
 
+std::string EscapeShellArg(const std::string &input)
+{
+  // Escape shell special characters for use in shell commands
+  // This wraps the argument in single quotes and escapes any embedded single quotes
+  std::string out = "'";
+  for (char c : input)
+  {
+    if (c == '\'')
+    {
+      // End quote, escape the single quote, start quote again
+      out += "'\\''";
+    }
+    else
+    {
+      out += c;
+    }
+  }
+  out += "'";
+  return out;
+}
+
 std::string ToIso8601UTC(const std::chrono::system_clock::time_point &tp)
 {
   std::time_t raw = std::chrono::system_clock::to_time_t(tp);

@@ -133,36 +133,50 @@ void AdBlocker::Clear()
 bool AdBlocker::OnNetworkRequest(View * /*caller*/, NetworkRequest &request)
 {
     bool enabled_local = true;
+    bool log_all = false;
     {
         std::lock_guard<std::mutex> lock(mtx_);
         enabled_local = enabled_;
+        log_all = log_all_requests_;
+    }
+
+    auto proto = request.urlProtocol().utf8();
+    auto host_ul = request.urlHost();
+    auto url_ul = request.url();
+    auto method = request.httpMethod().utf8();
+    auto host = util::ToLower(std::string(host_ul.utf8().data()));
+    auto url = std::string(url_ul.utf8().data());
+
+    // Debug logging of all requests
+    if (log_all)
+    {
+        std::fprintf(stderr, "[NET] %s %s (host: %s)\n", 
+                     method.data() ? method.data() : "GET",
+                     url.c_str(), 
+                     host.c_str());
     }
 
     // If disabled, allow all traffic.
     if (!enabled_local)
         return true;
     // Always allow file/data schemes and about:blank, etc.
-    auto proto = request.urlProtocol().utf8();
     if (proto == "file" || proto == "data" || proto == "about")
         return true;
 
-    auto host_ul = request.urlHost();
-    auto url_ul = request.url();
-    auto host = util::ToLower(std::string(host_ul.utf8().data()));
-    auto url = util::ToLower(std::string(url_ul.utf8().data()));
+    auto url_lower = util::ToLower(url);
 
     {
         std::lock_guard<std::mutex> lock(mtx_);
         if (!host.empty() && IsBlockedHost(host))
         {
-            if (log_blocked_)
-                std::fprintf(stderr, "AdBlock: blocked host: %s\n", host.c_str());
+            if (log_blocked_ || log_all)
+                std::fprintf(stderr, "AdBlock: BLOCKED host: %s\n", host.c_str());
             return false; // Block by domain
         }
-        if (!url.empty() && IsBlockedURL(url))
+        if (!url_lower.empty() && IsBlockedURL(url_lower))
         {
-            if (log_blocked_)
-                std::fprintf(stderr, "AdBlock: blocked url: %s\n", url.c_str());
+            if (log_blocked_ || log_all)
+                std::fprintf(stderr, "AdBlock: BLOCKED url: %s\n", url.c_str());
             return false; // Block by simple substring
         }
     }

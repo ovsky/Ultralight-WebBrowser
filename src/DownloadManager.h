@@ -29,6 +29,7 @@ public:
     ~DownloadManager() override;
 
     void SetOnChangeCallback(std::function<void()> callback);
+    void SetWebPConversionCallback(std::function<bool()> callback);
 
     std::string GetDownloadsJSON();
     void ClearFinishedDownloads();
@@ -97,15 +98,29 @@ private:
     DownloadRecord &GetOrCreateRecordLocked(DownloadId id);
     DownloadRecord *FindRecordLocked(DownloadId id);
     void CloseStreamLocked(DownloadId id, bool remove_file);
+    void LoadHistoryFromDisk();
+    void SaveHistorySnapshotUnlocked(const std::string &snapshot);
+    std::string BuildHistorySnapshotLocked(size_t max_entries) const;
+    void TrimHistoryLocked(size_t max_entries);
+    static std::string EncodeField(const std::string &value);
+    static bool DecodeField(const std::string &value, std::string &out);
+    static Status StatusFromString(const std::string &value);
+    static int64_t TimePointToMillis(const std::chrono::system_clock::time_point &tp);
+    static std::chrono::system_clock::time_point MillisToTimePoint(int64_t ms);
 
     std::filesystem::path download_dir_;
+    std::filesystem::path history_file_;
     mutable std::mutex mutex_;
     DownloadId next_id_ = 1;
     std::map<DownloadId, DownloadRecord> records_;
     std::unordered_map<DownloadId, ActiveDownload> active_;
+    std::unordered_map<DownloadId, DownloadId> external_to_internal_id_; // Maps Ultralight's ID to our internal ID
     uint64_t start_sequence_counter_ = 0;
     uint64_t last_started_sequence_ = 0;
     std::function<void()> on_change_;
+    std::function<bool()> should_convert_webp_;
+    static constexpr size_t kMaxHistoryEntries = 200;
 
     bool PruneStaleRequestsLocked(std::unique_lock<std::mutex> &lock, std::chrono::system_clock::time_point now, bool notify);
+    DownloadId GetInternalIdLocked(DownloadId external_id) const;
 };

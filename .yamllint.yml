@@ -1,0 +1,25 @@
+---
+# yamllint configuration for GitHub Actions workflows
+# Relaxed rules for CI/CD workflow files
+
+extends: default
+
+rules:
+  # Disable line-length check - workflow files often have long expressions
+  line-length: disable
+  
+  # Disable document-start requirement - not required for GitHub Actions
+  document-start: disable
+  
+  # Disable truthy check - 'on:' is valid in GitHub Actions
+  truthy:
+    check-keys: false
+  
+  # Allow longer comments
+  comments:
+    min-spaces-from-content: 1
+  
+  # Indentation settings
+  indentation:
+    spaces: 2
+    indent-sequences: true

@@ -78,11 +78,17 @@ private:
     mutable std::mutex mtx_;
     bool enabled_ = true;
     bool log_blocked_ = false;
+    bool log_all_requests_ = false;  // Debug: log every request
 
 public:
     void set_log_blocked(bool v)
     {
         std::lock_guard<std::mutex> l(mtx_);
         log_blocked_ = v;
+    }
+    void set_log_all_requests(bool v)
+    {
+        std::lock_guard<std::mutex> l(mtx_);
+        log_all_requests_ = v;
     }
 };

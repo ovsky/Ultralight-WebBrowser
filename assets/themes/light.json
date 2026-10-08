@@ -1,0 +1,79 @@
+{
+    "id": "light",
+    "name": "Light",
+    "description": "Clean light theme for daytime use",
+    "author": "Ultralight Team",
+    "version": "1.0.0",
+    "isBuiltIn": true,
+    "colors": {
+        "color-bg-primary": "#ffffff",
+        "color-bg-secondary": "#f6f8fa",
+        "color-bg-tertiary": "#eaeef2",
+        "color-bg-elevated": "#ffffff",
+        "color-bg-hover": "#e8ebef",
+        "color-bg-active": "#dce0e4",
+        "color-bg-overlay": "rgba(255, 255, 255, 0.95)",
+        
+        "color-text-primary": "#1f2328",
+        "color-text-secondary": "#424a53",
+        "color-text-tertiary": "#656d76",
+        "color-text-muted": "#8c959f",
+        "color-text-disabled": "#b0b8c0",
+        
+        "color-border-primary": "#d0d7de",
+        "color-border-secondary": "#e1e4e8",
+        "color-border-hover": "#c0c8d0",
+        "color-border-focus": "#0969da",
+        
+        "color-accent-primary": "#0969da",
+        "color-accent-secondary": "#218bff",
+        "color-accent-hover": "#54aeff",
+        "color-accent-light": "rgba(9, 105, 218, 0.1)",
+        
+        "color-success": "#1a7f37",
+        "color-warning": "#9a6700",
+        "color-danger": "#cf222e",
+        "color-info": "#0969da",
+        
+        "color-bookmark-active": "#e3a608",
+        "color-download-badge": "#cf222e",
+        "color-link": "#0969da",
+        
+        "toolbar-bg": "linear-gradient(0deg, #f6f8fa, #ffffff)",
+        "toolbar-border": "#d0d7de",
+        "toolbar-icon-color": "#424a53",
+        
+        "address-bg": "#ffffff",
+        "address-text": "#1f2328",
+        
+        "tab-bg": "#f6f8fa",
+        "tab-active-bg": "#ffffff",
+        "tab-text": "#424a53",
+        
+        "menu-bg": "#ffffff",
+        "menu-border": "#d0d7de",
+        "menu-item-hover": "#f6f8fa",
+        "menu-text": "#1f2328",
+        
+        "card-bg": "#ffffff",
+        "card-border": "#d0d7de",
+        
+        "btn-primary-bg": "#0969da",
+        "btn-primary-text": "#ffffff",
+        "btn-secondary-bg": "#f6f8fa",
+        "btn-danger-bg": "#cf222e",
+        
+        "input-bg": "#ffffff",
+        "input-border": "#d0d7de",
+        "input-text": "#1f2328",
+        
+        "scrollbar-track": "#f6f8fa",
+        "scrollbar-thumb": "#c0c8d0",
+        
+        "tooltip-bg": "rgba(36, 41, 47, 0.95)",
+        "tooltip-text": "#ffffff",
+        
+        "bookmark-bar-bg": "rgba(246, 248, 250, 0.95)",
+        "bookmark-item-bg": "rgba(0, 0, 0, 0.04)"
+    }
+}

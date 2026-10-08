@@ -1,0 +1,83 @@
+{
+    "id": "midnight",
+    "name": "Midnight Blue",
+    "description": "Deep blue night theme inspired by GitHub's dark mode",
+    "author": "Ultralight Team",
+    "version": "1.0.0",
+    "isBuiltIn": true,
+    "colors": {
+        "color-bg-primary": "#0d1117",
+        "color-bg-secondary": "#161b22",
+        "color-bg-tertiary": "#21262d",
+        "color-bg-elevated": "#30363d",
+        "color-bg-hover": "#3d444d",
+        "color-bg-active": "#484f58",
+        "color-bg-overlay": "rgba(13, 17, 23, 0.95)",
+
+        "color-text-primary": "#e6edf3",
+        "color-text-secondary": "#c9d1d9",
+        "color-text-tertiary": "#8b949e",
+        "color-text-muted": "#6e7681",
+        "color-text-disabled": "#484f58",
+
+        "color-border-primary": "#30363d",
+        "color-border-secondary": "#21262d",
+        "color-border-hover": "#484f58",
+        "color-border-focus": "#58a6ff",
+
+        "color-accent-primary": "#58a6ff",
+        "color-accent-secondary": "#79c0ff",
+        "color-accent-hover": "#a5d6ff",
+        "color-accent-light": "rgba(88, 166, 255, 0.15)",
+
+        "color-success": "#3fb950",
+        "color-warning": "#d29922",
+        "color-danger": "#f85149",
+        "color-info": "#58a6ff",
+
+        "color-bookmark-active": "#d29922",
+        "color-download-badge": "#f85149",
+        "color-link": "#58a6ff",
+
+        "toolbar-bg": "linear-gradient(0deg, #161b22, #21262d)",
+        "toolbar-border": "#30363d",
+        "toolbar-icon-color": "#c9d1d9",
+
+        "address-bg": "#0d1117",
+        "address-text": "#c9d1d9",
+
+        "tab-bg": "#161b22",
+        "tab-active-bg": "#21262d",
+        "tab-text": "#8b949e",
+
+        "menu-bg": "#21262d",
+        "menu-border": "#30363d",
+        "menu-item-hover": "#30363d",
+        "menu-text": "#e6edf3",
+
+        "card-bg": "#21262d",
+        "card-border": "#30363d",
+
+        "btn-primary-bg": "#238636",
+        "btn-primary-text": "#ffffff",
+        "btn-secondary-bg": "#21262d",
+        "btn-danger-bg": "#da3633",
+
+        "input-bg": "#0d1117",
+        "input-border": "#30363d",
+        "input-text": "#e6edf3",
+
+        "scrollbar-track": "#161b22",
+        "scrollbar-thumb": "#30363d",
+
+        "tooltip-bg": "rgba(33, 38, 45, 0.95)",
+        "tooltip-text": "#e6edf3",
+
+        "bookmark-bar-bg": "rgba(22, 27, 34, 0.95)",
+        "bookmark-item-bg": "rgba(255, 255, 255, 0.06)"
+    },
+    "radius-md": "0px",
+    "radius-lg": "0px",
+    "tab-radius": "0px",
+    "button-radius": "0px"
+}

@@ -1,0 +1,264 @@
+/**
+ * Theme Variables CSS
+ * ==================
+ * Central theme system for Ultralight WebBrowser
+ * All color and style definitions are centralized here.
+ *
+ * Usage: Include this file in any HTML page to apply theming.
+ * Themes override these variables via JavaScript.
+ */
+
+:root {
+    /* ============================================================
+     * COLOR PALETTE - Primary Colors
+     * ============================================================ */
+
+    /* Background Colors */
+    --color-bg-primary: #16151d;
+    --color-bg-secondary: #1e1e2e;
+    --color-bg-tertiary: #232330;
+    --color-bg-elevated: #282839;
+    --color-bg-hover: #343446;
+    --color-bg-active: #3d3d5c;
+    --color-bg-overlay: rgba(22, 21, 29, 0.95);
+
+    /* Text Colors */
+    --color-text-primary: #e4e4ef;
+    --color-text-secondary: #c4c2d0;
+    --color-text-tertiary: #9999b3;
+    --color-text-muted: #71718a;
+    --color-text-disabled: #636074;
+
+    /* Border Colors */
+    --color-border-primary: #313146;
+    --color-border-secondary: #252532;
+    --color-border-hover: #404060;
+    --color-border-focus: #4a4a6a;
+
+    /* Accent Colors */
+    --color-accent-primary: #6C63FF;
+    --color-accent-secondary: #7c6aef;
+    --color-accent-hover: #8a83ff;
+    --color-accent-light: rgba(108, 99, 255, 0.15);
+
+    /* Status Colors */
+    --color-success: #6aef8a;
+    --color-success-bg: rgba(106, 239, 138, 0.15);
+    --color-warning: #f0b866;
+    --color-warning-bg: rgba(240, 184, 102, 0.15);
+    --color-danger: #ef6a6a;
+    --color-danger-bg: rgba(239, 106, 106, 0.15);
+    --color-info: #6ac0ef;
+    --color-info-bg: rgba(106, 192, 239, 0.15);
+
+    /* Special Colors */
+    --color-bookmark-active: #FFD700;
+    --color-bookmark-hover: #ffe44d;
+    --color-download-badge: #ff6b6b;
+    --color-link: #8a9eff;
+    --color-link-hover: #aab8ff;
+
+    /* ============================================================
+     * COMPONENT COLORS - Toolbar
+     * ============================================================ */
+    --toolbar-bg: linear-gradient(0deg, #232330, #282836);
+    --toolbar-border: #252532;
+    --toolbar-icon-color: #c8c8c8;
+    --toolbar-icon-hover: #ffffff;
+    --toolbar-icon-active: #6C63FF;
+    --toolbar-icon-disabled: rgb(99, 96, 116);
+    --toolbar-icon-hover-bg: #343446;
+
+    /* ============================================================
+     * COMPONENT COLORS - Address Bar
+     * ============================================================ */
+    --address-bg: #16151d;
+    --address-text: #c4c2d0;
+    --address-focus-text: #ffffff;
+    --address-focus-ring: #343446;
+
+    /* ============================================================
+     * COMPONENT COLORS - Tabs
+     * ============================================================ */
+    --tab-bg: linear-gradient(180deg, #212130, #1c1c24);
+    --tab-active-bg: linear-gradient(180deg, #313141, #282836);
+    --tab-hover-bg: linear-gradient(180deg, #2d2d3d, #252532);
+    --tab-text: #b0afc0;
+    --tab-active-text: #e0dff0;
+    --tab-close-hover: rgba(255, 255, 255, 0.1);
+
+    /* Add Tab Button (matches tab styling) */
+    --add-tab-bg-start: #212130;
+    --add-tab-bg-end: #1c1c24;
+    --add-tab-border: #252532;
+    --add-tab-hover-start: #2d2d3d;
+    --add-tab-hover-end: #323242;
+    --add-tab-active-start: #262633;
+    --add-tab-active-end: #1e1e29;
+    --add-tab-text: #c4c2d0;
+
+    /* ============================================================
+     * COMPONENT COLORS - Menu/Dropdown
+     * ============================================================ */
+    --menu-bg: #2b2b38;
+    --menu-border: #313146;
+    --menu-item-hover: #343446;
+    --menu-text: #e2e1ea;
+    --menu-separator: #3a3a4e;
+    --menu-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+
+    /* ============================================================
+     * COMPONENT COLORS - Cards & Panels
+     * ============================================================ */
+    --card-bg: #282839;
+    --card-border: #404060;
+    --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    --panel-bg: #1e1e2e;
+
+    /* ============================================================
+     * COMPONENT COLORS - Buttons
+     * ============================================================ */
+    --btn-primary-bg: #6C63FF;
+    --btn-primary-hover: #7a72ff;
+    --btn-primary-text: #ffffff;
+    --btn-secondary-bg: rgba(255, 255, 255, 0.1);
+    --btn-secondary-hover: rgba(255, 255, 255, 0.15);
+    --btn-secondary-text: #c0d0e0;
+    --btn-secondary-border: rgba(255, 255, 255, 0.2);
+    --btn-danger-bg: #ef6a6a;
+    --btn-danger-hover: #f58080;
+    --btn-danger-text: #ffffff;
+
+    /* ============================================================
+     * COMPONENT COLORS - Inputs
+     * ============================================================ */
+    --input-bg: #32324a;
+    --input-border: #404060;
+    --input-text: #e4e4ef;
+    --input-placeholder: #9999b3;
+    --input-focus-border: #6C63FF;
+    --input-focus-shadow: 0 0 0 3px rgba(108, 99, 255, 0.2);
+
+    /* ============================================================
+     * COMPONENT COLORS - Scrollbar
+     * ============================================================ */
+    --scrollbar-track: #1e1e2e;
+    --scrollbar-thumb: #3d3d5c;
+    --scrollbar-thumb-hover: #4d4d6c;
+
+    /* ============================================================
+     * COMPONENT COLORS - Tooltip
+     * ============================================================ */
+    --tooltip-bg: rgba(43, 43, 56, 0.95);
+    --tooltip-text: #f0f0ff;
+    --tooltip-shadow: 0 6px 14px rgba(0, 0, 0, 0.45);
+
+    /* ============================================================
+     * COMPONENT COLORS - Bookmark Bar
+     * ============================================================ */
+    --bookmark-bar-bg: rgba(29, 29, 33, 0.92);
+    --bookmark-bar-border: rgba(255, 255, 255, 0.06);
+    --bookmark-item-bg: rgba(255, 255, 255, 0.08);
+    --bookmark-item-hover: rgba(255, 255, 255, 0.14);
+    --bookmark-item-text: #e0dff0;
+
+    /* ============================================================
+     * COMPONENT COLORS - Session Restore
+     * ============================================================ */
+    --session-restore-bg: linear-gradient(180deg, #2d4a6f 0%, #1e3a5f 100%);
+    --session-restore-border: #3d6a9f;
+    --session-restore-text: #e0e8f0;
+    --session-restore-icon: #7cb3e0;
+
+    /* ============================================================
+     * SPACING & SIZING
+     * ============================================================ */
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 12px;
+    --spacing-lg: 16px;
+    --spacing-xl: 24px;
+    --spacing-xxl: 32px;
+
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+    --radius-pill: 9999px;
+
+    /* ============================================================
+     * TYPOGRAPHY
+     * ============================================================ */
+    --font-family-sans: "Segoe UI", -apple-system, BlinkMacSystemFont, Ubuntu, Roboto, Arial, sans-serif;
+    --font-family-mono: "Consolas", "Courier New", monospace;
+
+    --font-size-xs: 10px;
+    --font-size-sm: 12px;
+    --font-size-md: 14px;
+    --font-size-lg: 16px;
+    --font-size-xl: 20px;
+    --font-size-xxl: 24px;
+
+    --font-weight-normal: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 700;
+
+    /* ============================================================
+     * TRANSITIONS
+     * ============================================================ */
+    --transition-fast: 0.075s ease;
+    --transition-normal: 0.15s ease;
+    --transition-slow: 0.3s ease;
+
+    /* ============================================================
+     * Z-INDEX LAYERS
+     * ============================================================ */
+    --z-dropdown: 1000;
+    --z-sticky: 1020;
+    --z-fixed: 1030;
+    --z-modal-backdrop: 1040;
+    --z-modal: 1050;
+    --z-popover: 1060;
+    --z-tooltip: 1070;
+    --z-toast: 12000;
+}
+
+/* ============================================================
+ * SCROLLBAR STYLING
+ * ============================================================ */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: var(--radius-sm);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover);
+}
+
+/* ============================================================
+ * COMMON UTILITY CLASSES
+ * ============================================================ */
+.theme-fade-in {
+    animation: theme_fade_in 0.3s ease forwards;
+}
+
+@keyframes theme_fade_in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Selection styling */
+::selection {
+    background: var(--color-accent-light);
+    color: var(--color-text-primary);
+}

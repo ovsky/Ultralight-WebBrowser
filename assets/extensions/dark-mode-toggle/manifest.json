@@ -1,0 +1,14 @@
+{
+  "id": "dark-mode-toggle",
+  "name": "Quick Dark Mode",
+  "description": "Adds a floating button to toggle dark mode on any website",
+  "version": "1.0.0",
+  "author": "Ultralight Browser",
+  "content_scripts": [
+    {
+      "matches": ["*://*/*"],
+      "js": ["content.js"]
+    }
+  ],
+  "permissions": []
+}

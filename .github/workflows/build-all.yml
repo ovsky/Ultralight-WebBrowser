@@ -1,5 +1,8 @@
 name: Build - All (x64 + ARM64)
 
+# Note: No concurrency block here - child workflows have their own concurrency controls
+# Adding concurrency here would cause deadlock with reusable workflow calls
+
 on:
   workflow_dispatch:
     inputs:
@@ -7,18 +10,22 @@ on:
         description: "Override ULTRALIGHT_SDK_URL (raw .7z in base-sdk branch)"
         required: false
         type: string
+        default: ''
       version:
         description: "Override ULTRALIGHT_VERSION (eg. 1.4.0)"
         required: false
         type: string
+        default: ''
       webbrowser_version:
         description: "Override build version name (default 'dev')"
         required: false
         type: string
+        default: ''
       package_format:
         description: "Package format(s) for macOS/Linux (eg. TGZ;DMG or TGZ;DEB;RPM)"
         required: false
         type: string
+        default: ''
       create_installer:
         description: "Create Windows installer via CPack (NSIS) when true"
         required: false
@@ -26,6 +33,11 @@ on:
         default: false
       development_build:
         description: "Development build (keeps intermediate packages, verbose logs)"
+        required: false
+        type: boolean
+        default: false
+      clean_build:
+        description: "Clean build (skip all caches for fresh build)"
         required: false
         type: boolean
         default: false
@@ -44,6 +56,7 @@ jobs:
       version: ${{ inputs.version || github.event.inputs.version }}
       webbrowser_version: ${{ inputs.webbrowser_version || github.event.inputs.webbrowser_version }}
       development_build: ${{ inputs.development_build || github.event.inputs.development_build || false }}
+      clean_build: ${{ inputs.clean_build || github.event.inputs.clean_build || false }}
       # create installer by default on PRs, otherwise obey input
       create_installer: ${{ inputs.create_installer || github.event_name == 'pull_request' }}
 
@@ -56,6 +69,7 @@ jobs:
       webbrowser_version: ${{ inputs.webbrowser_version || github.event.inputs.webbrowser_version }}
       package_format: ${{ inputs.package_format || github.event.inputs.package_format }}
       development_build: ${{ inputs.development_build || github.event.inputs.development_build || false }}
+      clean_build: ${{ inputs.clean_build || github.event.inputs.clean_build || false }}
 
   macos-arm64:
     uses: ./.github/workflows/build-macos-arm64.yml
@@ -66,6 +80,7 @@ jobs:
       webbrowser_version: ${{ inputs.webbrowser_version || github.event.inputs.webbrowser_version }}
       package_format: ${{ inputs.package_format || github.event.inputs.package_format }}
       development_build: ${{ inputs.development_build || github.event.inputs.development_build || false }}
+      clean_build: ${{ inputs.clean_build || github.event.inputs.clean_build || false }}
 
   linux-x64:
     uses: ./.github/workflows/build-linux.yml
@@ -76,6 +91,7 @@ jobs:
       webbrowser_version: ${{ inputs.webbrowser_version || github.event.inputs.webbrowser_version }}
       package_format: ${{ inputs.package_format || github.event.inputs.package_format }}
       development_build: ${{ inputs.development_build || github.event.inputs.development_build || false }}
+      clean_build: ${{ inputs.clean_build || github.event.inputs.clean_build || false }}
 
   linux-arm64:
     uses: ./.github/workflows/build-linux-arm64.yml
@@ -86,3 +102,107 @@ jobs:
       webbrowser_version: ${{ inputs.webbrowser_version || github.event.inputs.webbrowser_version }}
       package_format: ${{ inputs.package_format || github.event.inputs.package_format }}
       development_build: ${{ inputs.development_build || github.event.inputs.development_build || false }}
+      clean_build: ${{ inputs.clean_build || github.event.inputs.clean_build || false }}
+
+  summary:
+    name: "📊 Build Summary"
+    needs: [windows, macos-x64, macos-arm64, linux-x64, linux-arm64]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all build summaries
+        uses: actions/download-artifact@v4
+        with:
+          pattern: "*"
+          path: artifacts
+        continue-on-error: true
+
+      - name: Generate comprehensive summary
+        shell: bash
+        run: |
+          echo "# 🚀 Ultralight WebBrowser - Multi-Platform Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Build Version:** ${{ inputs.webbrowser_version || github.event.inputs.webbrowser_version || 'dev' }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Run ID:** ${{ github.run_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Job status table
+          echo "## 📋 Build Status" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Platform | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 🪟 Windows x64 | ${{ needs.windows.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🍎 macOS x64 | ${{ needs.macos-x64.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🍎 macOS ARM64 | ${{ needs.macos-arm64.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🐧 Linux x64 | ${{ needs.linux-x64.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🐧 Linux ARM64 | ${{ needs.linux-arm64.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # List all artifacts
+          echo "## 📦 Generated Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -d "artifacts" ]; then
+            find artifacts -type f \( -name "*.zip" -o -name "*.exe" -o -name "*.tar.gz" -o -name "*.deb" -o -name "*.rpm" -o -name "*.dmg" \) | while read file; do
+              size=$(du -h "$file" | cut -f1)
+              filename=$(basename "$file")
+              echo "- 📄 \`$filename\` ($size)" >> $GITHUB_STEP_SUMMARY
+            done
+          else
+            echo "⚠️ No artifacts directory found" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Include individual platform summaries if available
+          echo "## 📝 Platform Details" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          for summary in artifacts/*/BUILD-SUMMARY.md; do
+            if [ -f "$summary" ]; then
+              platform=$(dirname "$summary" | xargs basename)
+              echo "### $platform" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "<details>" >> $GITHUB_STEP_SUMMARY
+              echo "<summary>View details</summary>" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              cat "$summary" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "</details>" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+          
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**🎉 Build completed!**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "*For more information, visit the [GitHub Actions run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})*" >> $GITHUB_STEP_SUMMARY
+
+      - name: Check overall build status
+        shell: bash
+        run: |
+          echo "Checking build results..."
+          if [[ "${{ needs.windows.result }}" != "success" ]] || \
+             [[ "${{ needs.macos-x64.result }}" != "success" ]] || \
+             [[ "${{ needs.macos-arm64.result }}" != "success" ]] || \
+             [[ "${{ needs.linux-x64.result }}" != "success" ]] || \
+             [[ "${{ needs.linux-arm64.result }}" != "success" ]]; then
+            echo "⚠️ One or more builds failed or were skipped"
+            echo "Windows: ${{ needs.windows.result }}"
+            echo "macOS x64: ${{ needs.macos-x64.result }}"
+            echo "macOS ARM64: ${{ needs.macos-arm64.result }}"
+            echo "Linux x64: ${{ needs.linux-x64.result }}"
+            echo "Linux ARM64: ${{ needs.linux-arm64.result }}"
+            exit 1
+          else
+            echo "✅ All builds succeeded!"
+          fi

@@ -1,0 +1,527 @@
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <title>Bookmarks</title>
+
+    <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='2' y='4' width='20' height='16' fill='%23c2bce8'/%3E%3Crect x='2' y='2' width='12' height='4' fill='%23c2bce8'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" type="text/css" href="ui.css">
+    <link rel="stylesheet" href="themes/theme-variables.css">
+    <style>
+        :root {
+            /* Map page variables to theme variables */
+            --bg: var(--color-bg-primary, #f6f7f9);
+            --fg: var(--color-text-primary, #111);
+            --muted: var(--color-text-secondary, #666);
+            --accent-color: var(--color-accent-primary, #6C63FF);
+            --accent: var(--accent-color);
+            --accent-light: var(--color-accent-light, rgba(108, 99, 255, 0.15));
+            color-scheme: light dark;
+        }
+
+        html,
+        body {
+            height: 100%;
+            overflow-x: hidden;
+            overflow-y: auto !important;
+        }
+
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+            background: var(--bg, #f6f7f9);
+            color: var(--fg, #111);
+            min-height: 100vh;
+            opacity: 0;
+            animation: ul_fade_in 1s ease forwards;
+            -webkit-animation: ul_fade_in 1s ease forwards;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 32px auto;
+            padding: 0 16px 48px;
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        h1 {
+            font-size: 20px;
+            margin: 0;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        h1 svg {
+            width: 24px;
+            height: 24px;
+            fill: var(--accent-color);
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        /* Buttons standardized via assets/ui.css */
+        /* Use .btn and .btn-primary to get consistent visuals */
+
+        .btn.danger {
+            color: #dc3545;
+            border-color: rgba(220, 53, 69, 0.3);
+        }
+
+        .btn.danger:hover {
+            background: rgba(220, 53, 69, 0.1);
+        }
+
+        .muted {
+            color: var(--muted, #666);
+            font-size: 14px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+
+        .empty-state svg {
+            width: 64px;
+            height: 64px;
+            opacity: 0.4;
+            margin-bottom: 16px;
+        }
+
+        .empty-state h2 {
+            margin: 0 0 8px 0;
+            font-size: 18px;
+            font-weight: 500;
+        }
+
+        .empty-state p {
+            margin: 0;
+            font-size: 14px;
+        }
+
+        ul.list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        li.item {
+            padding: 12px 14px;
+            border-radius: 10px;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: background 0.15s ease;
+            cursor: pointer;
+        }
+
+        li.item:hover {
+            background: rgba(0, 0, 0, 0.04);
+        }
+
+        .favicon {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 600;
+            color: white;
+            background: linear-gradient(135deg, var(--accent-color, #4285f4), var(--accent-color, #5e35b1));
+        }
+
+        .favicon img {
+            width: 100%;
+            height: 100%;
+            border-radius: 4px;
+        }
+
+        .info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .title {
+            font-weight: 500;
+            margin: 0 0 2px 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 14px;
+        }
+
+        .url {
+            font-size: 12px;
+            color: #666;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .actions {
+            display: flex;
+            gap: 8px;
+            opacity: 0;
+            transition: opacity 0.15s ease;
+        }
+
+        li.item:hover .actions {
+            opacity: 1;
+        }
+
+        .action-btn {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            transition: all 0.15s ease;
+        }
+
+        .action-btn:hover {
+            background: rgba(0, 0, 0, 0.08);
+            color: #333;
+        }
+
+        .action-btn.delete:hover {
+            background: rgba(220, 53, 69, 0.1);
+            color: #dc3545;
+        }
+
+        .action-btn svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .bar-indicator {
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: var(--accent-light, rgba(108, 99, 255, 0.15));
+            color: var(--accent, #6C63FF);
+            font-weight: 500;
+        }
+
+        /* Dark mode */
+        @media (prefers-color-scheme: dark) {
+            body {
+                --bg: #1a1a1f;
+                --fg: #e8e8e8;
+            }
+
+            /* Dark-mode button colors should use theme variables; no local .btn overrides */
+            /* Use global .btn/.btn-primary/.btn-danger for consistent visuals */
+
+            li.item:hover {
+                background: rgba(255, 255, 255, 0.05);
+            }
+
+            .action-btn:hover {
+                background: rgba(255, 255, 255, 0.1);
+                color: #e8e8e8;
+            }
+
+            .muted,
+            .url {
+                color: #999;
+            }
+        }
+    </style>
+    <script defer src="themes/theme.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1 style="color: var(--accent-color);">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path
+                        d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+                </svg>
+                Bookmarks
+            </h1>
+            <div class="controls">
+                <span class="muted" id="count"></span>
+                <button class="btn btn-primary" id="exportBookmarks">Export</button>
+                <button class="btn btn-primary" id="importBookmarksBtn">Import</button>
+                <input type="file" id="importBookmarks" accept=".json" style="display: none;">
+                <button class="btn btn-primary" id="clearAll" style="display: none;">Clear All</button>
+            </div>
+        </header>
+
+        <div id="emptyState" class="empty-state" style="display: none;">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+            </svg>
+            <h2>No bookmarks yet</h2>
+            <p>Click the ★ icon in the address bar to bookmark pages</p>
+        </div>
+
+        <ul class="list" id="bookmarksList"></ul>
+    </div>
+
+    <script>
+        function getFirstLetter(url) {
+            try {
+                const hostname = new URL(url).hostname;
+                return hostname.replace('www.', '').charAt(0).toUpperCase();
+            } catch (e) {
+                return url.charAt(0).toUpperCase();
+            }
+        }
+
+        function formatDate(timestamp) {
+            const date = new Date(timestamp);
+            return date.toLocaleDateString(undefined, {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+        }
+
+        // Ensure an SVG data URI uses base64 encoding. If already base64 or not SVG, return as-is.
+        function ensureBase64DataUri(uri) {
+            if (!uri || !uri.startsWith('data:image/svg+xml')) return uri;
+            if (uri.indexOf('base64,') !== -1) return uri;
+            const idx = uri.indexOf(',');
+            const payload = idx === -1 ? uri : uri.substring(idx + 1);
+            let svgStr = payload;
+            try {
+                svgStr = decodeURIComponent(payload);
+            } catch (e) {
+                // payload may already be plain
+            }
+            try {
+                return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgStr)));
+            } catch (e) {
+                // Fallback to percent-encoded form if base64 conversion fails
+                return 'data:image/svg+xml,' + encodeURIComponent(svgStr);
+            }
+        }
+
+        function createBookmarkItem(bookmark) {
+            const li = document.createElement('li');
+            li.className = 'item';
+
+            // Favicon
+            const favicon = document.createElement('div');
+            favicon.className = 'favicon';
+            if (bookmark.favicon && bookmark.favicon.startsWith('data:')) {
+                const img = document.createElement('img');
+                img.src = ensureBase64DataUri(bookmark.favicon);
+                img.onerror = function () {
+                    favicon.textContent = getFirstLetter(bookmark.url);
+                    this.remove();
+                };
+                favicon.appendChild(img);
+            } else {
+                favicon.textContent = getFirstLetter(bookmark.url);
+            }
+            li.appendChild(favicon);
+
+            // Info
+            const info = document.createElement('div');
+            info.className = 'info';
+
+            const title = document.createElement('div');
+            title.className = 'title';
+            title.textContent = bookmark.title || bookmark.url;
+            info.appendChild(title);
+
+            const url = document.createElement('div');
+            url.className = 'url';
+            url.textContent = bookmark.url;
+            info.appendChild(url);
+
+            li.appendChild(info);
+
+            // Bar indicator
+            if (bookmark.show_on_bar) {
+                const barIndicator = document.createElement('span');
+                barIndicator.className = 'bar-indicator';
+                barIndicator.textContent = 'On Bar';
+                li.appendChild(barIndicator);
+            }
+
+            // Actions
+            const actions = document.createElement('div');
+            actions.className = 'actions';
+
+            // Open in new tab button
+            const openBtn = document.createElement('button');
+            openBtn.className = 'action-btn';
+            openBtn.title = 'Open in new tab';
+            openBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>';
+            openBtn.onclick = function (e) {
+                e.stopPropagation();
+                if (window.__ul_newTab) {
+                    window.__ul_newTab(bookmark.url);
+                }
+            };
+            actions.appendChild(openBtn);
+
+            // Delete button
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'action-btn delete';
+            deleteBtn.title = 'Delete bookmark';
+            deleteBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
+            deleteBtn.onclick = function (e) {
+                e.stopPropagation();
+                if (window.removeBookmark) {
+                    window.removeBookmark(bookmark.id);
+                    loadBookmarks();
+                }
+            };
+            actions.appendChild(deleteBtn);
+
+            li.appendChild(actions);
+
+            // Click to navigate
+            li.onclick = function () {
+                window.location.href = bookmark.url;
+            };
+
+            return li;
+        }
+
+        function loadBookmarks() {
+            const list = document.getElementById('bookmarksList');
+            const emptyState = document.getElementById('emptyState');
+            const countEl = document.getElementById('count');
+            const clearBtn = document.getElementById('clearAll');
+
+            list.innerHTML = '';
+
+            let bookmarks = [];
+            if (window.getBookmarks) {
+                try {
+                    const json = window.getBookmarks();
+                    bookmarks = JSON.parse(json);
+                } catch (e) {
+                    console.error('Error parsing bookmarks:', e);
+                }
+            }
+
+            if (bookmarks.length === 0) {
+                emptyState.style.display = 'block';
+                countEl.textContent = '';
+                clearBtn.style.display = 'none';
+            } else {
+                emptyState.style.display = 'none';
+                countEl.textContent = bookmarks.length + ' bookmark' + (bookmarks.length !== 1 ? 's' : '');
+                clearBtn.style.display = 'inline-block';
+
+                // Sort by created_at descending (newest first)
+                bookmarks.sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
+
+                bookmarks.forEach(bm => {
+                    list.appendChild(createBookmarkItem(bm));
+                });
+            }
+        }
+
+        document.getElementById('clearAll').onclick = function () {
+            if (confirm('Are you sure you want to delete all bookmarks? This cannot be undone.')) {
+                let bookmarks = [];
+                if (window.getBookmarks) {
+                    try {
+                        bookmarks = JSON.parse(window.getBookmarks());
+                    } catch (e) { }
+                }
+                bookmarks.forEach(bm => {
+                    if (window.removeBookmark) {
+                        window.removeBookmark(bm.id);
+                    }
+                });
+                loadBookmarks();
+            }
+        };
+
+        // Export bookmarks
+        document.getElementById('exportBookmarks').onclick = function () {
+            if (window.exportBookmarks) {
+                window.exportBookmarks();
+            }
+        };
+
+        // Import bookmarks
+        document.getElementById('importBookmarksBtn').onclick = function () {
+            document.getElementById('importBookmarks').click();
+        };
+
+        document.getElementById('importBookmarks').onchange = function (e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (event) {
+                const content = event.target.result;
+                if (window.importBookmarks) {
+                    window.importBookmarks(content);
+                    loadBookmarks(); // Reload after import
+                }
+            };
+            reader.readAsText(file);
+
+            // Reset file input so same file can be selected again
+            e.target.value = '';
+        };
+
+        // Load bookmarks when page is ready
+        document.addEventListener('DOMContentLoaded', function () {
+            setTimeout(loadBookmarks, 100);
+        });
+
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+            setTimeout(loadBookmarks, 100);
+        }
+
+        // Dispatch favicon to host (convert SVG to PNG as host expects PNGs)
+        (function() {
+            const link = document.querySelector('link[rel="icon"]');
+            if (link && link.href) {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 64;
+                    canvas.height = 64;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, 64, 64);
+                    const png = canvas.toDataURL('image/png');
+                    try { if (typeof OnFaviconReady === 'function') OnFaviconReady(window.location.href, png); } catch(e){}
+                    try { if (window.OnFaviconReady) window.OnFaviconReady(window.location.href, png); } catch(e){}
+                    try { window.dispatchEvent(new CustomEvent('FaviconReady', { detail: { url: window.location.href, href: png } })); } catch(e){}
+                };
+                img.src = link.href;
+            }
+        })();
+
+
+    </script>
+</body>
+
+</html>

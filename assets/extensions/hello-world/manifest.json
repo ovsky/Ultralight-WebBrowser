@@ -1,0 +1,14 @@
+{
+  "id": "hello-world",
+  "name": "Hello World",
+  "description": "A simple demonstration extension that shows a greeting message on every page",
+  "version": "1.0.0",
+  "author": "Ultralight Browser",
+  "content_scripts": [
+    {
+      "matches": ["*://*/*"],
+      "js": ["content.js"]
+    }
+  ],
+  "permissions": []
+}

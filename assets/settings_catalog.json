@@ -8,6 +8,63 @@
     "default": false
   },
   {
+    "key": "dark_theme_excluded_sites",
+    "name": "Dark theme excluded sites",
+    "description": "List of URL patterns where dark theme should NOT be applied (one pattern per line). Browser internal pages are automatically excluded.",
+    "category": "appearance",
+    "note": "Supports wildcards: *.example.com, *://example.com/*",
+    "default": "",
+    "type": "text"
+  },
+  {
+    "key": "vibrant_window_theme",
+    "name": "Vibrant window theme",
+    "description": "Apply a subtle color wash to the window frame for a livelier finish.",
+    "category": "appearance",
+    "note": null,
+    "default": false
+  },
+  {
+    "key": "experimental_transparent_toolbar",
+    "name": "Transparent toolbar",
+    "description": "Blend the toolbar into page content with a translucent, glass-like surface.",
+    "category": "appearance",
+    "note": "Experimental",
+    "default": false
+  },
+  {
+    "key": "experimental_compact_tabs",
+    "name": "Compact tabs",
+    "description": "Reduce tab height and spacing so more tabs stay visible without scrolling.",
+    "category": "appearance",
+    "note": "Experimental",
+    "default": false
+  },
+  {
+    "key": "reduce_motion",
+    "name": "Reduce motion effects",
+    "description": "Limit animated transitions and parallax flourishes for a calmer experience.",
+    "category": "accessibility",
+    "note": null,
+    "default": false
+  },
+  {
+    "key": "high_contrast_ui",
+    "name": "High contrast UI",
+    "description": "Boost contrast for overlays, menus, and dialogs to improve readability.",
+    "category": "accessibility",
+    "note": null,
+    "default": false
+  },
+  {
+    "key": "enable_caret_browsing",
+    "name": "Enable caret browsing",
+    "description": "Navigate web pages using keyboard cursor like in a text editor.",
+    "category": "accessibility",
+    "note": null,
+    "default": false
+  },
+  {
     "key": "enable_adblock",
     "name": "Enable ad blocking",
     "description": "Filter network requests using bundled block lists to hide intrusive ads.",
@@ -19,6 +76,54 @@
     "key": "log_blocked_requests",
     "name": "Log blocked requests",
     "description": "Write each blocked network request to the console for debugging rules.",
+    "category": "privacy",
+    "note": null,
+    "default": false
+  },
+  {
+    "key": "clear_history_on_exit",
+    "name": "Clear history on exit",
+    "description": "Remove browsing history when Ultralight closes and skip saving new visits.",
+    "category": "privacy",
+    "note": null,
+    "default": false
+  },
+  {
+    "key": "enable_javascript",
+    "name": "Enable JavaScript",
+    "description": "Allow websites to run JavaScript code for interactive features and dynamic content.",
+    "category": "privacy",
+    "note": null,
+    "default": true
+  },
+  {
+    "key": "enable_web_security",
+    "name": "Enable web security",
+    "description": "Enforce same-origin policy and other web security restrictions.",
+    "category": "privacy",
+    "note": null,
+    "default": true
+  },
+  {
+    "key": "block_third_party_cookies",
+    "name": "Block third-party cookies",
+    "description": "Prevent websites from setting cookies that track you across different sites.",
+    "category": "privacy",
+    "note": null,
+    "default": false
+  },
+  {
+    "key": "do_not_track",
+    "name": "Send Do Not Track header",
+    "description": "Request that websites not track your browsing activity.",
+    "category": "privacy",
+    "note": null,
+    "default": true
+  },
+  {
+    "key": "use_custom_user_agent",
+    "name": "Use custom user agent",
+    "description": "When enabled, send a user agent string that you specify instead of the automatic Chromium-like default.",
     "category": "privacy",
     "note": null,
     "default": false
@@ -56,59 +161,83 @@
     "default": true
   },
   {
-    "key": "clear_history_on_exit",
-    "name": "Clear history on exit",
-    "description": "Remove browsing history when Ultralight closes and skip saving new visits.",
-    "category": "privacy",
+    "key": "ask_download_location",
+    "name": "Ask where to save downloads",
+    "description": "Show a file picker dialog for each download instead of using default location.",
+    "category": "downloads",
     "note": null,
     "default": false
   },
   {
-    "key": "experimental_transparent_toolbar",
-    "name": "Transparent toolbar",
-    "description": "Blend the toolbar into page content with a translucent, glass-like surface.",
-    "category": "appearance",
-    "note": "Experimental",
-    "default": false
+    "key": "smooth_scrolling",
+    "name": "Smooth scrolling",
+    "description": "Enable smooth animated scrolling for a more fluid browsing experience.",
+    "category": "performance",
+    "note": null,
+    "default": true
   },
   {
-    "key": "experimental_compact_tabs",
-    "name": "Compact tabs",
-    "description": "Reduce tab height and spacing so more tabs stay visible without scrolling.",
-    "category": "appearance",
-    "note": "Experimental",
-    "default": false
+    "key": "hardware_acceleration",
+    "name": "Hardware acceleration",
+    "description": "Use GPU to accelerate graphics rendering for better performance.",
+    "category": "performance",
+    "note": null,
+    "default": true
   },
   {
-    "key": "reduce_motion",
-    "name": "Reduce motion effects",
-    "description": "Limit animated transitions and parallax flourishes for a calmer experience.",
-    "category": "accessibility",
+    "key": "enable_local_storage",
+    "name": "Enable local storage",
+    "description": "Allow websites to store data locally for offline functionality.",
+    "category": "performance",
+    "note": null,
+    "default": true
+  },
+  {
+    "key": "enable_database",
+    "name": "Enable database storage",
+    "description": "Allow websites to use IndexedDB and Web SQL for data storage.",
+    "category": "performance",
+    "note": null,
+    "default": true
+  },
+  {
+    "key": "enable_drm_webview",
+    "name": "Enable DRM WebView",
+    "description": "Automatically switch DRM-protected sites to a native OS WebView with Widevine support.",
+    "category": "drm",
+    "note": "Requires native runtime",
+    "default": true
+  },
+  {
+    "key": "enable_remote_inspector",
+    "name": "Enable remote inspector",
+    "description": "Allow remote debugging via Chrome DevTools Protocol.",
+    "category": "developer",
     "note": null,
     "default": false
   },
   {
-    "key": "high_contrast_ui",
-    "name": "High contrast UI",
-    "description": "Boost contrast for overlays, menus, and dialogs to improve readability.",
-    "category": "accessibility",
+    "key": "show_performance_overlay",
+    "name": "Show performance overlay",
+    "description": "Display FPS counter and rendering statistics on screen.",
+    "category": "developer",
     "note": null,
     "default": false
   },
   {
-    "key": "vibrant_window_theme",
-    "name": "Vibrant window theme",
-    "description": "Apply a subtle color wash to the window frame for a livelier finish.",
-    "category": "appearance",
+    "key": "restore_session_on_startup",
+    "name": "Restore previous session",
+    "description": "Reopen tabs from your last browsing session when starting the browser.",
+    "category": "general",
     "note": null,
-    "default": false
+    "default": true
   },
   {
-    "key": "use_custom_user_agent",
-    "name": "Use custom user agent",
-    "description": "When enabled, send a user agent string that you specify instead of the automatic Chromium-like default.",
-    "category": "privacy",
+    "key": "save_session_continuously",
+    "name": "Enable crash recovery",
+    "description": "Continuously save session state so tabs can be restored after crashes or unexpected closures (ALT+F4).",
+    "category": "general",
     "note": null,
-    "default": false
+    "default": true
   }
 ]

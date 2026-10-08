@@ -46,16 +46,51 @@
             font-size: 12px;
             color: rgba(226, 225, 234, 0.7);
         }
-    @keyframes ul_fade_in { from { opacity: 0; } to { opacity: 1; } }
-    @-webkit-keyframes ul_fade_in { from { opacity: 0; } to { opacity: 1; } }
+
+        .menu-item .shortcut-badge {
+            margin-left: auto;
+            padding: 2px 8px;
+            font-size: 10px;
+            font-weight: 500;
+            color: rgba(226, 225, 234, 0.5);
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            font-family: 'Consolas', 'Courier New', monospace;
+        }
+
+        @keyframes ul_fade_in {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        @-webkit-keyframes ul_fade_in {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
     </style>
 </head>
 
 <body>
     <div id="menu-root">
         <div id="menu-dropdown" class="menu-dropdown" role="menu" aria-hidden="false">
-            <div class="menu-item" data-action="new-tab">New tab [Ctrl+T]</div>
-            <div class="menu-item" data-action="new-window">New window [Ctrl+N]</div>
+            <div class="menu-item" data-action="new-tab">
+                <span class="menu-label">New tab</span>
+                <span class="shortcut-badge">Ctrl+T</span>
+            </div>
+            <div class="menu-item" data-action="new-window">
+                <span class="menu-label">New window</span>
+                <span class="shortcut-badge">Ctrl+N</span>
+            </div>
             <div class="menu-separator"></div>
             <div class="menu-heading">Quick Settings</div>
             <div class="menu-item menu-toggle" data-action="toggle-dark-mode">
@@ -66,10 +101,39 @@
                 <span class="menu-label">Ad blocking</span>
                 <span class="menu-value" id="adblock-value">OFF</span>
             </div>
+            <div class="menu-item menu-toggle" data-action="toggle-performance-overlay">
+                <span class="menu-label">Performance overlay</span>
+                <span class="menu-value" id="perf-overlay-value">OFF</span>
+            </div>
             <div class="menu-separator"></div>
-            <div class="menu-item" data-action="history">History [Ctrl+H]</div>
-            <div class="menu-item" data-action="downloads">Downloads [Ctrl+J]</div>
-            <div class="menu-item" data-action="settings">Settings [Ctrl+,]</div>
+            <div class="menu-item" data-action="history">
+                <span class="menu-label">History</span>
+                <span class="shortcut-badge">Ctrl+H</span>
+            </div>
+            <div class="menu-item" data-action="bookmarks">
+                <span class="menu-label">Bookmarks</span>
+                <span class="shortcut-badge">Ctrl+B</span>
+            </div>
+            <div class="menu-item" data-action="downloads">
+                <span class="menu-label">Downloads</span>
+                <span class="shortcut-badge">Ctrl+J</span>
+            </div>
+            <div class="menu-item" data-action="passwords">
+                <span class="menu-label">Passwords</span>
+                <span class="shortcut-badge">Ctrl+P</span>
+            </div>
+            <div class="menu-item" data-action="extensions">
+                <span class="menu-label">Extensions</span>
+                <span class="shortcut-badge">Ctrl+E</span>
+            </div>
+            <div class="menu-item" data-action="themes">
+                <span class="menu-label">Themes</span>
+                <span class="shortcut-badge">Ctrl+⇧+T</span>
+            </div>
+            <div class="menu-item" data-action="settings">
+                <span class="menu-label">Settings</span>
+                <span class="shortcut-badge">Ctrl+,</span>
+            </div>
         </div>
     </div>
 
@@ -96,6 +160,13 @@
                     const adblockValue = document.getElementById('adblock-value');
                     if (adblockValue) {
                         adblockValue.textContent = adblockEnabled ? 'ON' : 'OFF';
+                    }
+                }
+                if (window.GetPerformanceOverlayEnabled) {
+                    const perfOverlayEnabled = GetPerformanceOverlayEnabled();
+                    const perfOverlayValue = document.getElementById('perf-overlay-value');
+                    if (perfOverlayValue) {
+                        perfOverlayValue.textContent = perfOverlayEnabled ? 'ON' : 'OFF';
                     }
                 }
             }
@@ -125,8 +196,7 @@
                         if (window.OnRequestNewTab) OnRequestNewTab();
                         break;
                     case 'new-window':
-                        // Placeholder: open a new tab as "new window" is not implemented
-                        if (window.OnRequestNewTab) OnRequestNewTab();
+                        if (window.OnRequestNewWindow) OnRequestNewWindow();
                         break;
                     case 'toggle-dark-mode':
                         if (window.OnToggleDarkMode) {
@@ -140,11 +210,29 @@
                             setTimeout(refreshToggles, 50);
                         }
                         return; // Don't close menu on toggle
+                    case 'toggle-performance-overlay':
+                        if (window.OnTogglePerformanceOverlay) {
+                            OnTogglePerformanceOverlay();
+                            setTimeout(refreshToggles, 50);
+                        }
+                        return; // Don't close menu on toggle
                     case 'history':
                         if (window.OnOpenHistoryNewTab) OnOpenHistoryNewTab();
                         break;
+                    case 'bookmarks':
+                        if (window.OnOpenBookmarksNewTab) OnOpenBookmarksNewTab();
+                        break;
                     case 'downloads':
                         if (window.OnOpenDownloadsNewTab) OnOpenDownloadsNewTab();
+                        break;
+                    case 'passwords':
+                        if (window.OnOpenPasswordsNewTab) OnOpenPasswordsNewTab();
+                        break;
+                    case 'extensions':
+                        if (window.OnOpenExtensionsNewTab) OnOpenExtensionsNewTab();
+                        break;
+                    case 'themes':
+                        if (window.OnOpenThemesNewTab) OnOpenThemesNewTab();
                         break;
                     case 'settings':
                         if (window.OnOpenSettingsPanel) OnOpenSettingsPanel();
@@ -155,7 +243,7 @@
         })();
     </script>
     <script>
-    
+
     </script>
 </body>
 

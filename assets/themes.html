@@ -1,0 +1,1334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Themes</title>
+    <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23c2bce8'%3E%3Cpath d='M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8zm-5.5 9c-.83 0-1.5-.67-1.5-1.5S5.67 9 6.5 9 8 9.67 8 10.5 7.33 12 6.5 12zm3-4C8.67 8 8 7.33 8 6.5S8.67 5 9.5 5s1.5.67 1.5 1.5S10.33 8 9.5 8zm5 0c-.83 0-1.5-.67-1.5-1.5S13.67 5 14.5 5s1.5.67 1.5 1.5S15.33 8 14.5 8zm3 4c-.83 0-1.5-.67-1.5-1.5S16.67 9 17.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z'/%3E%3C/svg%3E">
+    <link rel="stylesheet" type="text/css" href="ui.css">
+    <link rel="stylesheet" href="themes/theme-variables.css">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html, body {
+            height: 100%;
+            overflow-x: hidden;
+            overflow-y: auto !important;
+        }
+
+        body {
+            font-family: var(--font-family-sans);
+            background: linear-gradient(135deg, var(--color-bg-primary) 0%, var(--color-bg-secondary) 100%);
+            color: var(--color-text-primary);
+            line-height: 1.5;
+            min-height: 100vh;
+            padding: var(--spacing-xl);
+            opacity: 0;
+            animation: fadeIn 0.8s ease 0.3s forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: var(--spacing-xl);
+            padding-bottom: var(--spacing-lg);
+            border-bottom: 1px solid var(--color-border-primary);
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+        }
+
+        .header-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--color-accent-primary), var(--color-accent-secondary));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .header-icon svg {
+            width: 24px;
+            height: 24px;
+            fill: white;
+        }
+
+        h1 {
+            font-size: var(--font-size-xxl);
+            font-weight: var(--font-weight-semibold);
+        }
+
+        .subtitle {
+            color: var(--color-text-tertiary);
+            font-size: var(--font-size-sm);
+            margin-top: 2px;
+        }
+
+        /* Icon classes - using CSS for instant rendering */
+        .icon {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            vertical-align: middle;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+        .icon-folder { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='currentColor' viewBox='0 0 24 24'%3E%3Cpath d='M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z'/%3E%3C/svg%3E"); color: var(--color-text-secondary); }
+        .icon-copy { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='currentColor' viewBox='0 0 24 24'%3E%3Cpath d='M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z'/%3E%3C/svg%3E"); color: var(--color-text-secondary); }
+        .icon-save { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='currentColor' viewBox='0 0 24 24'%3E%3Cpath d='M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zm-6 .67l2.59-2.58L17 11.5l-5 5-5-5 1.41-1.41L11 12.67V3h2z'/%3E%3C/svg%3E"); color: var(--color-text-secondary); }
+        .icon-close { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='currentColor' viewBox='0 0 24 24'%3E%3Cpath d='M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z'/%3E%3C/svg%3E"); color: var(--color-text-secondary); }
+        .icon-add { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='currentColor' viewBox='0 0 24 24'%3E%3Cpath d='M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z'/%3E%3C/svg%3E"); }
+        .icon-duplicate { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='currentColor' viewBox='0 0 24 24'%3E%3Cpath d='M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z'/%3E%3C/svg%3E"); color: var(--color-text-secondary); }
+        .icon-import { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='currentColor' viewBox='0 0 24 24'%3E%3Cpath d='M19 10c-1.3-4-5-7-9-7-3 0-5.4 1.6-6.6 4C1.3 7.3 0 9.9 0 13c0 3.3 2.7 6 6 6h13c2.8 0 5-2.2 5-5 0-2.6-2-4.8-4.6-5zM14 13v4h-4v-4H7l5-5 5 5h-3z'/%3E%3C/svg%3E"); color: var(--color-text-secondary); }
+        .icon-check { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='currentColor' viewBox='0 0 24 24'%3E%3Cpath d='M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z'/%3E%3C/svg%3E"); color: var(--color-accent-primary); }
+        .icon-edit { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='currentColor' viewBox='0 0 24 24'%3E%3Cpath d='M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z'/%3E%3C/svg%3E"); color: var(--color-accent-primary); }
+        .icon-code { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='currentColor' viewBox='0 0 24 24'%3E%3Cpath d='M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z'/%3E%3C/svg%3E"); color: var(--color-text-secondary); }
+        .icon-delete { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='currentColor' viewBox='0 0 24 24'%3E%3Cpath d='M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z'/%3E%3C/svg%3E"); color: var(--color-danger); }
+        .theme-favicon { width: 12px; height: 12px; margin-left: 3px;  margin-bottom: 3px; vertical-align: middle; border-radius: 3px; }
+        .btn:hover .icon-folder { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='currentColor' viewBox='0 0 24 24'%3E%3Cpath d='M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z'/%3E%3C/svg%3E"); }
+        .btn:hover .icon-copy { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='currentColor' viewBox='0 0 24 24'%3E%3Cpath d='M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z'/%3E%3C/svg%3E"); }
+        .btn:hover .icon-save { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='currentColor' viewBox='0 0 24 24'%3E%3Cpath d='M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zm-6 .67l2.59-2.58L17 11.5l-5 5-5-5 1.41-1.41L11 12.67V3h2z'/%3E%3C/svg%3E"); }
+        .btn:hover .icon-duplicate { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='currentColor' viewBox='0 0 24 24'%3E%3Cpath d='M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z'/%3E%3C/svg%3E"); }
+        .btn:hover .icon-import { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='currentColor' viewBox='0 0 24 24'%3E%3Cpath d='M19 10c-1.3-4-5-7-9-7-3 0-5.4 1.6-6.6 4C1.3 7.3 0 9.9 0 13c0 3.3 2.7 6 6 6h13c2.8 0 5-2.2 5-5 0-2.6-2-4.8-4.6-5zM14 13v4h-4v-4H7l5-5 5 5h-3z'/%3E%3C/svg%3E"); }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            padding: 10px 20px;
+            border-radius: 12px;
+            border: none;
+            font-size: var(--font-size-md);
+            font-weight: var(--font-weight-medium);
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .btn:hover { color: var(--btn-hover-icon-color, #fff); }
+
+        /* Use theme variables so button shadows follow the active accent */
+        .btn-primary {
+            background: linear-gradient(135deg, var(--btn-primary-bg, var(--accent-color, var(--color-accent-primary))), var(--btn-hover-bg, var(--accent-hover)));
+            color: var(--btn-primary-text, white);
+            box-shadow: 0 4px 15px var(--accent-shadow, rgba(108,99,255,0.30));
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px var(--accent-shadow-strong, rgba(108,99,255,0.40));
+            background: linear-gradient(135deg, var(--btn-hover-bg, var(--accent-hover)), var(--btn-primary-bg, var(--accent-color)));
+        }
+
+        /* .btn-secondary uses global styles from assets/ui.css */
+        /* local override removed to ensure consistency with Themes page */
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .btn-sm svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .btn svg {
+            width: 18px;
+            height: 18px;
+            fill: currentColor;
+        }
+
+        /* Sections */
+        .section {
+            margin-bottom: var(--spacing-xxl);
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .section-title {
+            font-size: var(--font-size-lg);
+            font-weight: var(--font-weight-semibold);
+            color: var(--color-text-secondary);
+        }
+
+        .show-more-btn {
+            background: none;
+            border: none;
+            color: var(--color-accent-primary);
+            cursor: pointer;
+            font-size: var(--font-size-sm);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .show-more-btn:hover {
+            text-decoration: underline;
+        }
+
+        /* Theme Grid */
+        .theme-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: var(--spacing-lg);
+        }
+
+        .theme-grid.collapsed .theme-card:nth-child(n+5) {
+            display: none;
+        }
+
+        /* Theme Card */
+        .theme-card {
+            background: var(--color-bg-elevated);
+            border: 2px solid var(--color-border-primary);
+            border-radius: 16px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.1s ease-out, border-color 0.1s ease-out;
+        }
+
+        .theme-card:hover {
+            border-color: var(--color-accent-primary);
+            transform: translateY(-2px);
+        }
+
+        .theme-card.active {
+            border-color: var(--color-accent-primary);
+            box-shadow: 0 0 0 3px var(--accent-light, var(--color-accent-light, rgba(108, 99, 255, 0.2)));
+        }
+
+        .theme-preview {
+            height: 100px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            border-radius: var(--radius-lg, 12px) var(--radius-lg, 12px) 0 0;
+            overflow: hidden;
+        }
+
+        .preview-toolbar {
+            height: 24px;
+            display: flex;
+            align-items: center;
+            padding: 0 8px;
+            gap: 4px;
+        }
+
+        .preview-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+
+        .preview-address {
+            flex: 1;
+            height: 12px;
+            border-radius: 6px;
+            margin: 0 8px;
+        }
+
+        .preview-content {
+            flex: 1;
+            display: flex;
+            padding: 6px;
+            gap: 6px;
+        }
+
+        .preview-sidebar {
+            width: 30px;
+            border-radius: 4px;
+        }
+
+        .preview-main {
+            flex: 1;
+            border-radius: 4px;
+        }
+
+        .theme-info {
+            padding: var(--spacing-md);
+        }
+
+        .theme-name {
+            font-weight: var(--font-weight-semibold);
+            font-size: var(--font-size-md);
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .theme-badge {
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: var(--radius-pill);
+            background: var(--color-accent-primary);
+            color: white;
+        }
+
+        .category-badge {
+            font-size: 9px;
+            padding: 2px 6px;
+            border-radius: var(--radius-sm);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+
+        .category-badge.dark {
+            background: rgba(100, 100, 150, 0.25);
+            color: var(--color-text-secondary, #a0a0d0);
+        }
+
+        .category-badge.light {
+            background: rgba(255, 200, 100, 0.25);
+            color: var(--color-warning, #d0a050);
+        }
+
+        .theme-description {
+            font-size: var(--font-size-sm);
+            color: var(--color-text-tertiary);
+            margin-bottom: 8px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .theme-meta {
+            font-size: 11px;
+            color: var(--color-text-muted);
+        }
+
+        /* Create Theme Section */
+        .create-section {
+            background: var(--color-bg-elevated);
+            border: 1px solid var(--color-border-primary);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-xl);
+            text-align: center;
+        }
+
+        .create-section h3 {
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .create-section p {
+            color: var(--color-text-tertiary);
+            margin-bottom: var(--spacing-lg);
+            font-size: var(--font-size-sm);
+        }
+
+        .create-actions {
+            display: flex;
+            gap: var(--spacing-md);
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        /* Info Box */
+        .info-box {
+            background: var(--color-bg-tertiary);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+            margin-top: var(--spacing-lg);
+            text-align: left;
+        }
+
+        .info-box h4 {
+            font-size: var(--font-size-sm);
+            margin-bottom: var(--spacing-sm);
+            color: var(--color-text-secondary);
+        }
+
+        .info-box ul {
+            list-style: none;
+            font-size: var(--font-size-sm);
+            color: var(--color-text-tertiary);
+        }
+
+        .info-box li {
+            padding: 4px 0;
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .info-box li .icon {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: var(--spacing-xl);
+            right: var(--spacing-xl);
+            background: var(--color-bg-elevated);
+            border: 1px solid var(--color-border-primary);
+            border-radius: 16px;
+            padding: var(--spacing-md) var(--spacing-lg);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 10000;
+        }
+
+        .toast.visible {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .toast.success {
+            border-left: 3px solid var(--color-success);
+        }
+
+        .toast.error {
+            border-left: 3px solid var(--color-danger);
+        }
+
+        /* Simple Modal for Create Theme */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s ease;
+        }
+
+        .modal-overlay.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal {
+            background: var(--color-bg-elevated);
+            border: 1px solid var(--color-border-primary);
+            border-radius: 20px;
+            width: 90%;
+            max-width: 500px;
+            padding: var(--spacing-xl);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal h3 {
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .form-group {
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .form-label {
+            display: block;
+            font-size: var(--font-size-sm);
+            color: var(--color-text-secondary);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid var(--color-border-primary);
+            border-radius: 10px;
+            background: var(--color-bg-tertiary);
+            color: var(--color-text-primary);
+            font-size: var(--font-size-md);
+            transition: all 0.2s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--color-accent-primary);
+            box-shadow: 0 0 0 3px var(--accent-light, var(--color-accent-light, rgba(108, 99, 255, 0.2)));
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: var(--spacing-sm);
+            justify-content: flex-end;
+            margin-top: var(--spacing-xl);
+        }
+
+        /* Custom theme action buttons */
+        .theme-actions {
+            display: flex;
+            gap: var(--spacing-xs);
+            margin-top: var(--spacing-sm);
+            padding-top: var(--spacing-sm);
+            border-top: 1px solid var(--color-border-secondary);
+        }
+
+        .theme-action-btn {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            padding: 6px 10px;
+            background: var(--color-bg-tertiary);
+            border: 1px solid var(--color-border-primary);
+            border-radius: 8px;
+            color: var(--color-text-secondary);
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .theme-action-btn:hover {
+            background: var(--color-bg-hover);
+            color: var(--color-text-primary);
+            border-color: var(--color-accent-primary);
+        }
+
+        .theme-action-btn .icon {
+            width: 14px;
+            height: 14px;
+        }
+
+        .theme-action-btn.delete:hover {
+            background: var(--color-danger-bg, rgba(239, 106, 106, 0.15));
+            color: var(--color-danger);
+            border-color: var(--color-danger);
+        }
+
+        /* JSON Modal */
+        .json-modal {
+            max-width: 700px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            border-radius: 20px;
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: var(--spacing-md);
+            flex-shrink: 0;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+        }
+
+        .modal-close-btn {
+            background: none;
+            border: none;
+            color: var(--color-text-tertiary);
+            cursor: pointer;
+            padding: 6px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .modal-close-btn:hover {
+            background: var(--color-bg-hover);
+            color: var(--color-text-primary);
+        }
+
+        .json-content {
+            background: var(--color-bg-primary, #0d1117);
+            border: 1px solid var(--color-border-primary);
+            border-radius: 12px;
+            padding: 16px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 350px;
+            min-height: 200px;
+            overflow: auto;
+            line-height: 1.6;
+            flex-shrink: 1;
+            white-space: pre;
+        }
+
+        /* JSON Syntax Highlighting */
+        .json-key { color: var(--color-accent-primary, #79c0ff); }
+        .json-string { color: var(--color-accent-hover, #a5d6ff); }
+        .json-number { color: var(--color-success, #56d364); }
+        .json-boolean { color: var(--color-danger, #ff7b72); }
+        .json-null { color: var(--color-danger, #ff7b72); }
+        .json-bracket { color: var(--color-text-muted, #8b949e); }
+        .json-colon { color: var(--color-text-muted, #8b949e); }
+        .json-comma { color: var(--color-text-muted, #8b949e); }
+        .json-color-preview {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+            margin-right: 4px;
+            vertical-align: middle;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .json-help {
+            margin-top: var(--spacing-sm);
+            padding: 10px 14px;
+            background: var(--color-bg-tertiary);
+            border-radius: 10px;
+            font-size: 12px;
+            color: var(--color-text-tertiary);
+            flex-shrink: 0;
+        }
+
+        .json-help code {
+            background: var(--color-bg-primary);
+            padding: 2px 6px;
+            border-radius: var(--radius-sm);
+            font-family: var(--font-family-mono, monospace);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-left">
+                <div class="header-icon">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8zm-5.5 9c-.83 0-1.5-.67-1.5-1.5S5.67 9 6.5 9 8 9.67 8 10.5 7.33 12 6.5 12zm3-4C8.67 8 8 7.33 8 6.5S8.67 5 9.5 5s1.5.67 1.5 1.5S10.33 8 9.5 8zm5 0c-.83 0-1.5-.67-1.5-1.5S13.67 5 14.5 5s1.5.67 1.5 1.5S15.33 8 14.5 8zm3 4c-.83 0-1.5-.67-1.5-1.5S16.67 9 17.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h1>Themes</h1>
+                    <div class="subtitle">Customize your browser's appearance</div>
+                </div>
+            </div>
+            <button class="btn btn-primary" id="btn-create-theme">
+                <span class="icon icon-add" style="width:18px;height:18px"></span>
+                Create Theme
+            </button>
+        </header>
+
+        <!-- Dark Themes -->
+        <section class="section">
+            <div class="section-header">
+                <h2 class="section-title">🌙 Dark Themes</h2>
+                <button class="show-more-btn" id="toggle-dark">
+                    Show all <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+                </button>
+            </div>
+            <div class="theme-grid collapsed" id="dark-themes"></div>
+        </section>
+
+        <!-- Light Themes -->
+        <section class="section">
+            <div class="section-header">
+                <h2 class="section-title">☀️ Light Themes</h2>
+            </div>
+            <div class="theme-grid" id="light-themes"></div>
+        </section>
+
+        <!-- Custom Themes -->
+        <section class="section" id="custom-section" style="display: none;">
+            <div class="section-header">
+                <h2 class="section-title">✨ My Custom Themes</h2>
+            </div>
+            <div class="theme-grid" id="custom-themes"></div>
+        </section>
+
+        <!-- Create/Import Section -->
+        <section class="section">
+            <div class="create-section">
+                <h3>🎨 Create Your Own Theme</h3>
+                <p>Duplicate a built-in theme and customize it, or import a theme file</p>
+                <div class="create-actions">
+                    <button class="btn btn-secondary" id="btn-duplicate-default">
+                        <span class="icon icon-duplicate" style="width:16px;height:16px"></span>
+                        Duplicate Current
+                    </button>
+                    <button class="btn btn-secondary" id="btn-import">
+                        <span class="icon icon-import" style="width:16px;height:16px"></span>
+                        Import Theme
+                    </button>
+                </div>
+
+                <div class="info-box">
+                    <h4>📁 Theme Information</h4>
+                    <ul>
+                        <li>
+                            <span class="icon icon-check"></span>
+                            Click any theme card to apply it instantly
+                        </li>
+                        <li>
+                            <span class="icon icon-duplicate"></span>
+                            Duplicate any theme to create a customizable copy
+                        </li>
+                        <li>
+                            <span class="icon icon-save"></span>
+                            Export custom themes to share with others
+                        </li>
+                        <li>
+                            <span class="icon icon-edit"></span>
+                            Edit theme JSON files in: data/themes/
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Simple Create Modal -->
+    <div class="modal-overlay" id="create-modal">
+        <div class="modal">
+            <h3>Create New Theme</h3>
+            <div class="form-group">
+                <label class="form-label">Theme Name</label>
+                <input type="text" class="form-input" id="new-theme-name" placeholder="My Custom Theme">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Base Theme</label>
+                <select class="form-input" id="new-theme-base">
+                    <option value="dark">Dark (Default)</option>
+                    <option value="midnight">Midnight Blue</option>
+                    <option value="dracula">Dracula</option>
+                    <option value="tokyo-night">Tokyo Night</option>
+                </select>
+            </div>
+            <p style="font-size: 12px; color: var(--color-text-tertiary); margin-bottom: 16px;">
+                The theme will be created based on the selected theme. After creation, click "View JSON" on your theme to see and copy the color values.
+            </p>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="btn-modal-cancel">Cancel</button>
+                <button class="btn btn-primary" id="btn-modal-create">Create Theme</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JSON View Modal -->
+    <div class="modal-overlay" id="json-modal">
+        <div class="modal json-modal">
+            <div class="modal-header">
+                <h3>Theme JSON</h3>
+                <button class="modal-close-btn" id="btn-json-x" title="Close">
+                    <span class="icon icon-close" style="width:18px;height:18px"></span>
+                </button>
+            </div>
+            <div class="json-content" id="json-content"></div>
+            <div class="json-help">
+                <strong>💡 Tip:</strong> Copy JSON, save as <code>.json</code> file, edit colors, then import.
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary btn-sm" id="btn-open-theme-dir">
+                    <span class="icon icon-folder"></span>
+                    Folder
+                </button>
+                <button class="btn btn-secondary btn-sm" id="btn-json-copy">
+                    <span class="icon icon-copy"></span>
+                    Copy
+                </button>
+                <button class="btn btn-secondary btn-sm" id="btn-json-download">
+                    <span class="icon icon-save"></span>
+                    Save
+                </button>
+                <button class="btn btn-primary btn-sm" id="btn-json-close">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden file input -->
+    <input type="file" id="file-input" accept=".json" style="display: none;">
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <script src="themes/theme.js"></script>
+    <script>
+        (function() {
+            'use strict';
+
+            // DOM Elements
+            const darkGrid = document.getElementById('dark-themes');
+            const lightGrid = document.getElementById('light-themes');
+            const customGrid = document.getElementById('custom-themes');
+            const customSection = document.getElementById('custom-section');
+            const toast = document.getElementById('toast');
+            const createModal = document.getElementById('create-modal');
+            const jsonModal = document.getElementById('json-modal');
+            const jsonContent = document.getElementById('json-content');
+            const fileInput = document.getElementById('file-input');
+
+            let darkCollapsed = true;
+            let currentJsonTheme = null;
+
+            // Initialize - wait for ThemeManager to be ready
+            function init() {
+                // Ensure ThemeManager has loaded custom themes
+                if (window.ThemeManager) {
+                    window.ThemeManager.loadCustomThemes();
+                }
+                renderThemes();
+                setupEventListeners();
+
+                // Listen for theme changes from other tabs/windows
+                window.addEventListener('storage', (e) => {
+                    if (e.key === 'ultralight_custom_themes' || e.key === 'ultralight_active_theme') {
+                        if (window.ThemeManager) {
+                            window.ThemeManager.loadCustomThemes();
+                        }
+                        renderThemes();
+                    }
+                });
+            }
+
+            // Render all themes
+            function renderThemes() {
+                const themes = window.ThemeManager.getAllThemes();
+                const currentTheme = window.ThemeManager.getCurrentTheme();
+
+                darkGrid.innerHTML = '';
+                lightGrid.innerHTML = '';
+                customGrid.innerHTML = '';
+
+                let hasCustom = false;
+
+                // Sort themes: dark first, then by name
+                const sortedThemes = Object.entries(themes).sort((a, b) => {
+                    const catA = a[1].category || 'dark';
+                    const catB = b[1].category || 'dark';
+                    if (catA !== catB) return catA === 'dark' ? -1 : 1;
+                    return a[1].name.localeCompare(b[1].name);
+                });
+
+                for (const [id, theme] of sortedThemes) {
+                    const card = createThemeCard(theme, currentTheme?.id === id);
+                    const category = theme.category || 'dark';
+
+                    if (!theme.isBuiltIn) {
+                        customGrid.appendChild(card);
+                        hasCustom = true;
+                    } else if (category === 'light') {
+                        lightGrid.appendChild(card);
+                    } else {
+                        darkGrid.appendChild(card);
+                    }
+                }
+
+                customSection.style.display = hasCustom ? 'block' : 'none';
+
+                // Update collapsed state
+                if (darkCollapsed) {
+                    darkGrid.classList.add('collapsed');
+                } else {
+                    darkGrid.classList.remove('collapsed');
+                }
+            }
+
+            // Create theme card element
+            function createThemeCard(theme, isActive) {
+                const card = document.createElement('div');
+                card.className = 'theme-card' + (isActive ? ' active' : '');
+                card.dataset.themeId = theme.id;
+
+                const colors = theme.colors;
+                const category = theme.category || 'dark';
+
+                let actionsHtml = '';
+                if (!theme.isBuiltIn) {
+                    actionsHtml = `
+                        <div class="theme-actions">
+                            <button class="theme-action-btn view-json" data-theme-id="${theme.id}" title="View/Export JSON">
+                                <span class="icon icon-code"></span>
+                                JSON
+                            </button>
+                            <button class="theme-action-btn duplicate" data-theme-id="${theme.id}" title="Duplicate theme">
+                                <span class="icon icon-copy"></span>
+                                Copy
+                            </button>
+                            <button class="theme-action-btn delete" data-theme-id="${theme.id}" title="Delete theme">
+                                <span class="icon icon-delete"></span>
+                            </button>
+                        </div>
+                    `;
+                }
+
+                card.innerHTML = `
+                    <div class="theme-preview" style="background: ${colors['color-bg-primary']}">
+                        <div class="preview-toolbar" style="background: ${colors['color-bg-tertiary']}">
+                            <div class="preview-dot" style="background: ${colors['color-danger'] || '#ff5555'}"></div>
+                            <div class="preview-dot" style="background: ${colors['color-warning'] || '#ffcc00'}"></div>
+                            <div class="preview-dot" style="background: ${colors['color-success'] || '#55ff55'}"></div>
+                            <div class="preview-address" style="background: ${colors['color-bg-primary']}"></div>
+                        </div>
+                        <div class="preview-content">
+                            <div class="preview-sidebar" style="background: ${colors['color-bg-secondary']}"></div>
+                            <div class="preview-main" style="background: ${colors['card-bg'] || colors['color-bg-elevated']}"></div>
+                        </div>
+                    </div>
+                    <div class="theme-info">
+                        <div class="theme-name">
+                            ${theme.name}
+                            ${isActive ? '<span class="theme-badge">Active</span>' : ''}
+                        </div>
+                        <div class="theme-description">${theme.description || ''}</div>
+                        <div class="theme-meta">
+                            <span class="category-badge ${category}">${category}</span>
+                            ${!theme.isBuiltIn ? ' • Custom' : ''}
+                        </div>
+                        ${actionsHtml}
+                    </div>
+                `;
+
+                return card;
+            }
+
+            // Setup event listeners
+            function setupEventListeners() {
+                // Click on theme card to apply immediately (but not on action buttons)
+                document.addEventListener('click', (e) => {
+                    // Handle action buttons
+                    if (e.target.closest('.view-json')) {
+                        e.stopPropagation();
+                        const themeId = e.target.closest('.view-json').dataset.themeId;
+                        showJsonModal(themeId);
+                        return;
+                    }
+
+                    if (e.target.closest('.duplicate')) {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        const themeId = e.target.closest('.duplicate').dataset.themeId;
+                        duplicateTheme(themeId);
+                        return;
+                    }
+
+                    if (e.target.closest('.theme-action-btn.delete')) {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        const btn = e.target.closest('.theme-action-btn.delete');
+                        const themeId = btn.dataset.themeId;
+                        if (themeId) {
+                            deleteTheme(themeId);
+                        }
+                        return;
+                    }
+
+                    // Apply theme on card click
+                    const card = e.target.closest('.theme-card');
+                    if (card && !e.target.closest('.theme-actions')) {
+                        const themeId = card.dataset.themeId;
+                        applyTheme(themeId);
+                    }
+                });
+
+                // Toggle dark themes
+                document.getElementById('toggle-dark').addEventListener('click', () => {
+                    darkCollapsed = !darkCollapsed;
+                    const btn = document.getElementById('toggle-dark');
+                    if (darkCollapsed) {
+                        darkGrid.classList.add('collapsed');
+                        btn.innerHTML = 'Show all <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>';
+                    } else {
+                        darkGrid.classList.remove('collapsed');
+                        btn.innerHTML = 'Show less <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"/></svg>';
+                    }
+                });
+
+                // Create theme button
+                document.getElementById('btn-create-theme').addEventListener('click', () => {
+                    createModal.classList.add('visible');
+                });
+
+                // Modal cancel
+                document.getElementById('btn-modal-cancel').addEventListener('click', () => {
+                    createModal.classList.remove('visible');
+                });
+
+                // Modal create
+                document.getElementById('btn-modal-create').addEventListener('click', () => {
+                    const name = document.getElementById('new-theme-name').value.trim();
+                    const baseId = document.getElementById('new-theme-base').value;
+
+                    if (!name) {
+                        showToast('Please enter a theme name', 'error');
+                        return;
+                    }
+
+                    const baseTheme = window.ThemeManager.getTheme(baseId);
+                    if (baseTheme) {
+                        const newTheme = window.ThemeManager.createTheme({
+                            name: name,
+                            description: 'Custom theme based on ' + baseTheme.name,
+                            author: 'User',
+                            category: baseTheme.category || 'dark',
+                            colors: { ...baseTheme.colors }
+                        });
+                        showToast('Theme created! Click "JSON" to view and edit colors.', 'success');
+                        createModal.classList.remove('visible');
+                        document.getElementById('new-theme-name').value = '';
+                        renderThemes();
+                        // Auto-show JSON modal for the new theme
+                        setTimeout(() => showJsonModal(newTheme.id), 300);
+                    }
+                });
+
+                // Close modal on overlay click
+                createModal.addEventListener('click', (e) => {
+                    if (e.target === createModal) {
+                        createModal.classList.remove('visible');
+                    }
+                });
+
+                // JSON Modal events
+                document.getElementById('btn-json-close').addEventListener('click', () => {
+                    jsonModal.classList.remove('visible');
+                });
+
+                document.getElementById('btn-json-x').addEventListener('click', () => {
+                    jsonModal.classList.remove('visible');
+                });
+
+                document.getElementById('btn-open-theme-dir').addEventListener('click', () => {
+                    if (window.OnOpenThemesDirectory) {
+                        window.OnOpenThemesDirectory();
+                    } else {
+                        showToast('Theme directory: data/themes/', 'success');
+                    }
+                });
+
+                document.getElementById('btn-json-copy').addEventListener('click', () => {
+                    if (currentJsonTheme) {
+                        const theme = window.ThemeManager.getTheme(currentJsonTheme);
+                        if (theme) {
+                            const text = JSON.stringify(theme, null, 2);
+                            navigator.clipboard.writeText(text).then(() => {
+                                showToast('JSON copied to clipboard!', 'success');
+                            });
+                        }
+                    }
+                });
+
+                document.getElementById('btn-json-download').addEventListener('click', () => {
+                    if (currentJsonTheme) {
+                        const theme = window.ThemeManager.getTheme(currentJsonTheme);
+                        if (theme) {
+                            const json = JSON.stringify(theme, null, 2);
+                            const blob = new Blob([json], { type: 'application/json' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = theme.id + '.json';
+                            a.click();
+                            URL.revokeObjectURL(url);
+                            showToast('Theme downloaded!', 'success');
+                        }
+                    }
+                });
+
+                jsonModal.addEventListener('click', (e) => {
+                    if (e.target === jsonModal) {
+                        jsonModal.classList.remove('visible');
+                    }
+                });
+
+                // Duplicate current theme
+                document.getElementById('btn-duplicate-default').addEventListener('click', () => {
+                    const current = window.ThemeManager.getCurrentTheme();
+                    if (current) {
+                        const newTheme = window.ThemeManager.duplicateTheme(current.id);
+                        if (newTheme) {
+                            showToast('Theme duplicated!', 'success');
+                            renderThemes();
+                            setTimeout(() => showJsonModal(newTheme.id), 300);
+                        }
+                    }
+                });
+
+                // Import button
+                document.getElementById('btn-import').addEventListener('click', () => {
+                    fileInput.click();
+                });
+
+                // File input change
+                fileInput.addEventListener('change', (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (ev) => {
+                            const theme = window.ThemeManager.importTheme(ev.target.result);
+                            if (theme) {
+                                showToast('Theme imported!', 'success');
+                                renderThemes();
+                            } else {
+                                showToast('Invalid theme file', 'error');
+                            }
+                        };
+                        reader.readAsText(file);
+                    }
+                    fileInput.value = '';
+                });
+            }
+
+            // Show JSON modal for a theme with syntax highlighting
+            function showJsonModal(themeId) {
+                const theme = window.ThemeManager.getTheme(themeId);
+                if (theme) {
+                    currentJsonTheme = themeId;
+                    const json = JSON.stringify(theme, null, 2);
+                    jsonContent.innerHTML = syntaxHighlightJson(json);
+                    jsonModal.classList.add('visible');
+                }
+            }
+
+            // Check if string is a valid color
+            function isColor(str) {
+                if (!str || typeof str !== 'string') return false;
+                // Check for hex colors, rgb, rgba, hsl, hsla, or named colors
+                return /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/.test(str) ||
+                       /^rgba?\s*\(/.test(str) ||
+                       /^hsla?\s*\(/.test(str) ||
+                       /^linear-gradient/.test(str);
+            }
+
+            // Syntax highlight JSON with color previews
+            function syntaxHighlightJson(json) {
+                let result = json
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;');
+
+                // Process line by line to add color previews
+                const lines = result.split('\n');
+                const processedLines = lines.map(line => {
+                    // Match key-value pairs with string values
+                    const colorMatch = line.match(/^(\s*)"([^"]+)":\s*"([^"]+)"(,?)$/);
+                    if (colorMatch) {
+                        const [, indent, key, value, comma] = colorMatch;
+                        if (isColor(value)) {
+                            const colorPreview = `<span class="json-color-preview" style="background: ${value};"></span>`;
+                            return `${indent}<span class="json-key">"${key}"</span><span class="json-colon">:</span> ${colorPreview}<span class="json-string">"${value}"</span>${comma}`;
+                        }
+                        return `${indent}<span class="json-key">"${key}"</span><span class="json-colon">:</span> <span class="json-string">"${value}"</span>${comma}`;
+                    }
+
+                    // Handle other string values
+                    line = line.replace(/^(\s*)"([^"]+)":\s*"([^"]*)"(,?)$/g, '$1<span class="json-key">"$2"</span><span class="json-colon">:</span> <span class="json-string">"$3"</span>$4');
+
+                    // Handle numbers
+                    line = line.replace(/:\s*(\d+\.?\d*)(,?)$/g, ': <span class="json-number">$1</span>$2');
+
+                    // Handle booleans
+                    line = line.replace(/:\s*(true|false)(,?)$/g, ': <span class="json-boolean">$1</span>$2');
+
+                    // Handle null
+                    line = line.replace(/:\s*(null)(,?)$/g, ': <span class="json-null">$1</span>$2');
+
+                    // Handle brackets
+                    line = line.replace(/([\[\]{}])/g, '<span class="json-bracket">$1</span>');
+
+                    // Handle standalone keys (objects)
+                    line = line.replace(/^(\s*)"([^"]+)":\s*(<span class="json-bracket">)/g, '$1<span class="json-key">"$2"</span><span class="json-colon">:</span> $3');
+
+                    return line;
+                });
+
+                return processedLines.join('\n');
+            }
+
+            // Duplicate a theme
+            function duplicateTheme(themeId) {
+                const newTheme = window.ThemeManager.duplicateTheme(themeId);
+                if (newTheme) {
+                    showToast('Theme duplicated!', 'success');
+                    renderThemes();
+                    setTimeout(() => showJsonModal(newTheme.id), 300);
+                }
+            }
+
+            // Delete a theme
+            function deleteTheme(themeId) {
+                console.log('Delete theme called with ID:', themeId);
+
+                if (!themeId) {
+                    showToast('Error: No theme ID provided', 'error');
+                    return;
+                }
+
+                const theme = window.ThemeManager.getTheme(themeId);
+                console.log('Found theme:', theme);
+
+                if (!theme) {
+                    showToast('Theme not found', 'error');
+                    return;
+                }
+
+                if (theme.isBuiltIn) {
+                    showToast('Cannot delete built-in themes', 'error');
+                    return;
+                }
+
+                // Use a simple approach - just delete without confirm since confirm() may not work in Ultralight
+                const success = window.ThemeManager.deleteTheme(themeId);
+                console.log('Delete result:', success);
+
+                if (success) {
+                    showToast('Theme "' + theme.name + '" deleted', 'success');
+                    renderThemes();
+                } else {
+                    showToast('Failed to delete theme', 'error');
+                }
+            }
+
+            // Apply theme
+            function applyTheme(themeId) {
+                const success = window.ThemeManager.applyTheme(themeId);
+                if (success) {
+                    showToast('Theme applied!', 'success');
+                    renderThemes();
+                    // Update favicon based on theme
+                    updateFavicon(themeId);
+                }
+            }
+
+            // Small helper: encode an SVG into a base64 data URI, fallback to percent-encoded if base64 fails
+            function svgToDataUri(svg) {
+                try {
+                    // Use a robust base64 encoding that handles Unicode
+                    return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
+                } catch (e) {
+                    return 'data:image/svg+xml,' + encodeURIComponent(svg);
+                }
+            }
+
+            // Patch: Add favicon <img> to each theme card
+            const origRenderThemes = renderThemes;
+            renderThemes = function() {
+                origRenderThemes();
+                // Add favicon <img> to each theme card if not present
+                document.querySelectorAll('.theme-card').forEach(card => {
+                    const themeId = card.getAttribute('data-theme-id');
+                    const theme = window.ThemeManager.getTheme(themeId);
+                    if (theme) {
+                        // Build a small SVG favicon using the theme's accent color so each theme card has a representative icon
+                        const accent = theme.colors && (theme.colors['color-accent-primary'] || theme.colors['color-accent'] || theme.colors['color-accent-secondary']) || '#6C63FF';
+                        const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='${accent}'><circle cx='12' cy='12' r='10'/></svg>`;
+                        const dataUri = svgToDataUri(svg);
+
+                        let faviconImg = card.querySelector('.theme-favicon');
+                        if (!faviconImg) {
+                            faviconImg = document.createElement('img');
+                            faviconImg.className = 'theme-favicon';
+                            faviconImg.alt = 'favicon';
+                            card.prepend(faviconImg);
+                        }
+                        faviconImg.src = dataUri;
+                    }
+                });
+            }
+
+            // Update favicon for the page/tab. Prefer theme-provided images, fall back to a colored SVG.
+            function updateFavicon(themeId) {
+                const theme = window.ThemeManager.getTheme(themeId);
+                const faviconLink = document.querySelector('link[rel="icon"]');
+                if (!faviconLink) return;
+
+                // If the theme specifies an explicit favicon URL, use it.
+                if (theme && theme.favicon) {
+                    faviconLink.href = theme.favicon;
+                    // Notify host in a few different ways so the shell can pick up the icon
+                    try { if (typeof OnFaviconReady === 'function') OnFaviconReady(window.location.href, faviconLink.href); } catch(e){}
+                    try { if (window.OnFaviconReady) window.OnFaviconReady(window.location.href, faviconLink.href); } catch(e){}
+                    try { window.dispatchEvent(new CustomEvent('FaviconReady', { detail: { url: window.location.href, href: faviconLink.href } })); } catch(e){}
+                    return;
+                }
+
+                // If the theme has a faviconHash, try the packaged PNG under data/favicons
+                if (theme && theme.faviconHash) {
+                    const pngPath = `../data/favicons/${theme.faviconHash}.png`;
+                    faviconLink.href = pngPath;
+                    try { if (typeof OnFaviconReady === 'function') OnFaviconReady(window.location.href, faviconLink.href); } catch(e){}
+                    try { if (window.OnFaviconReady) window.OnFaviconReady(window.location.href, faviconLink.href); } catch(e){}
+                    try { window.dispatchEvent(new CustomEvent('FaviconReady', { detail: { url: window.location.href, href: faviconLink.href } })); } catch(e){}
+                    return;
+                }
+
+
+            }
+
+            // Show toast notification
+            function showToast(message, type = 'success') {
+                toast.textContent = message;
+                toast.className = 'toast ' + type + ' visible';
+
+                setTimeout(() => {
+                    toast.classList.remove('visible');
+                }, 3000);
+            }
+
+            // Initialize on load
+            init();
+
+            // Update favicon on initial load (retry a few times if ThemeManager isn't ready)
+            (function ensureFavicon(retries = 5, delay = 200) {
+                const current = window.ThemeManager && window.ThemeManager.getCurrentTheme && window.ThemeManager.getCurrentTheme();
+                if (current) {
+                    updateFavicon(current.id);
+                    return;
+                }
+                if (retries > 0) {
+                    setTimeout(() => ensureFavicon(retries - 1, delay), delay);
+                }
+            })();
+        })();
+
+        // Dispatch favicon to host (convert SVG to PNG as host expects PNGs)
+        (function() {
+            const link = document.querySelector('link[rel="icon"]');
+            if (link && link.href) {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 64;
+                    canvas.height = 64;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, 64, 64);
+                    const png = canvas.toDataURL('image/png');
+                    try { if (typeof OnFaviconReady === 'function') OnFaviconReady(window.location.href, png); } catch(e){}
+                    try { if (window.OnFaviconReady) window.OnFaviconReady(window.location.href, png); } catch(e){}
+                    try { window.dispatchEvent(new CustomEvent('FaviconReady', { detail: { url: window.location.href, href: png } })); } catch(e){}
+                };
+                img.src = link.href;
+            }
+        })();
+    </script>
+</body>
+</html>

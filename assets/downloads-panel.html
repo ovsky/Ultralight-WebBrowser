@@ -78,18 +78,12 @@
             color: #f5f4ff;
         }
 
-        .btn {
-            padding: 6px 10px;
-            border-radius: 7px;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            background: transparent;
-            color: inherit;
-            cursor: pointer;
-            font-size: 12px;
-        }
+        /* Buttons in panels use global .btn rules from assets/ui.css */
 
         .btn:hover {
             background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-1px);
+            border-color: rgba(108, 99, 255, 0.5);
         }
 
         .list {
@@ -177,8 +171,8 @@
         }
 
         .actions .btn {
-            font-size: 11px;
-            padding: 5px 9px;
+            font-size: var(--font-size-md, 14px);
+            padding: 10px 20px;
         }
 
         .link-btn {
@@ -187,11 +181,14 @@
             color: #7da3ff;
             cursor: pointer;
             font-size: 12px;
-            padding: 0;
+            padding: 4px 8px;
+            border-radius: 8px;
+            transition: all 0.2s ease;
         }
 
         .link-btn:hover {
             text-decoration: underline;
+            background: rgba(125, 163, 255, 0.1);
         }
 
         footer {
@@ -259,7 +256,7 @@
             <div id="downloads-list" class="list"></div>
             <div id="downloads-empty" class="empty">No downloads yet.</div>
             <footer>
-                <button id="downloads-clear" class="btn" type="button">Clear finished</button>
+                <button id="downloads-clear" class="btn btn-primary" type="button">Clear finished</button>
                 <button id="open-downloads-page" class="link-btn" type="button">Open downloads page</button>
             </footer>
         </div>
@@ -314,7 +311,8 @@
             const list = document.getElementById('downloads-list');
             const empty = document.getElementById('downloads-empty');
             list.innerHTML = '';
-            const items = (data && Array.isArray(data.items)) ? data.items.slice().reverse() : [];
+            // Ultralight DownloadManager returns items newest-first; keep that order
+            const items = (data && Array.isArray(data.items)) ? data.items.slice() : [];
             if (!items.length) {
                 empty.style.display = 'block';
                 return;
@@ -492,5 +490,5 @@
 </html>
 
 <script>
-    
+
 </script>

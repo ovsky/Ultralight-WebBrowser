@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Extensions</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23c2bce8'%3E%3Cpath d='M20.5 11H19V7c0-1.1-.9-2-2-2h-4V3.5C13 2.12 11.88 1 10.5 1S8 2.12 8 3.5V5H4c-1.1 0-1.99.9-1.99 2v3.8H3.5c1.49 0 2.7 1.21 2.7 2.7s-1.21 2.7-2.7 2.7H2V20c0 1.1.9 2 2 2h3.8v-1.5c0-1.49 1.21-2.7 2.7-2.7 1.49 0 2.7 1.21 2.7 2.7V22H17c1.1 0 2-.9 2-2v-4h1.5c1.38 0 2.5-1.12 2.5-2.5S21.88 11 20.5 11z'/%3E%3C/svg%3E">
+    <link rel="stylesheet" type="text/css" href="ui.css">
+    <link rel="stylesheet" href="themes/theme-variables.css">
+    <script defer src="themes/theme.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            /* Map local names to global theme variables so the page follows the active theme */
+            --bg-primary: var(--color-bg-primary);
+            --bg-secondary: var(--color-bg-secondary);
+            --bg-tertiary: var(--color-bg-tertiary);
+            --bg-elevated: var(--color-bg-elevated);
+            --bg-hover: var(--color-bg-hover);
+
+            --border-color: var(--color-border-primary);
+            --border-subtle: rgba(64, 64, 96, 0.5);
+            --border-soft: rgba(64, 64, 96, 0.7);
+            --border-medium: var(--border-color);
+
+            --text-primary: var(--color-text-primary);
+            --text-secondary: var(--color-text-secondary);
+            --text-tertiary: var(--color-text-tertiary);
+
+            --accent-color: var(--color-accent-primary);
+            --accent-hover: var(--color-accent-hover);
+            --accent-primary: var(--color-accent-primary);
+            --accent-light: var(--color-accent-light);
+            --accent-soft: var(--color-accent-light);
+            --accent-softer: var(--color-accent-light);
+
+            --success: var(--color-success);
+            --success-soft: rgba(106, 239, 138, 0.15);
+            --danger: var(--color-danger);
+            --danger-color: var(--color-danger);
+            --danger-soft: rgba(239, 106, 106, 0.15);
+            --warning: var(--color-warning);
+            --warning-color: var(--color-warning);
+            --warning-soft: rgba(239, 207, 106, 0.15);
+            
+            --card-shadow: var(--card-shadow);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, var(--bg-primary) 0%, #252540 100%);
+            color: var(--text-primary);
+            padding: 24px;
+            line-height: 1.5;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        h1 {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: var(--text-primary);
+        }
+
+        h1 .icon {
+            font-size: 32px;
+        }
+
+        h1 svg {
+            width: 32px;
+            height: 32px;
+            fill: var(--accent-color);
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin: 0;
+        }
+
+        .header-actions {
+            margin-top: 16px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        /* Extension count badge */
+        .ext-count {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: var(--accent-softer);
+            border: 1px solid var(--accent-primary);
+            border-radius: 20px;
+            font-size: 12px;
+            color: var(--accent-primary);
+            font-weight: 600;
+        }
+
+        .ext-count .dot {
+            width: 8px;
+            height: 8px;
+            background: var(--success);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Extensions container */
+        #extensions-container {
+            max-height: calc(100vh - 280px);
+            overflow-y: auto;
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state .icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .empty-state h2 {
+            font-size: 18px;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        .empty-state p {
+            font-size: 13px;
+            margin-bottom: 20px;
+        }
+
+        /* Extension card */
+        .extension-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            margin-bottom: 16px;
+            overflow: visible; /* allow hover shadow to be visible */
+            transition: all 0.2s;
+            box-shadow: var(--card-shadow);
+        }
+
+        .extension-card:hover {
+            border-color: var(--accent-color);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px var(--color-accent-light);
+        }
+
+        .extension-card.disabled {
+            opacity: 0.6;
+        }
+
+        .extension-header {
+            padding: 16px 18px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .extension-icon {
+            width: 48px;
+            height: 48px;
+            background: var(--accent-soft);
+            border: 1px solid var(--accent-primary);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+
+        .extension-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .extension-name {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .extension-version {
+            font-size: 11px;
+            padding: 2px 8px;
+            background: var(--bg-elevated);
+            border-radius: 4px;
+            color: var(--text-tertiary);
+            font-family: 'Consolas', 'Courier New', monospace;
+        }
+
+        .extension-description {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            line-height: 1.4;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .extension-author {
+            font-size: 11px;
+            color: var(--text-tertiary);
+            margin-top: 4px;
+        }
+
+        .extension-author span {
+            color: var(--accent-primary);
+        }
+
+        .extension-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+
+        /* Toggle switch */
+        .toggle-switch {
+            position: relative;
+            width: 44px;
+            height: 22px;
+            background: #3a3a3a;
+            border: 1px solid var(--border-soft);
+            border-radius: 11px;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            flex-shrink: 0;
+        }
+
+        .toggle-switch:hover {
+            background: #404040;
+            border-color: var(--border-medium);
+        }
+
+        .toggle-switch.active {
+            background: var(--success);
+            border-color: var(--success);
+            box-shadow: 0 0 12px var(--success-soft, rgba(34,197,94,0.15));
+        }
+
+        .toggle-switch.active:hover {
+            background: #2dd665;
+            box-shadow: 0 0 16px var(--success-soft, rgba(34,197,94,0.15));
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 16px;
+            height: 16px;
+            background: linear-gradient(180deg, #ffffff, #f5f5f5);
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .toggle-switch.active::after {
+            transform: translateX(22px);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Extension details (collapsible) */
+        .extension-details {
+            padding: 0 18px 16px 18px;
+            border-top: 1px solid var(--border-subtle);
+            display: none;
+        }
+
+        .extension-card.expanded .extension-details {
+            display: block;
+        }
+
+        .detail-section {
+            margin-top: 12px;
+        }
+
+        .detail-section h4 {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        .detail-section .value {
+            font-size: 12px;
+            color: var(--text-primary);
+            font-family: 'Consolas', 'Courier New', monospace;
+            background: var(--bg-secondary);
+            padding: 8px 10px;
+            border-radius: 6px;
+            word-break: break-all;
+        }
+
+        .pattern-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .pattern-pill {
+            padding: 4px 10px;
+            background: var(--accent-softer);
+            border: 1px solid var(--accent-primary);
+            border-radius: 4px;
+            font-size: 11px;
+            color: var(--accent-primary);
+            font-family: 'Consolas', 'Courier New', monospace;
+        }
+
+        .permission-pill {
+            padding: 4px 10px;
+            background: var(--warning-soft);
+            border: 1px solid var(--warning);
+            border-radius: 4px;
+            font-size: 11px;
+            color: var(--warning);
+        }
+
+        .extension-actions {
+            margin-top: 14px;
+            display: flex;
+            gap: 10px;
+        }
+
+        /* Buttons */
+        button {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+
+        /* Primary button visuals are provided by assets/ui.css (.btn .btn-primary) */
+
+        /* .btn-secondary uses global styles from assets/ui.css */
+        /* local override removed to ensure consistency with Themes page */
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 11px;
+        }
+
+        /* Danger buttons use global .btn-danger from assets/ui.css */
+
+        .btn-icon {
+            padding: 8px;
+            min-width: 36px;
+            justify-content: center;
+        }
+
+        /* Expand button */
+        .btn-expand {
+            background: transparent;
+            border: none;
+            color: var(--text-tertiary);
+            padding: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-radius: 4px;
+        }
+
+        .btn-expand:hover {
+            color: var(--text-primary);
+            background: var(--bg-elevated);
+        }
+
+        .btn-expand .chevron {
+            transition: transform 0.2s;
+        }
+
+        .extension-card.expanded .btn-expand .chevron {
+            transform: rotate(180deg);
+        }
+
+        /* Modal for loading extensions */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s;
+        }
+
+        .modal-overlay.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow: hidden;
+            transform: scale(0.95);
+            transition: transform 0.2s;
+            box-shadow: var(--card-shadow);
+        }
+
+        .modal-overlay.visible .modal {
+            transform: scale(1);
+        }
+
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-tertiary);
+        }
+
+        .modal-header h2 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .modal-close {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 20px;
+            cursor: pointer;
+            padding: 4px;
+            line-height: 1;
+        }
+
+        .modal-close:hover {
+            color: var(--text-primary);
+        }
+
+        .modal-body {
+            padding: 20px;
+            max-height: calc(80vh - 160px);
+            overflow-y: auto;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        .form-group textarea {
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 12px;
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px var(--color-accent-light);
+        }
+
+        .form-group .hint {
+            font-size: 11px;
+            color: var(--text-tertiary);
+            margin-top: 4px;
+        }
+
+        .modal-footer {
+            padding: 16px 20px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            background: var(--bg-tertiary);
+        }
+
+        /* Footer */
+        .footer-info {
+            margin-top: 24px;
+            padding: 16px;
+            border-top: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .footer-info code {
+            font-family: 'Consolas', 'Courier New', monospace;
+            background: var(--bg-tertiary);
+            padding: 4px 8px;
+            border-radius: 4px;
+            color: var(--text-primary);
+        }
+
+        /* Loading state */
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .loading .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border-soft);
+            border-top-color: var(--accent-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px auto;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Debug info */
+        .debug-info {
+            margin: 20px 30px;
+            padding: 14px 18px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 10px;
+            color: var(--text-tertiary);
+            max-height: 150px;
+            overflow-y: auto;
+            line-height: 1.5;
+            display: none;
+        }
+
+        .debug-info.visible {
+            display: block;
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>
+                <span class="icon">🧩</span>
+                Extensions
+            </h1>
+            <p class="subtitle">Manage browser extensions and add custom functionality</p>
+            <div class="header-actions">
+                <button id="btn-load-extension" class="btn btn-primary">
+                    <span>+</span> Load Extension
+                </button>
+                <button id="btn-create-extension" class="btn btn-secondary">
+                    <span>✨</span> Create New
+                </button>
+                <button id="btn-reload-all" class="btn btn-secondary">
+                    <span>↻</span> Reload All
+                </button>
+                <div id="ext-count" class="ext-count" style="display: none;">
+                    <span class="dot"></span>
+                    <span id="ext-count-text">0 active</span>
+                </div>
+            </div>
+        </header>
+
+        <div id="extensions-container">
+            <div class="loading">
+                <div class="spinner"></div>
+                Loading extensions...
+            </div>
+        </div>
+
+        <div class="footer-info">
+            <span>Extensions directory: <code id="extensions-path">Loading...</code></span>
+            <button id="btn-open-folder" class="btn btn-secondary btn-small">Open Folder</button>
+        </div>
+
+        <div id="debug-info" class="debug-info"></div>
+    </div>
+
+    <!-- Load Extension Modal -->
+    <div id="modal-load" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Load Extension</h2>
+                <button class="modal-close" onclick="closeModal('modal-load')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Extension Folder Path</label>
+                    <input type="text" id="load-path" placeholder="C:\path\to\extension\folder" />
+                    <p class="hint">Enter the path to a folder containing a manifest.json file</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('modal-load')">Cancel</button>
+                <button class="btn btn-primary" id="btn-load-confirm">Load Extension</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Extension Modal -->
+    <div id="modal-create" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Create New Extension</h2>
+                <button class="modal-close" onclick="closeModal('modal-create')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Extension ID</label>
+                    <input type="text" id="create-id" placeholder="my-extension" />
+                    <p class="hint">Unique identifier (lowercase, hyphens allowed)</p>
+                </div>
+                <div class="form-group">
+                    <label>Extension Name</label>
+                    <input type="text" id="create-name" placeholder="My Extension" />
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <input type="text" id="create-description" placeholder="A simple browser extension" />
+                </div>
+                <div class="form-group">
+                    <label>URL Match Pattern</label>
+                    <input type="text" id="create-pattern" value="*://*/*" placeholder="*://*/*" />
+                    <p class="hint">Pattern for which URLs to inject the script (e.g., *://*.google.com/*)</p>
+                </div>
+                <div class="form-group">
+                    <label>Content Script</label>
+                    <textarea id="create-script" placeholder="// Your JavaScript code here
+console.log('Extension loaded!');"></textarea>
+                    <p class="hint">JavaScript code to inject into matching pages</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('modal-create')">Cancel</button>
+                <button class="btn btn-primary" id="btn-create-confirm">Create Extension</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Debug logging
+        function log(msg) {
+            console.log('[Extensions]', msg);
+            const debug = document.getElementById('debug-info');
+            if (debug) {
+                debug.textContent += new Date().toLocaleTimeString() + ': ' + msg + '\n';
+                debug.scrollTop = debug.scrollHeight;
+            }
+        }
+
+        // Extensions data
+        let extensions = [];
+        let extensionsPath = '';
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            log('Page loaded');
+            loadExtensions();
+
+            // Button handlers
+            document.getElementById('btn-load-extension').addEventListener('click', () => openModal('modal-load'));
+            document.getElementById('btn-create-extension').addEventListener('click', () => openModal('modal-create'));
+            document.getElementById('btn-reload-all').addEventListener('click', reloadAllExtensions);
+            document.getElementById('btn-open-folder').addEventListener('click', openExtensionsFolder);
+            document.getElementById('btn-load-confirm').addEventListener('click', loadExtensionFromPath);
+            document.getElementById('btn-create-confirm').addEventListener('click', createExtension);
+        });
+
+        // Load extensions from native
+        function loadExtensions() {
+            if (typeof window.GetExtensions !== 'function') {
+                log('Bridge not ready, retrying...');
+                setTimeout(loadExtensions, 100);
+                return;
+            }
+
+            try {
+                const payload = window.GetExtensions();
+                log('Got payload: ' + (typeof payload));
+                const data = typeof payload === 'string' ? JSON.parse(payload) : payload;
+                
+                if (data) {
+                    extensions = data.extensions || [];
+                    extensionsPath = data.extensions_path || '';
+                    
+                    log('Loaded ' + extensions.length + ' extensions');
+                    document.getElementById('extensions-path').textContent = extensionsPath || 'Not configured';
+                    
+                    renderExtensions();
+                    updateExtensionCount();
+                }
+            } catch (error) {
+                log('ERROR: ' + error.message);
+                renderError('Failed to load extensions: ' + error.message);
+            }
+        }
+
+        // Render extensions list
+        function renderExtensions() {
+            const container = document.getElementById('extensions-container');
+            
+            if (extensions.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">🧩</div>
+                        <h2>No Extensions Installed</h2>
+                        <p>Get started by loading an existing extension or creating a new one.</p>
+                        <button class="btn btn-primary" onclick="openModal('modal-create')">
+                            <span>✨</span> Create Your First Extension
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = extensions.map(ext => renderExtensionCard(ext)).join('');
+        }
+
+        // Render single extension card
+        function renderExtensionCard(ext) {
+            const isEnabled = ext.enabled !== false;
+            const patterns = ext.match_patterns || [];
+            const permissions = ext.permissions || [];
+            
+            return `
+                <div class="extension-card ${isEnabled ? '' : 'disabled'}" id="ext-${ext.id}">
+                    <div class="extension-header">
+                        <div class="extension-icon">
+                            ${getExtensionIcon(ext.name)}
+                        </div>
+                        <div class="extension-info">
+                            <div class="extension-name">
+                                ${escapeHtml(ext.name || ext.id)}
+                                <span class="extension-version">${escapeHtml(ext.version || '1.0.0')}</span>
+                            </div>
+                            <div class="extension-description">${escapeHtml(ext.description || 'No description')}</div>
+                            ${ext.author ? `<div class="extension-author">by <span>${escapeHtml(ext.author)}</span></div>` : ''}
+                        </div>
+                        <div class="extension-controls">
+                            <div class="toggle-switch ${isEnabled ? 'active' : ''}" 
+                                 onclick="toggleExtension('${ext.id}')" 
+                                 title="${isEnabled ? 'Click to disable' : 'Click to enable'}">
+                            </div>
+                            <button class="btn-expand" onclick="toggleDetails('${ext.id}')">
+                                <span class="chevron">▼</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="extension-details">
+                        <div class="detail-section">
+                            <h4>Extension ID</h4>
+                            <div class="value">${escapeHtml(ext.id)}</div>
+                        </div>
+                        ${patterns.length > 0 ? `
+                        <div class="detail-section">
+                            <h4>URL Patterns</h4>
+                            <div class="pattern-list">
+                                ${patterns.map(p => `<span class="pattern-pill">${escapeHtml(p)}</span>`).join('')}
+                            </div>
+                        </div>
+                        ` : ''}
+                        ${permissions.length > 0 ? `
+                        <div class="detail-section">
+                            <h4>Permissions</h4>
+                            <div class="pattern-list">
+                                ${permissions.map(p => `<span class="permission-pill">${escapeHtml(p)}</span>`).join('')}
+                            </div>
+                        </div>
+                        ` : ''}
+                        ${ext.manifest_path ? `
+                        <div class="detail-section">
+                            <h4>Manifest Path</h4>
+                            <div class="value">${escapeHtml(ext.manifest_path)}</div>
+                        </div>
+                        ` : ''}
+                        <div class="extension-actions">
+                            <button class="btn btn-secondary btn-small" onclick="reloadExtension('${ext.id}')">
+                                ↻ Reload
+                            </button>
+                            <button class="btn btn-danger btn-small" onclick="deleteExtension('${ext.id}')">
+                                🗑 Remove
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Get icon for extension based on name
+        function getExtensionIcon(name) {
+            const icons = ['🔧', '⚡', '🎨', '🔒', '📝', '🌐', '🎯', '💡', '🔍', '📊'];
+            const hash = (name || '').split('').reduce((a, b) => a + b.charCodeAt(0), 0);
+            return icons[hash % icons.length];
+        }
+
+        // Update extension count badge
+        function updateExtensionCount() {
+            const countEl = document.getElementById('ext-count');
+            const textEl = document.getElementById('ext-count-text');
+            const activeCount = extensions.filter(e => e.enabled !== false).length;
+            
+            if (extensions.length > 0) {
+                countEl.style.display = 'inline-flex';
+                textEl.textContent = `${activeCount} active`;
+            } else {
+                countEl.style.display = 'none';
+            }
+        }
+
+        // Toggle extension enabled/disabled
+        function toggleExtension(id) {
+            const ext = extensions.find(e => e.id === id);
+            if (!ext) return;
+            
+            const newState = ext.enabled === false ? true : false;
+            log('Toggle extension ' + id + ' to ' + (newState ? 'enabled' : 'disabled'));
+            
+            if (typeof window.OnToggleExtension === 'function') {
+                try {
+                    window.OnToggleExtension(id, newState);
+                    ext.enabled = newState;
+                    renderExtensions();
+                    updateExtensionCount();
+                } catch (error) {
+                    log('ERROR: ' + error.message);
+                }
+            }
+        }
+
+        // Toggle extension details visibility
+        function toggleDetails(id) {
+            const card = document.getElementById('ext-' + id);
+            if (card) {
+                card.classList.toggle('expanded');
+            }
+        }
+
+        // Reload single extension
+        function reloadExtension(id) {
+            log('Reload extension: ' + id);
+            if (typeof window.OnReloadExtension === 'function') {
+                try {
+                    window.OnReloadExtension(id);
+                    setTimeout(loadExtensions, 100);
+                } catch (error) {
+                    log('ERROR: ' + error.message);
+                }
+            }
+        }
+
+        // Reload all extensions
+        function reloadAllExtensions() {
+            log('Reload all extensions');
+            if (typeof window.OnReloadAllExtensions === 'function') {
+                try {
+                    window.OnReloadAllExtensions();
+                    setTimeout(loadExtensions, 200);
+                } catch (error) {
+                    log('ERROR: ' + error.message);
+                }
+            }
+        }
+
+        // Delete extension
+        function deleteExtension(id) {
+            const ext = extensions.find(e => e.id === id);
+            if (!ext) return;
+            
+            if (!confirm(`Are you sure you want to remove "${ext.name || id}"?\n\nThis will delete the extension files.`)) {
+                return;
+            }
+            
+            log('Delete extension: ' + id);
+            if (typeof window.OnDeleteExtension === 'function') {
+                try {
+                    window.OnDeleteExtension(id);
+                    extensions = extensions.filter(e => e.id !== id);
+                    renderExtensions();
+                    updateExtensionCount();
+                } catch (error) {
+                    log('ERROR: ' + error.message);
+                }
+            }
+        }
+
+        // Open extensions folder
+        function openExtensionsFolder() {
+            log('Open extensions folder');
+            if (typeof window.OnOpenExtensionsFolder === 'function') {
+                try {
+                    window.OnOpenExtensionsFolder();
+                } catch (error) {
+                    log('ERROR: ' + error.message);
+                }
+            }
+        }
+
+        // Load extension from path
+        function loadExtensionFromPath() {
+            const path = document.getElementById('load-path').value.trim();
+            if (!path) {
+                alert('Please enter a valid path');
+                return;
+            }
+            
+            log('Load extension from: ' + path);
+            if (typeof window.OnLoadExtension === 'function') {
+                try {
+                    const result = window.OnLoadExtension(path);
+                    closeModal('modal-load');
+                    document.getElementById('load-path').value = '';
+                    setTimeout(loadExtensions, 100);
+                } catch (error) {
+                    log('ERROR: ' + error.message);
+                    alert('Failed to load extension: ' + error.message);
+                }
+            }
+        }
+
+        // Create new extension
+        function createExtension() {
+            const id = document.getElementById('create-id').value.trim();
+            const name = document.getElementById('create-name').value.trim();
+            const description = document.getElementById('create-description').value.trim();
+            const pattern = document.getElementById('create-pattern').value.trim();
+            const script = document.getElementById('create-script').value;
+            
+            if (!id) {
+                alert('Please enter an extension ID');
+                return;
+            }
+            
+            if (!script) {
+                alert('Please enter some JavaScript code');
+                return;
+            }
+            
+            // Validate ID format
+            if (!/^[a-z0-9-]+$/.test(id)) {
+                alert('Extension ID must contain only lowercase letters, numbers, and hyphens');
+                return;
+            }
+            
+            log('Create extension: ' + id);
+            if (typeof window.OnCreateExtension === 'function') {
+                try {
+                    const extData = JSON.stringify({
+                        id: id,
+                        name: name || id,
+                        description: description || '',
+                        match_pattern: pattern || '*://*/*',
+                        script: script
+                    });
+                    
+                    window.OnCreateExtension(extData);
+                    closeModal('modal-create');
+                    
+                    // Clear form
+                    document.getElementById('create-id').value = '';
+                    document.getElementById('create-name').value = '';
+                    document.getElementById('create-description').value = '';
+                    document.getElementById('create-pattern').value = '*://*/*';
+                    document.getElementById('create-script').value = '';
+                    
+                    setTimeout(loadExtensions, 100);
+                } catch (error) {
+                    log('ERROR: ' + error.message);
+                    alert('Failed to create extension: ' + error.message);
+                }
+            }
+        }
+
+        // Modal helpers
+        function openModal(id) {
+            const modal = document.getElementById(id);
+            if (modal) {
+                modal.classList.add('visible');
+            }
+        }
+
+        function closeModal(id) {
+            const modal = document.getElementById(id);
+            if (modal) {
+                modal.classList.remove('visible');
+            }
+        }
+
+        // Close modal on overlay click
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal-overlay')) {
+                e.target.classList.remove('visible');
+            }
+        });
+
+        // Close modal on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.modal-overlay.visible').forEach(modal => {
+                    modal.classList.remove('visible');
+                });
+            }
+        });
+
+        // Render error state
+        function renderError(message) {
+            const container = document.getElementById('extensions-container');
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="icon">⚠️</div>
+                    <h2>Error Loading Extensions</h2>
+                    <p>${escapeHtml(message)}</p>
+                    <button class="btn btn-primary" onclick="loadExtensions()">
+                        ↻ Retry
+                    </button>
+                </div>
+            `;
+        }
+
+        // HTML escape helper
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text || '';
+            return div.innerHTML;
+        }
+    </script>
+</body>
+
+</html>

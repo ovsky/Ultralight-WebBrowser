@@ -1,11 +1,14 @@
 <html>
 
 <head>
+    <!-- Theme system - must load first -->
+    <link rel="stylesheet" type="text/css" href="themes/theme-variables.css">
     <link rel="stylesheet" type="text/css" href="ui.css">
     <link rel="stylesheet" type="text/css" href="chrome-tabs.css">
+    <script src="themes/theme.js"></script>
     <script src="ui.js"></script>
     <script src="anchorme.js"></script>
-    
+
 </head>
 
 <body>
@@ -36,6 +39,25 @@
                 <path
                     d="M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.4 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1.1.1-1.4z" />
             </g>
+            <g id="svg_bookmark_outline">
+                <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"
+                    fill="none" stroke="currentColor" stroke-width="2" />
+            </g>
+            <g id="svg_bookmark_filled">
+                <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"
+                    fill="currentColor" />
+            </g>
+            <g id="svg_adblock">
+                <path d="M12 2L4 5v6.09c0 5.06 3.43 9.8 8 10.91c4.57-1.11 8-5.85 8-10.91V5l-8-3z" fill="currentColor" />
+            </g>
+            <g id="svg_downloads">
+                <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" fill="currentColor" />
+            </g>
+            <g id="svg_menu">
+                <circle cx="5" cy="12" r="2" fill="currentColor"></circle>
+                <circle cx="12" cy="12" r="2" fill="currentColor"></circle>
+                <circle cx="19" cy="12" r="2" fill="currentColor"></circle>
+            </g>
         </defs>
     </svg>
 
@@ -63,6 +85,12 @@
         <input onfocus="select_next_mouseup = true;"
             onmouseup="if (select_next_mouseup) this.select(); select_next_mouseup = false;" type="text"
             id="address"></input>
+        <span id="toggle-bookmark" class="icon" role="button" tabindex="0" aria-label="Toggle bookmark"
+            data-tooltip="Bookmark this page">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" id="bookmark-icon">
+                <use xlink:href="#svg_bookmark_outline" />
+            </svg>
+        </span>
         <span id="toggle-tools" class="icon" role="button" tabindex="0" aria-label="Toggle inspector"
             data-tooltip="Inspector">
             <svg viewBox="0 0 24 24" width="18" height="18">
@@ -72,29 +100,50 @@
         <span id="toggle-downloads" class="icon" role="button" tabindex="0" aria-label="View downloads"
             data-tooltip="Downloads">
             <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" fill="currentColor" />
+                <use xlink:href="#svg_downloads" />
             </svg>
             <span id="downloads-badge" class="downloads-badge"></span>
         </span>
-        
+
         <span id="toggle-adblock" class="icon" role="button" tabindex="0" aria-label="Toggle ad blocking"
             data-tooltip="AdBlock">
             <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                <path d="M12 2L4 5v6.09c0 5.06 3.43 9.8 8 10.91c4.57-1.11 8-5.85 8-10.91V5l-8-3z" fill="currentColor" />
+                <use xlink:href="#svg_adblock" />
             </svg>
         </span>
-        
+
         <span id="toggle-menu" class="icon" role="button" tabindex="0" aria-label="Open menu" aria-haspopup="true"
             data-tooltip="Menu">
             <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                <circle cx="5" cy="12" r="2" fill="currentColor"></circle>
-                <circle cx="12" cy="12" r="2" fill="currentColor"></circle>
-                <circle cx="19" cy="12" r="2" fill="currentColor"></circle>
+                <use xlink:href="#svg_menu" />
             </svg>
         </span>
     </div>
 
-    
+    <!-- Session Restore Bar -->
+    <div id="session-restore-bar" role="alert" aria-live="polite">
+        <div class="restore-message">
+            <svg class="restore-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                    d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9z"
+                    fill="currentColor" />
+                <path d="M12 8v5l4.28 2.54.72-1.21-3.5-2.08V8H12z" fill="currentColor" />
+            </svg>
+            <span id="restore-message-text">Your previous session was interrupted. Would you like to restore your
+                tabs?</span>
+        </div>
+        <div class="restore-actions">
+            <button class="restore-btn primary" id="restore-session-btn">Restore</button>
+            <button class="restore-btn secondary" id="dismiss-session-btn">Start Fresh</button>
+            <button class="dismiss-btn" id="close-restore-bar" aria-label="Close">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path
+                        d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                </svg>
+            </button>
+        </div>
+    </div>
+
     <div id="menu-dropdown" class="menu-dropdown hidden" role="menu" aria-hidden="true">
         <div class="menu-item" data-action="new-tab">New tab [Ctrl+T]</div>
         <div class="menu-item" data-action="new-window">New window [Ctrl+N]</div>
@@ -138,6 +187,103 @@
                 chromeTabs.removeTab(tab);
         }
 
+        // Update bookmark button state (called from C++)
+        function updateBookmarkButton(isBookmarked) {
+            const btn = document.getElementById('toggle-bookmark');
+            const icon = document.getElementById('bookmark-icon');
+            if (!btn || !icon) return;
+
+            const useEl = icon.querySelector('use');
+            if (useEl) {
+                if (isBookmarked) {
+                    useEl.setAttribute('xlink:href', '#svg_bookmark_filled');
+                    btn.classList.add('bookmarked');
+                    btn.setAttribute('data-tooltip', 'Remove bookmark');
+                } else {
+                    useEl.setAttribute('xlink:href', '#svg_bookmark_outline');
+                    btn.classList.remove('bookmarked');
+                    btn.setAttribute('data-tooltip', 'Bookmark this page');
+                }
+            }
+        }
+
+        // Session Restore Bar Functions
+        function showSessionRestoreBar(tabCount, wasCrash) {
+            const bar = document.getElementById('session-restore-bar');
+            const msgText = document.getElementById('restore-message-text');
+            if (!bar || !msgText) return;
+
+            if (wasCrash) {
+                msgText.textContent = `Your previous session was interrupted. Restore ${tabCount} tab${tabCount !== 1 ? 's' : ''}?`;
+            } else {
+                msgText.textContent = `Would you like to restore ${tabCount} tab${tabCount !== 1 ? 's' : ''} from your last session?`;
+            }
+
+            bar.classList.add('visible');
+            try { document.body.classList.add('session-restore-visible'); } catch (e) {}
+
+            // Set up event handlers
+            const restoreBtn = document.getElementById('restore-session-btn');
+            const dismissBtn = document.getElementById('dismiss-session-btn');
+            const closeBtn = document.getElementById('close-restore-bar');
+
+            const hideBar = () => {
+                bar.classList.remove('visible');
+                try { document.body.classList.remove('session-restore-visible'); } catch (e) {}
+            };
+
+            if (restoreBtn) {
+                restoreBtn.onclick = () => {
+                    hideBar();
+                    if (window.OnRestoreSession) OnRestoreSession();
+                };
+            }
+
+            if (dismissBtn) {
+                dismissBtn.onclick = () => {
+                    hideBar();
+                    if (window.OnDismissSession) OnDismissSession();
+                };
+            }
+
+            if (closeBtn) {
+                closeBtn.onclick = () => {
+                    hideBar();
+                    if (window.OnDismissSession) OnDismissSession();
+                };
+            }
+        }
+
+        // Favicon bridge: receive events from pages or direct calls and update the current tab's favicon
+        (function setupFaviconBridge() {
+            // If a page calls the global function directly, forward it to a custom event
+            if (typeof OnFaviconReady !== 'function') {
+                window.OnFaviconReady = function(url, href) {
+                    try { window.dispatchEvent(new CustomEvent('FaviconReady', { detail: { url: String(url||''), href: String(href||'') } })); } catch (e) {}
+                }
+            }
+
+            // Listen for dispatched events and update the active tab's favicon
+            window.addEventListener('FaviconReady', (e) => {
+                try {
+                    const href = e.detail && e.detail.href ? String(e.detail.href) : '';
+                    if (!href) return;
+                    const cur = document.querySelector('.chrome-tab.chrome-tab-current');
+                    if (cur && window.chromeTabs && typeof chromeTabs.updateTab === 'function') {
+                        chromeTabs.updateTab(cur, { favicon: href });
+                    }
+                } catch (err) {
+                    // no-op
+                }
+            });
+        })();
+
+        function hideSessionRestoreBar() {
+            const bar = document.getElementById('session-restore-bar');
+            if (bar) bar.classList.remove('visible');
+            try { document.body.classList.remove('session-restore-visible'); } catch (e) {}
+        }
+
         function bindCallbacks() {
             el.addEventListener('requestNewTab', ({ detail }) => OnRequestNewTab());
             el.addEventListener('requestTabClose', ({ detail }) => OnRequestTabClose(detail.tabEl.getAttribute('data-tab-id')));
@@ -146,6 +292,27 @@
             document.querySelector('#forward').addEventListener('click', event => OnForward());
             document.querySelector('#refresh').addEventListener('click', event => OnRefresh());
             document.querySelector('#stop').addEventListener('click', event => OnStop());
+
+            // Bookmark button handler
+            const bookmarkBtn = document.querySelector('#toggle-bookmark');
+            if (bookmarkBtn) {
+                const toggleBookmark = () => {
+                    if (window.OnToggleBookmark) {
+                        OnToggleBookmark();
+                    }
+                };
+                bookmarkBtn.addEventListener('click', event => {
+                    event.stopPropagation();
+                    toggleBookmark();
+                });
+                bookmarkBtn.addEventListener('keydown', event => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        toggleBookmark();
+                    }
+                });
+            }
+
             const inspectorBtn = document.querySelector('#toggle-tools');
             if (inspectorBtn) {
                 const toggleInspector = () => { if (window.OnToggleTools) OnToggleTools(); };
@@ -507,6 +674,400 @@
             document.addEventListener('mousedown', () => hide(true));
             window.addEventListener('scroll', () => hide(true));
             window.addEventListener('resize', () => hide(true));
+        })();
+    </script>
+
+    <!-- Password Save Bar -->
+    <div id="password-save-bar" class="password-save-bar hidden">
+        <div class="password-save-content">
+            <svg viewBox="0 0 24 24" width="20" height="20" class="password-icon">
+                <path
+                    d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"
+                    fill="currentColor" />
+            </svg>
+            <span class="password-save-text">Save password for <strong id="password-save-origin"></strong>?</span>
+            <span class="password-save-username" id="password-save-username"></span>
+            <span class="password-autosave-info" id="password-autosave-info"></span>
+        </div>
+        <div class="password-save-buttons">
+            <button id="password-save-btn" class="password-btn primary">Save</button>
+            <button id="password-never-btn" class="password-btn">Never</button>
+            <button id="password-close-btn" class="password-btn">✕</button>
+        </div>
+    </div>
+
+    <style>
+        .password-save-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(135deg, var(--color-accent-primary, #1a73e8), var(--color-accent-primary, #4285f4));
+            color: white;
+            padding: 8px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 10000;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 13px;
+            transform: translateY(-100%);
+            transition: transform 0.3s ease;
+        }
+
+        .password-save-bar.visible {
+            transform: translateY(0);
+        }
+
+        .password-save-bar.hidden {
+            display: none;
+        }
+
+        .password-save-content {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .password-icon {
+            flex-shrink: 0;
+        }
+
+        .password-save-username {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .password-autosave-info {
+            font-size: 11px;
+            color: white;
+            margin-left: auto;
+            font-style: italic;
+        }
+
+        .password-save-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .password-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 6px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.2s;
+        }
+
+        .password-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .password-btn.primary {
+            background: white;
+            color: var(--color-accent-primary, #1a73e8);
+            font-weight: 500;
+        }
+
+        .password-btn.primary:hover {
+            background: var(--bg-tertiary, #f0f0f0);
+        }
+
+        #password-close-btn {
+            padding: 6px 10px;
+        }
+
+        body.dark-mode .password-save-bar {
+            background: var(--bg-hover, linear-gradient(135deg, var(--bg-hover-start, #3c4043), var(--bg-hover-end, #5f6368)));
+        }
+
+        body.dark-mode .password-btn.primary {
+            background: var(--color-accent-hover, #8ab4f8);
+            color: var(--color-text-primary, #202124);
+        }
+    </style>
+
+    <script>
+        // Password save bar functionality
+        (function () {
+            var bar = document.getElementById('password-save-bar');
+            var originSpan = document.getElementById('password-save-origin');
+            var usernameSpan = document.getElementById('password-save-username');
+            var saveBtn = document.getElementById('password-save-btn');
+            var neverBtn = document.getElementById('password-never-btn');
+            var closeBtn = document.getElementById('password-close-btn');
+
+            var currentOrigin = '';
+            var currentUsername = '';
+            var autoSaveTimer = null;
+            var countdownInterval = null;
+
+            window.showPasswordSaveBar = function (origin, username) {
+                // Clear any existing timers
+                if (autoSaveTimer) clearTimeout(autoSaveTimer);
+                if (countdownInterval) clearInterval(countdownInterval);
+
+                currentOrigin = origin;
+                currentUsername = username;
+
+                // Extract domain from origin
+                try {
+                    var url = new URL(origin);
+                    originSpan.textContent = url.hostname;
+                } catch (e) {
+                    originSpan.textContent = origin;
+                }
+                usernameSpan.textContent = username;
+
+                // Get autosave info element
+                var autosaveInfo = document.getElementById('password-autosave-info');
+
+                // Update save button text with countdown
+                var countdown = 10;
+                saveBtn.textContent = 'Save (' + countdown + ')';
+                if (autosaveInfo) autosaveInfo.textContent = 'Auto-saving in ' + countdown + 's...';
+
+                countdownInterval = setInterval(function () {
+                    countdown--;
+                    if (countdown > 0) {
+                        saveBtn.textContent = 'Save (' + countdown + ')';
+                        if (autosaveInfo) autosaveInfo.textContent = 'Auto-saving in ' + countdown + 's...';
+                    } else {
+                        saveBtn.textContent = 'Save';
+                        if (autosaveInfo) autosaveInfo.textContent = 'Saving...';
+                        clearInterval(countdownInterval);
+                        countdownInterval = null;
+                    }
+                }, 1000);
+
+                // Auto-save after 10 seconds if user doesn't respond
+                autoSaveTimer = setTimeout(function () {
+                    if (window.OnPasswordSaveBarResponse) {
+                        OnPasswordSaveBarResponse('save', currentOrigin, currentUsername);
+                    }
+                    window.hidePasswordSaveBar();
+                }, 10000);
+
+                bar.classList.remove('hidden');
+                setTimeout(function () {
+                    bar.classList.add('visible');
+                }, 10);
+            };
+
+            window.hidePasswordSaveBar = function () {
+                // Clear timers
+                if (autoSaveTimer) {
+                    clearTimeout(autoSaveTimer);
+                    autoSaveTimer = null;
+                }
+                if (countdownInterval) {
+                    clearInterval(countdownInterval);
+                    countdownInterval = null;
+                }
+                saveBtn.textContent = 'Save';
+                var autosaveInfo = document.getElementById('password-autosave-info');
+                if (autosaveInfo) autosaveInfo.textContent = '';
+
+                bar.classList.remove('visible');
+                setTimeout(function () {
+                    bar.classList.add('hidden');
+                }, 300);
+            };
+
+            if (saveBtn) {
+                saveBtn.addEventListener('click', function () {
+                    if (window.OnPasswordSaveBarResponse) {
+                        OnPasswordSaveBarResponse('save', currentOrigin, currentUsername);
+                    }
+                    window.hidePasswordSaveBar();
+                });
+            }
+
+            if (neverBtn) {
+                neverBtn.addEventListener('click', function () {
+                    if (window.OnPasswordSaveBarResponse) {
+                        OnPasswordSaveBarResponse('never', currentOrigin, currentUsername);
+                    }
+                    window.hidePasswordSaveBar();
+                });
+            }
+
+            if (closeBtn) {
+                closeBtn.addEventListener('click', function () {
+                    window.hidePasswordSaveBar();
+                });
+            }
+        })();
+    </script>
+
+    <!-- DRM Enable Prompt Bar -->
+    <div id="drm-prompt-bar" class="drm-prompt-bar hidden">
+        <div class="drm-prompt-content">
+            <svg viewBox="0 0 24 24" width="20" height="20" class="drm-icon">
+                <path
+                    d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"
+                    fill="currentColor" />
+            </svg>
+            <span class="drm-prompt-text">This site requires DRM (Widevine) for video playback. Enable DRM WebView for
+                <strong id="drm-prompt-origin"></strong>?</span>
+        </div>
+        <div class="drm-prompt-buttons">
+            <button id="drm-enable-btn" class="drm-btn primary">Enable DRM</button>
+            <button id="drm-enable-always-btn" class="drm-btn">Always Enable</button>
+            <button id="drm-close-btn" class="drm-btn">✕</button>
+        </div>
+    </div>
+
+    <style>
+        .drm-prompt-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: var(--drm-bar-bg, linear-gradient(135deg, var(--color-accent-secondary, #7c3aed), var(--color-accent-secondary, #a855f7)));
+            color: var(--drm-bar-text, white);
+            padding: 8px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 10001;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 13px;
+            transform: translateY(-100%);
+            transition: transform 0.3s ease, background 0.3s ease;
+        }
+
+        .drm-prompt-bar.visible {
+            transform: translateY(0);
+        }
+
+        .drm-prompt-bar.hidden {
+            display: none;
+        }
+
+        .drm-prompt-content {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+        }
+
+        .drm-icon {
+            flex-shrink: 0;
+        }
+
+        .drm-prompt-text {
+            flex: 1;
+        }
+
+        .drm-prompt-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .drm-btn {
+            background: var(--drm-btn-bg, rgba(255, 255, 255, 0.2));
+            border: none;
+            color: var(--drm-bar-text, white);
+            padding: 6px 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.2s ease, transform 0.15s ease;
+            white-space: nowrap;
+        }
+
+        .drm-btn:hover {
+            background: var(--drm-btn-hover, rgba(255, 255, 255, 0.3));
+            transform: translateY(-1px);
+        }
+
+        .drm-btn.primary {
+            background: var(--drm-btn-primary-bg, white);
+            color: var(--drm-btn-primary-text, var(--color-accent-secondary, #7c3aed));
+            font-weight: 500;
+        }
+
+        .drm-btn.primary:hover {
+            opacity: 0.9;
+        }
+
+        #drm-close-btn {
+            padding: 6px 10px;
+        }
+    </style>
+
+    <script>
+        // DRM prompt bar functionality
+        (function () {
+            var bar = document.getElementById('drm-prompt-bar');
+            var originSpan = document.getElementById('drm-prompt-origin');
+            var enableBtn = document.getElementById('drm-enable-btn');
+            var enableAlwaysBtn = document.getElementById('drm-enable-always-btn');
+            var closeBtn = document.getElementById('drm-close-btn');
+
+            var currentUrl = '';
+            var currentTabId = 0;
+
+            window.showDrmPromptBar = function (url, tabId) {
+                currentUrl = url;
+                currentTabId = tabId;
+
+                // Extract domain from URL
+                try {
+                    var urlObj = new URL(url);
+                    originSpan.textContent = urlObj.hostname;
+                } catch (e) {
+                    originSpan.textContent = url;
+                }
+
+                bar.classList.remove('hidden');
+                setTimeout(function () {
+                    bar.classList.add('visible');
+                }, 10);
+            };
+
+            window.hideDrmPromptBar = function () {
+                bar.classList.remove('visible');
+                setTimeout(function () {
+                    bar.classList.add('hidden');
+                }, 300);
+            };
+
+            if (enableBtn) {
+                enableBtn.addEventListener('click', function () {
+                    // Enable DRM for this session only
+                    if (window.OnDrmPromptResponse) {
+                        OnDrmPromptResponse('enable_once', currentUrl, currentTabId);
+                    }
+                    window.hideDrmPromptBar();
+                });
+            }
+
+            if (enableAlwaysBtn) {
+                enableAlwaysBtn.addEventListener('click', function () {
+                    // Enable DRM setting permanently
+                    if (window.OnDrmPromptResponse) {
+                        OnDrmPromptResponse('enable_always', currentUrl, currentTabId);
+                    }
+                    window.hideDrmPromptBar();
+                });
+            }
+
+            if (closeBtn) {
+                closeBtn.addEventListener('click', function () {
+                    if (window.OnDrmPromptResponse) {
+                        OnDrmPromptResponse('dismiss', currentUrl, currentTabId);
+                    }
+                    window.hideDrmPromptBar();
+                });
+            }
         })();
     </script>
 </body>

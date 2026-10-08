@@ -3,6 +3,9 @@
 
 name: Build - All x64
 
+# Note: No concurrency block here - child workflows have their own concurrency controls
+# Adding concurrency here would cause deadlock with reusable workflow calls
+
 on:
   workflow_dispatch:
     inputs:
@@ -22,6 +25,11 @@ on:
         description: "Package format(s) for macOS/Linux (eg. TGZ;DMG or TGZ;DEB;RPM)"
         required: false
         type: string
+      clean_build:
+        description: "Force clean build without using caches"
+        required: false
+        type: boolean
+        default: false
   # No pull_request here; only the full orchestrator should run on PR
 
 permissions:
@@ -36,6 +44,7 @@ jobs:
       sdk_url: ${{ inputs.sdk_url }}
       version: ${{ inputs.version }}
       webbrowser_version: ${{ inputs.webbrowser_version }}
+      clean_build: ${{ inputs.clean_build || false }}
 
   macos-x64:
     uses: ./.github/workflows/build-macos.yml
@@ -45,6 +54,7 @@ jobs:
       version: ${{ inputs.version }}
       webbrowser_version: ${{ inputs.webbrowser_version }}
       package_format: ${{ inputs.package_format }}
+      clean_build: ${{ inputs.clean_build || false }}
 
   linux-x64:
     uses: ./.github/workflows/build-linux.yml
@@ -54,3 +64,4 @@ jobs:
       version: ${{ inputs.version }}
       webbrowser_version: ${{ inputs.webbrowser_version }}
       package_format: ${{ inputs.package_format }}
+      clean_build: ${{ inputs.clean_build || false }}

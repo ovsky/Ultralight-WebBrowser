@@ -1,9 +1,20 @@
 #pragma once
 #include <AppCore/AppCore.h>
 #include <Ultralight/Listener.h>
+#include <string>
 
 class UI;
 using namespace ultralight;
+
+/**
+ * Settings that affect View/ViewConfig creation for a tab.
+ * These must be provided at tab creation time since ViewConfig is immutable.
+ */
+struct TabViewSettings
+{
+  bool enable_javascript = true;
+  bool hardware_acceleration = true;
+};
 
 /**
  * Browser Tab UI implementation. Renders the actual page content in bottom pane.
@@ -12,7 +23,8 @@ class Tab : public ViewListener,
             public LoadListener
 {
 public:
-  Tab(UI *ui, uint64_t id, uint32_t width, uint32_t height, int x, int y);
+  Tab(UI *ui, uint64_t id, uint32_t width, uint32_t height, int x, int y,
+      const std::string &user_agent = "", const TabViewSettings &view_settings = TabViewSettings());
   ~Tab();
 
   void set_ready_to_close(bool ready) { ready_to_close_ = ready; }
@@ -61,6 +73,10 @@ public:
                              const String &error_domain, int error_code) override;
   virtual void OnUpdateHistory(View *caller) override;
 
+  // Early script injection point (before page scripts run)
+  virtual void OnWindowObjectReady(View *caller, uint64_t frame_id,
+                                   bool is_main_frame, const String &url) override;
+
   // Inject page-side hooks when DOM is ready to capture right-click context
   virtual void OnDOMReady(View *caller, uint64_t frame_id,
                           bool is_main_frame, const String &url) override;
@@ -86,6 +102,16 @@ public:
   void JS_ToggleDarkMode(const JSObject &obj, const JSArgs &args);
   JSValue JS_IsDarkModeEnabled(const JSObject &obj, const JSArgs &args);
   JSValue JS_GetAppInfo(const JSObject &obj, const JSArgs &args);
+
+  // Bookmark bridge callbacks
+  JSValue JS_GetBookmarks(const JSObject &obj, const JSArgs &args);
+  JSValue JS_GetBookmarkBar(const JSObject &obj, const JSArgs &args);
+  JSValue JS_AddBookmark(const JSObject &obj, const JSArgs &args);
+  void JS_RemoveBookmark(const JSObject &obj, const JSArgs &args);
+  JSValue JS_IsBookmarked(const JSObject &obj, const JSArgs &args);
+  void JS_ToggleBookmark(const JSObject &obj, const JSArgs &args);
+  void JS_ReorderBookmarks(const JSObject &obj, const JSArgs &args);
+  JSValue JS_UpdateBookmark(const JSObject &obj, const JSArgs &args);
 
   // Downloads page callbacks
   JSValue OnDownloadsGetData(const JSObject &obj, const JSArgs &args);
@@ -122,6 +148,38 @@ public:
   void JS_UpdateSetting(const JSObject &obj, const JSArgs &args);
   void JS_SaveSettings(const JSObject &obj, const JSArgs &args);
   JSValue JS_RestoreSettingsDefaults(const JSObject &obj, const JSArgs &args);
+  JSValue JS_GetDrmStatus(const JSObject &obj, const JSArgs &args);
+  JSValue JS_InstallDrmDependencies(const JSObject &obj, const JSArgs &args);
+
+  // Extensions page callbacks
+  JSValue JS_GetExtensions(const JSObject &obj, const JSArgs &args);
+  void JS_ToggleExtension(const JSObject &obj, const JSArgs &args);
+  void JS_ReloadExtension(const JSObject &obj, const JSArgs &args);
+  void JS_ReloadAllExtensions(const JSObject &obj, const JSArgs &args);
+  void JS_DeleteExtension(const JSObject &obj, const JSArgs &args);
+  void JS_LoadExtension(const JSObject &obj, const JSArgs &args);
+  void JS_CreateExtension(const JSObject &obj, const JSArgs &args);
+  void JS_OpenExtensionsFolder(const JSObject &obj, const JSArgs &args);
+
+  // Passwords page callbacks (for passwords.html UI)
+  JSValue JS_GetPasswords(const JSObject &obj, const JSArgs &args);
+  JSValue JS_GetPasswordStats(const JSObject &obj, const JSArgs &args);
+  void JS_SavePassword(const JSObject &obj, const JSArgs &args);
+  void JS_DeletePassword(const JSObject &obj, const JSArgs &args);
+  JSValue JS_GetDecryptedPassword(const JSObject &obj, const JSArgs &args);
+  void JS_SavePasswordSettings(const JSObject &obj, const JSArgs &args);
+  void JS_ExportPasswords(const JSObject &obj, const JSArgs &args);
+  void JS_ImportPasswords(const JSObject &obj, const JSArgs &args);
+
+  // Password Manager callbacks (called from page scripts)
+  void OnPasswordFormDetected(const JSObject &obj, const JSArgs &args);
+  void OnPasswordFormSubmitted(const JSObject &obj, const JSArgs &args);
+  JSValue OnGetPasswordSuggestions(const JSObject &obj, const JSArgs &args);
+  void OnPasswordSelected(const JSObject &obj, const JSArgs &args);
+  void OnPasswordSaveResponse(const JSObject &obj, const JSArgs &args);
+
+  // Favicon callback
+  void OnFaviconFetched(const JSObject &obj, const JSArgs &args);
 
 protected:
   UI *ui_;
@@ -130,4 +188,9 @@ protected:
   uint64_t id_;
   bool ready_to_close_ = false;
   uint32_t container_width_, container_height_;
+
+  // Password manager state for this tab
+  std::string pending_save_origin_;
+  std::string pending_save_username_;
+  std::string pending_save_password_;
 };

@@ -1,8 +1,13 @@
 {
   "Ctrl+T": "new-tab",
+  "Ctrl+N": "new-window",
   "Ctrl+W": "close-tab",
   "Ctrl+H": "open-history",
+  "Ctrl+B": "open-bookmarks",
   "Ctrl+J": "open-downloads",
+  "Ctrl+E": "open-extensions",
+  "Ctrl+P": "open-passwords",
   "Ctrl+L": "focus-address",
-  "Ctrl+,": "open-settings"
+  "Ctrl+,": "open-settings",
+  "Ctrl+Shift+T": "open-themes"
 }

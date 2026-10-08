@@ -74,6 +74,8 @@ Browser::Browser()
   adblock_->Clear();
   adblock_->LoadBlocklist("assets/blocklist.txt", true);
   adblock_->LoadBlocklistsInDirectory("assets/filters");
+  // Enable debug logging to diagnose login issues
+  adblock_->set_log_all_requests(true);
   ui_ = std::make_unique<UI>(window_, adblock_.get(), adblock_.get());
   window_->set_listener(ui_.get());
 }

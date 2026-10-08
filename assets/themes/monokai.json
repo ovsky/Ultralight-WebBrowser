@@ -1,0 +1,79 @@
+{
+    "id": "monokai",
+    "name": "Monokai Pro",
+    "description": "Classic Monokai color scheme popular with developers",
+    "author": "Ultralight Team",
+    "version": "1.0.0",
+    "isBuiltIn": true,
+    "colors": {
+        "color-bg-primary": "#2d2a2e",
+        "color-bg-secondary": "#353236",
+        "color-bg-tertiary": "#403e41",
+        "color-bg-elevated": "#4a474c",
+        "color-bg-hover": "#555158",
+        "color-bg-active": "#615d63",
+        "color-bg-overlay": "rgba(45, 42, 46, 0.95)",
+        
+        "color-text-primary": "#fcfcfa",
+        "color-text-secondary": "#c1c0c0",
+        "color-text-tertiary": "#939293",
+        "color-text-muted": "#727072",
+        "color-text-disabled": "#5b595c",
+        
+        "color-border-primary": "#4a474c",
+        "color-border-secondary": "#353236",
+        "color-border-hover": "#555158",
+        "color-border-focus": "#ffd866",
+        
+        "color-accent-primary": "#ffd866",
+        "color-accent-secondary": "#ff6188",
+        "color-accent-hover": "#a9dc76",
+        "color-accent-light": "rgba(255, 216, 102, 0.15)",
+        
+        "color-success": "#a9dc76",
+        "color-warning": "#ffd866",
+        "color-danger": "#ff6188",
+        "color-info": "#78dce8",
+        
+        "color-bookmark-active": "#ffd866",
+        "color-download-badge": "#ff6188",
+        "color-link": "#78dce8",
+        
+        "toolbar-bg": "linear-gradient(0deg, #2d2a2e, #353236)",
+        "toolbar-border": "#4a474c",
+        "toolbar-icon-color": "#c1c0c0",
+        
+        "address-bg": "#2d2a2e",
+        "address-text": "#fcfcfa",
+        
+        "tab-bg": "#353236",
+        "tab-active-bg": "#403e41",
+        "tab-text": "#939293",
+        
+        "menu-bg": "#353236",
+        "menu-border": "#4a474c",
+        "menu-item-hover": "#403e41",
+        "menu-text": "#fcfcfa",
+        
+        "card-bg": "#353236",
+        "card-border": "#4a474c",
+        
+        "btn-primary-bg": "#a9dc76",
+        "btn-primary-text": "#2d2a2e",
+        "btn-secondary-bg": "#403e41",
+        "btn-danger-bg": "#ff6188",
+        
+        "input-bg": "#2d2a2e",
+        "input-border": "#4a474c",
+        "input-text": "#fcfcfa",
+        
+        "scrollbar-track": "#353236",
+        "scrollbar-thumb": "#4a474c",
+        
+        "tooltip-bg": "rgba(53, 50, 54, 0.95)",
+        "tooltip-text": "#fcfcfa",
+        
+        "bookmark-bar-bg": "rgba(53, 50, 54, 0.95)",
+        "bookmark-item-bg": "rgba(255, 255, 255, 0.06)"
+    }
+}

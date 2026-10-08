@@ -1,0 +1,79 @@
+{
+    "id": "dark",
+    "name": "Dark (Default)",
+    "description": "The default dark purple theme for Ultralight WebBrowser",
+    "author": "Ultralight Team",
+    "version": "1.0.0",
+    "isBuiltIn": true,
+    "colors": {
+        "color-bg-primary": "#16151d",
+        "color-bg-secondary": "#1e1e2e",
+        "color-bg-tertiary": "#232330",
+        "color-bg-elevated": "#282839",
+        "color-bg-hover": "#343446",
+        "color-bg-active": "#3d3d5c",
+        "color-bg-overlay": "rgba(22, 21, 29, 0.95)",
+        
+        "color-text-primary": "#e4e4ef",
+        "color-text-secondary": "#c4c2d0",
+        "color-text-tertiary": "#9999b3",
+        "color-text-muted": "#71718a",
+        "color-text-disabled": "#636074",
+        
+        "color-border-primary": "#313146",
+        "color-border-secondary": "#252532",
+        "color-border-hover": "#404060",
+        "color-border-focus": "#4a4a6a",
+        
+        "color-accent-primary": "#6C63FF",
+        "color-accent-secondary": "#7c6aef",
+        "color-accent-hover": "#8a83ff",
+        "color-accent-light": "rgba(108, 99, 255, 0.15)",
+        
+        "color-success": "#6aef8a",
+        "color-warning": "#f0b866",
+        "color-danger": "#ef6a6a",
+        "color-info": "#6ac0ef",
+        
+        "color-bookmark-active": "#FFD700",
+        "color-download-badge": "#ff6b6b",
+        "color-link": "#8a9eff",
+        
+        "toolbar-bg": "linear-gradient(0deg, #232330, #282836)",
+        "toolbar-border": "#252532",
+        "toolbar-icon-color": "rgba(200, 200, 200, 1.0)",
+        
+        "address-bg": "#16151d",
+        "address-text": "#c4c2d0",
+        
+        "tab-bg": "#1e1e28",
+        "tab-active-bg": "#282836",
+        "tab-text": "#b0afc0",
+        
+        "menu-bg": "#2b2b38",
+        "menu-border": "#313146",
+        "menu-item-hover": "#343446",
+        "menu-text": "#e2e1ea",
+        
+        "card-bg": "#282839",
+        "card-border": "#404060",
+        
+        "btn-primary-bg": "#6C63FF",
+        "btn-primary-text": "#ffffff",
+        "btn-secondary-bg": "rgba(255, 255, 255, 0.1)",
+        "btn-danger-bg": "#ef6a6a",
+        
+        "input-bg": "#32324a",
+        "input-border": "#404060",
+        "input-text": "#e4e4ef",
+        
+        "scrollbar-track": "#1e1e2e",
+        "scrollbar-thumb": "#3d3d5c",
+        
+        "tooltip-bg": "rgba(43, 43, 56, 0.95)",
+        "tooltip-text": "#f0f0ff",
+        
+        "bookmark-bar-bg": "rgba(29, 29, 33, 0.92)",
+        "bookmark-item-bg": "rgba(255, 255, 255, 0.08)"
+    }
+}

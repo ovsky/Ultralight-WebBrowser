@@ -1,80 +1,102 @@
 * {
-     overflow: hidden;
-     user-select: none;
+     /* Avoid globally hiding overflow — shadows and focus rings need room to render */
      -webkit-user-select: none;
+     user-select: none;
+}
+
+/* Provide consistent accent aliases for pages still using older vars */
+:root {
+     --accent: var(--accent-color, var(--color-accent-primary, #6C63FF));
+     --accent-color: var(--accent-color, var(--color-accent-primary, #6C63FF));
+     --accent-hover: var(--accent-hover, var(--color-accent-hover, #8a83ff));
+     --accent-light: var(--accent-light, var(--color-accent-light, rgba(108,99,255,0.15)));
+     --accent-shadow: var(--accent-shadow, rgba(108,99,255,0.30));
 }
 
 body {
      margin: 0;
      padding: 0;
-     font-family: "Segoe UI", -apple-system, Ubuntu, Arial, sans-serif;
-     font-size: 14px;
-     background: #16151d;
-     color: #c4c2d0;
+     font-family: var(--font-family-sans, "Segoe UI", -apple-system, Ubuntu, Arial, sans-serif);
+     font-size: var(--font-size-md, 14px);
+     background: var(--color-bg-primary, #16151d);
+     color: var(--color-text-secondary, #c4c2d0);
      animation: ul_fade_in 1s ease forwards;
      -webkit-animation: ul_fade_in 1s ease forwards;
 }
 
 @keyframes ul_fade_in {
-     from { opacity: 0; }
-     to { opacity: 1; }
+     from {
+          opacity: 0;
+     }
+
+     to {
+          opacity: 1;
+     }
 }
 
 @-webkit-keyframes ul_fade_in {
-     from { opacity: 0; }
-     to { opacity: 1; }
+     from {
+          opacity: 0;
+     }
+
+     to {
+          opacity: 1;
+     }
 }
 
 #bar {
-     background: #232330;
-     background: linear-gradient(0deg, #232330, #282836);
-     height: 32px;
-     padding: 4px 9px;
-     border-bottom: 0.8px solid #252532;
+     background: var(--toolbar-bg, linear-gradient(0deg, #232330, #282836));
+     height: 44px;
+     padding: 0 10px;
+     border-bottom: 1px solid var(--toolbar-border, #252532);
      cursor: default;
      display: flex;
-}
+     align-items: center; /* vertically center the address bar and icons */
+     gap: 6px;
+  }
 
 #address {
-     
-     border-radius: 9999px;
+
+     border-radius: var(--radius-pill, 9999px);
      border: none;
-     height: 32px;
+     height: 40px;
      flex: 1;
-     font-size: 14px;
-     color: #c4c2d0;
-     background-color: #16151d;
+     font-size: var(--font-size-md, 14px);
+     color: var(--address-text, #c4c2d0);
+     background-color: var(--address-bg, #1e1e2e);
      display: inline-block;
-     padding: 2px 16px 2px 16px;
-     margin-top: 0px;
-     margin-left: 9px;
-     margin-right: 9px;
+     padding: 0 18px;
+     margin: 0 6px;
      user-select: auto !important;
      -webkit-user-select: text !important;
      outline: none;
-}
+  }
+
+/* Ensure toolbar icons are vertically centered too */
+#bar .icon { align-self: center; }
 
 #address:focus {
-     background-color: #16151d;
-     color: #FFF;
-     /* Rounded focus ring */
-     box-shadow: 0 0 0 2px #343446 inset;
-}
+     background-color: var(--address-focus-bg, #282836);
+     color: var(--address-focus-text, #FFF);
+     /* Subtle border highlight like Chrome */
+     box-shadow: 0 0 0 1px var(--accent-color, var(--color-accent-primary, #6C63FF)) inset;
+ }
 
 .icon {
-     fill: rgba(200, 200, 200, 1.0);
+     fill: var(--toolbar-icon-color, rgba(180, 180, 180, 1.0));
      vertical-align: middle;
-     /* margin-top: -1px; */
-     padding: 5px;
-     height: 18px;
-     width: 18px;
-}
+     padding: 6px;
+     height: 24px;
+     width: 24px;
+     transition: fill 0.2s ease, background-color 0.2s ease;
+     border-radius: 100%;
+ }
 
-/* Slightly smaller settings/toolbar tools icon (90% of 18px ~= 16px) */
-#toggle-tools svg {
-     width: 16px;
-     height: 16px;
-}
+/* Slightly smaller settings/toolbar tools icon */
+ #toggle-tools svg {
+     width: 18px;
+     height: 18px;
+ }
 
 /* Show hand cursor for clickable icons */
 .icon:not(.disabled) {
@@ -82,12 +104,12 @@ body {
 }
 
 #back {
-     margin-left: 0px;
-}
+     margin-left: 4px;
+ }
 
 .icon.disabled {
      cursor: default;
-     fill: rgb(99 96 116);
+     fill: var(--toolbar-icon-disabled, rgb(99 96 116));
 }
 
 svg#icon_defs path {
@@ -95,9 +117,26 @@ svg#icon_defs path {
 }
 
 .icon:not(.disabled):hover {
-     background-color: #343446;
+     background-color: var(--toolbar-icon-hover-bg, #343446);
      border-radius: 100%;
 }
+
+/* Keyboard focus ring for toolbar icons (rounded) */
+.icon:focus-visible {
+     outline: none;
+     box-shadow: 0 0 0 4px var(--accent-light, var(--color-accent-light, rgba(108,99,255,0.15)));
+     border-radius: 100%;
+}
+
+/* Rounded focus for inline menu items so selection outlines are not square */
+.menu-item {
+     border-radius: 6px;
+}
+.menu-item:focus-visible {
+     outline: none;
+     box-shadow: 0 0 0 4px var(--accent-light, var(--color-accent-light, rgba(108,99,255,0.15)));
+     border-radius: 6px;
+} 
 
 #toggle-downloads {
      position: relative;
@@ -112,8 +151,8 @@ svg#icon_defs path {
      line-height: 12px;
      font-size: 9px;
      font-weight: 600;
-     border-radius: 999px;
-     background: #ff6b6b;
+     border-radius: var(--radius-pill, 999px);
+     background: var(--color-download-badge, #ff6b6b);
      color: #fff;
      text-align: center;
      padding: 0 3px;
@@ -128,24 +167,50 @@ svg#icon_defs path {
 
 /* AdBlock toggle coloring: highlight when protection is active */
 #toggle-adblock {
-     color: #b6b3c9;
-     fill: #b6b3c9;
-     transition: color 0.075s ease, fill 0.075s ease;
+     color: var(--color-text-tertiary, #b6b3c9);
+     fill: var(--color-text-tertiary, #b6b3c9);
+     transition: color var(--transition-fast, 0.075s ease), fill var(--transition-fast, 0.075s ease);
 }
 
 #toggle-adblock:hover {
-     color: #cbc9d8;
-     fill: #cbc9d8;
+     color: var(--color-text-secondary, #cbc9d8);
+     fill: var(--color-text-secondary, #cbc9d8);
 }
 
 #toggle-adblock.active {
-     color: #6C63FF;
-     fill: #6C63FF;
+     color: var(--color-accent-primary, #6C63FF);
+     fill: var(--color-accent-primary, #6C63FF);
 }
 
 #toggle-adblock.active:hover {
-     color: #8a83ff;
-     fill: #8a83ff;
+     color: var(--color-accent-hover, #8a83ff);
+     fill: var(--color-accent-hover, #8a83ff);
+}
+
+/* Bookmark toggle coloring: highlight when page is bookmarked */
+#toggle-bookmark {
+     color: var(--color-text-tertiary, #b6b3c9);
+     fill: var(--color-text-tertiary, #b6b3c9);
+     transition: color var(--transition-fast, 0.075s ease), fill var(--transition-fast, 0.075s ease);
+}
+
+#toggle-bookmark:hover {
+     color: var(--color-text-secondary, #cbc9d8);
+     fill: var(--color-text-secondary, #cbc9d8);
+}
+
+#toggle-bookmark.bookmarked {
+     color: var(--color-accent-primary, #6C63FF);
+     fill: var(--color-accent-primary, #6C63FF);
+}
+
+#toggle-bookmark.bookmarked:hover {
+     color: var(--color-accent-hover, #8a83ff);
+     fill: var(--color-accent-hover, #8a83ff);
+}
+
+#toggle-bookmark.bookmarked svg {
+    transform: scale(1.21);
 }
 
 /* Dropdown menu styles */
@@ -155,12 +220,12 @@ svg#icon_defs path {
      /* below top bar */
      right: 10px;
      width: 240px;
-     background: #2b2b38;
-     border: 1px solid #313146;
-     border-radius: 8px;
-     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+     background: var(--menu-bg, #2b2b38);
+     border: 1px solid var(--menu-border, #313146);
+     border-radius: var(--radius-md, 8px);
+     box-shadow: var(--menu-shadow, 0 8px 16px rgba(0, 0, 0, 0.4));
      padding: 6px 0;
-     z-index: 1000;
+     z-index: var(--z-dropdown, 1000);
 }
 
 .menu-dropdown.hidden {
@@ -168,43 +233,43 @@ svg#icon_defs path {
 }
 
 .menu-item {
-     padding: 8px 12px;
+     padding: var(--spacing-sm, 8px) var(--spacing-md, 12px);
      line-height: 1.6;
      display: flex;
      align-items: center;
      justify-content: space-between;
-     color: #e2e1ea;
+     color: var(--menu-text, #e2e1ea);
      cursor: default;
 }
 
 .menu-item:hover {
-     background: #343446;
+     background: var(--menu-item-hover, #343446);
      cursor: pointer;
 }
 
 .menu-separator {
      height: 1px;
-     background: #3a3a4e;
+     background: var(--menu-separator, #3a3a4e);
      margin: 6px 0;
 }
 
 /* Address suggestions panel */
 .suggestions-panel {
      position: fixed;
-     background: #2b2b38;
-     border: 1px solid #313146;
-     border-radius: 8px;
-     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+     background: var(--menu-bg, #2b2b38);
+     border: 1px solid var(--menu-border, #313146);
+     border-radius: var(--radius-md, 8px);
+     box-shadow: var(--menu-shadow, 0 8px 16px rgba(0, 0, 0, 0.4));
      padding: 4px 0;
      z-index: 2000;
-     color: #e2e1ea;
+     color: var(--menu-text, #e2e1ea);
      max-height: 320px;
      overflow-y: auto;
      display: none;
 }
 
 .suggestions-item {
-     padding: 8px 12px;
+     padding: var(--spacing-sm, 8px) var(--spacing-md, 12px);
      cursor: pointer;
      white-space: nowrap;
      overflow: hidden;
@@ -213,26 +278,26 @@ svg#icon_defs path {
 
 .suggestions-item:hover,
 .suggestions-item.active {
-     background: #343446;
+     background: var(--menu-item-hover, #343446);
 }
 
 /* Floating tooltip for toolbar icons */
 .toolbar-tooltip {
      position: fixed;
      padding: 4px 10px;
-     background: rgba(43, 43, 56, 0.95);
-     color: #f0f0ff;
-     border-radius: 4px;
-     font-size: 12px;
+     background: var(--tooltip-bg, rgba(43, 43, 56, 0.95));
+     color: var(--tooltip-text, #f0f0ff);
+     border-radius: var(--radius-sm, 4px);
+     font-size: var(--font-size-sm, 12px);
      line-height: 1.4;
      pointer-events: none;
      opacity: 0;
      transform: translate(-50%, -6px);
      transition: opacity 0.12s ease, transform 0.12s ease;
-     z-index: 12000;
+     z-index: var(--z-toast, 12000);
      white-space: nowrap;
      overflow: visible !important;
-     box-shadow: 0 6px 14px rgba(0, 0, 0, 0.45);
+     box-shadow: var(--tooltip-shadow, 0 6px 14px rgba(0, 0, 0, 0.45));
 }
 
 .toolbar-tooltip.visible {
@@ -250,7 +315,7 @@ svg#icon_defs path {
      height: 0;
      border-width: 5px 5px 0 5px;
      border-style: solid;
-     border-color: rgba(43, 43, 56, 0.95) transparent transparent transparent;
+     border-color: var(--tooltip-bg, rgba(43, 43, 56, 0.95)) transparent transparent transparent;
 }
 
 .toolbar-tooltip.below {
@@ -265,7 +330,7 @@ svg#icon_defs path {
      top: -5px;
      bottom: auto;
      border-width: 0 5px 5px 5px;
-     border-color: transparent transparent rgba(43, 43, 56, 0.95) transparent;
+     border-color: transparent transparent var(--tooltip-bg, rgba(43, 43, 56, 0.95)) transparent;
 }
 
 body.transparent-toolbar #bar {
@@ -275,7 +340,7 @@ body.transparent-toolbar #bar {
 }
 
 body.transparent-toolbar {
-     background: radial-gradient(circle at top, rgba(26, 26, 38, 0.85), #16151d 68%);
+     background: radial-gradient(circle at top, rgba(26, 26, 38, 0.85), var(--color-bg-primary, #16151d) 68%);
 }
 
 body.transparent-toolbar .chrome-tabs {
@@ -284,20 +349,346 @@ body.transparent-toolbar .chrome-tabs {
 }
 
 body.compact-tabs #bar {
-     height: 28px;
-     padding: 2px 8px;
-}
+     height: 36px;
+     padding: 0 8px;
+ }
 
 body.compact-tabs #address {
-     height: 28px;
+     height: 32px;
      font-size: 13px;
-     padding: 1px 14px 1px 14px;
-}
+     padding: 0 14px;
+ }
 
 body.compact-tabs .icon {
      padding: 4px;
-}
+     height: 18px;
+     width: 18px;
+ }
 
 body.compact-tabs #toggle-downloads .downloads-badge {
      top: 0;
+}
+
+/* Session Restore Bar */
+#session-restore-bar {
+     --session-restore-height: 48px;
+     display: none;
+     position: fixed;
+     top: 0;
+     left: 0;
+     right: 0;
+     height: var(--session-restore-height);
+     background: var(--session-restore-bg, var(--color-bg-elevated, #23232a));
+     border-bottom: 1px solid var(--session-restore-border, rgba(255,255,255,0.04));
+     padding: 10px 16px;
+     z-index: 9999;
+     align-items: center;
+     justify-content: space-between;
+     box-shadow: none;
+     animation: slideDown 0.18s ease-out;
+     transition: background 0.18s ease, border-color 0.18s ease;
+     backdrop-filter: none;
+}
+
+/* Standardize buttons across pages using theme variables */
+.btn {
+     display: inline-flex;
+     align-items: center;
+     gap: var(--spacing-sm, 6px);
+     padding: var(--btn-padding, 10px) var(--btn-padding-x, 20px);
+     border-radius: var(--btn-radius, 12px);
+     border: none;
+     background: var(--btn-bg, var(--color-bg-elevated, #32324a));
+     color: var(--color-text-primary, #e4e4ef);
+     cursor: pointer;
+     transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+     box-shadow: none;
+     -webkit-appearance: none;
+     appearance: none;
+     position: relative; /* allow z-index and stack over siblings when hovered */
+     z-index: 1;
+}
+
+/* Ensure header and control containers don't clip button shadows */
+header, .controls, .header-actions, .container {
+     overflow: visible !important;
+}
+
+/* Constrain header icons to avoid overlapping other controls and align them nicely */
+header h1 .icon, .container header .icon {
+     width: 36px;
+     height: 36px;
+     display: inline-flex;
+     align-items: center;
+     justify-content: center;
+     font-size: 18px;
+     margin-right: 12px;
+     vertical-align: middle;
+}
+
+/* Ensure header layouts align items when icon is present */
+header h1 {
+     display: inline-flex;
+     align-items: center;
+     gap: 12px;
+}
+
+/* Keep header actions vertically centered on larger screens */
+header {
+     align-items: center;
+}
+
+/* Small screens keep stacked layout */
+@media (max-width: 720px) {
+     header { flex-direction: column; align-items: flex-start; }
+}
+
+#bar {
+    position: relative;
+} /* Right-edge overlay removed to avoid covering toolbar icons */
+
+/* Ensure toolbar icons render above the overlay */
+#bar .icon { position: relative; z-index: 1400; }
+
+/* Slight overlap to remove small gap between chrome-tabs and toolbar */
+/* Move the overlap to the tabs so the toolbar stays visually stable */
+.chrome-tabs { margin-bottom: -2px; }
+#bar { margin-top: 2px; }
+
+/* Remove any residual right-edge overlay artifact (fixes light tint in top-right corner) */
+/* Hide known overlay elements and ensure scroll corner is transparent */
+.chrome-tabs .chrome-tabs-bottom-bar,
+.right-edge-overlay,
+.edge-overlay,
+.toolbar-right-overlay { display: none !important; }
+
+/* Remove any unexpected box-shadows that might create a light rectangle */
+body, .chrome-tabs, #bar { box-shadow: none !important; }
+
+/* Ensure scrollbar corner and track don't show a light color */
+::-webkit-scrollbar-corner { background: transparent !important; }
+::-webkit-scrollbar-track { background: var(--scrollbar-track, transparent) !important; }
+/* Avoid header icon visually overflowing buttons */
+header h1 { z-index: 1; }
+header .header-actions { z-index: 2; }
+.btn:hover {
+     transform: translateY(-1px);
+     background: var(--bg-hover, var(--color-bg-hover, #343446));
+     border-color: var(--accent-color, var(--color-accent-primary, #6C63FF));
+}
+
+.btn-primary {
+     background: linear-gradient(135deg, var(--accent-color, var(--color-accent-primary, #6C63FF)), var(--color-accent-secondary, #7c6aef));
+     color: #fff;
+     border-color: transparent;
+     box-shadow: 0 4px 15px var(--accent-shadow, rgba(108,99,255,0.30));
+     padding: 10px 20px;
+     border-radius: 12px;
+     font-weight: 600;
+}
+
+.btn-primary:hover {
+     transform: translateY(-2px);
+     box-shadow: 0 6px 20px var(--accent-shadow-strong, rgba(108,99,255,0.40));
+     background: linear-gradient(135deg, var(--accent-hover, var(--color-accent-hover, #8a83ff)), var(--color-accent-secondary, #7c6aef));
+}
+
+/* Small / compact variants that match primary visuals */
+.btn-sm, .btn-small {
+     padding: 6px 12px;
+     border-radius: calc(var(--btn-radius, 12px) - 4px);
+     font-size: var(--font-size-sm, 13px);
+     font-weight: var(--font-weight-medium, 600);
+}
+
+/* Secondary button defaults (muted, lower elevation than primary) */
+.btn-secondary {
+     background: var(--btn-secondary-bg, rgba(255,255,255,0.04));
+     color: var(--btn-secondary-text, var(--color-text-primary, #e4e4ef));
+     border: 1px solid var(--btn-secondary-border, rgba(255,255,255,0.06));
+     /* Subtle accent-tinted shadow so secondaries feel part of the theme */
+     box-shadow: 0 2px 8px var(--accent-shadow-subtle, rgba(0,0,0,0.12));
+     transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+}
+
+.btn-secondary:hover {
+     transform: translateY(-1px);
+     box-shadow: 0 4px 14px var(--accent-shadow, var(--accent-shadow-subtle, rgba(0,0,0,0.12)));
+     background: var(--btn-secondary-hover, rgba(255,255,255,0.06));
+} 
+
+/* Improve icon sizing & ensure icons follow text color */
+.btn svg, .btn img.icon {
+     width: 16px;
+     height: 16px;
+     fill: currentColor;
+}
+
+/* Disabled state */
+.btn:disabled,
+.btn[disabled] {
+     opacity: 0.6;
+     cursor: not-allowed;
+     transform: none !important;
+     box-shadow: none !important;
+}
+
+/* Keyboard focus ring for accessibility (uses derived accent light) */
+.btn:focus-visible {
+     outline: none;
+     box-shadow: 0 0 0 4px var(--accent-light, var(--color-accent-light, rgba(108,99,255,0.15)));
+}
+
+/* Active (pressed) state */
+.btn:active {
+     transform: translateY(0);
+     box-shadow: 0 3px 10px rgba(0,0,0,0.12);
+}
+
+/* Ensure destructive buttons keep sizing parity and consistent shadow */
+.btn-danger, .btn.danger {
+     background: var(--color-danger, #ef6a6a);
+     color: #fff;
+     border-color: var(--color-danger, #ef6a6a);
+     border-radius: var(--btn-radius, 12px);
+     padding: 10px 20px;
+}
+
+.btn-danger:hover {
+     transform: translateY(-2px);
+     box-shadow: 0 6px 18px rgba(239, 106, 106, 0.32);
+     background: var(--color-danger, #ef6a6a);
+}
+
+/* Performance hint: hint to browsers what will animate */
+.btn {
+    will-change: transform, box-shadow;
+}
+
+/* Responsive tweaks for small screens */
+@media (max-width: 480px) {
+    .btn {
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+    .btn-sm, .btn-small {
+        padding: 5px 10px;
+        font-size: 12px;
+    }
+    .btn svg, .btn img.icon { width: 14px; height: 14px; }
+}
+
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+    .btn, .btn-primary, .btn-danger { transition: none !important; transform: none !important; }
+}
+
+/* Slightly stronger focus ring for keyboard users */
+.btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 6px var(--accent-light, var(--color-accent-light, rgba(108,99,255,0.18)));
+}
+
+/* Soften shadows on small screens for better readability */
+@media (max-width: 720px) {
+    .btn-primary { box-shadow: 0 3px 10px var(--accent-shadow, rgba(108,99,255,0.30)); }
+}
+
+     to {
+          transform: translateY(0);
+          opacity: 1;
+     }
+}
+
+#session-restore-bar.visible {
+     display: flex;
+}
+
+#session-restore-bar .restore-message {
+     display: flex;
+     align-items: center;
+     gap: 10px;
+     color: var(--session-restore-text, #e0e8f0);
+     font-size: 13px;
+}
+
+#session-restore-bar .restore-icon {
+     width: 20px;
+     height: 20px;
+     fill: var(--session-restore-icon, #7cb3e0);
+}
+
+#session-restore-bar .restore-actions {
+     display: flex;
+     gap: var(--spacing-sm, 8px);
+}
+
+#session-restore-bar .restore-btn {
+     padding: 6px 12px;
+     border-radius: 8px;
+     border: none;
+     font-size: var(--font-size-sm, 12px);
+     font-weight: var(--font-weight-medium, 600);
+     cursor: pointer;
+     transition: background 0.12s ease, transform 0.08s ease;
+}
+
+#session-restore-bar .restore-btn:hover { transform: none; }
+
+#session-restore-bar .restore-btn:active { transform: none; }
+
+#session-restore-bar .restore-btn.primary {
+     background: var(--accent-color, var(--color-accent-primary, #6C63FF));
+     color: #fff;
+     box-shadow: none;
+}
+
+#session-restore-bar .restore-btn.primary:hover {
+     background: var(--accent-hover, #8a83ff);
+}
+
+#session-restore-bar .restore-btn.secondary {
+     background: transparent;
+     color: var(--session-restore-text, #c8cbd6);
+     border: 1px solid rgba(255,255,255,0.04);
+}
+
+#session-restore-bar .restore-btn.secondary:hover {
+     background: rgba(255,255,255,0.02);
+}
+
+#session-restore-bar .dismiss-btn {
+     background: none;
+     border: none;
+     color: var(--color-text-muted, #8090a0);
+     cursor: pointer;
+     padding: 4px;
+     margin-left: var(--spacing-sm, 8px);
+     border-radius: 50%;
+     display: flex;
+     align-items: center;
+     justify-content: center;
+}
+
+#session-restore-bar .dismiss-btn:hover {
+     background: rgba(255,255,255,0.02);
+     color: var(--session-restore-text, #c8cbd6);
+}
+
+/* When the session restore bar is visible, push the toolbar down so it doesn't overlap */
+body.session-restore-visible #bar {
+     margin-top: calc(var(--session-restore-height, 48px) + 0px);
+     transition: margin-top 0.18s ease-out;
+}
+
+#bar {
+     transition: margin-top 0.18s ease-out;
+}
+
+.shortcut-badge {
+    color: var(--color-text-primary, #e4e4ef) !important;
+}
+
+#toggle-inspector svg {
+    transform: scale(0.81);
 }
