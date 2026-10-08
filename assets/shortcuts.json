@@ -9,5 +9,6 @@
   "Ctrl+P": "open-passwords",
   "Ctrl+L": "focus-address",
   "Ctrl+,": "open-settings",
-  "Ctrl+Shift+T": "open-themes"
+  "Ctrl+Shift+T": "open-themes",
+  "F9": "toggle-reader-mode"
 }

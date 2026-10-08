@@ -1075,10 +1075,14 @@
 
                 // Import button
                 document.getElementById('btn-import').addEventListener('click', () => {
-                    fileInput.click();
+                    if (window.OnImportThemeFile) {
+                        window.OnImportThemeFile();
+                    } else {
+                        fileInput.click();
+                    }
                 });
 
-                // File input change
+                // File input change (fallback for when native dialog not available)
                 fileInput.addEventListener('change', (e) => {
                     const file = e.target.files[0];
                     if (file) {
@@ -1095,6 +1099,36 @@
                         reader.readAsText(file);
                     }
                     fileInput.value = '';
+                });
+
+                // Listen for native theme import result
+                window.addEventListener('theme-imported', (e) => {
+                    if (e.detail) {
+                        showToast('Theme imported!', 'success');
+                        renderThemes();
+                        setTimeout(() => showJsonModal(e.detail.id), 300);
+                    }
+                });
+
+                // Export button in JSON modal - use native save dialog
+                document.getElementById('btn-json-download').addEventListener('click', () => {
+                    if (currentJsonTheme && window.OnExportThemeFile) {
+                        window.OnExportThemeFile(currentJsonTheme);
+                    } else if (currentJsonTheme) {
+                        // Fallback to blob download
+                        const theme = window.ThemeManager.getTheme(currentJsonTheme);
+                        if (theme) {
+                            const json = JSON.stringify(theme, null, 2);
+                            const blob = new Blob([json], { type: 'application/json' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = theme.id + '.json';
+                            a.click();
+                            URL.revokeObjectURL(url);
+                            showToast('Theme downloaded!', 'success');
+                        }
+                    }
                 });
             }
 

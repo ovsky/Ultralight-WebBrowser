@@ -1241,6 +1241,12 @@ bool UI::RunShortcutAction(const std::string &action)
     CreateNewTabForChildView(String("file:///themes.html"));
     return true;
   }
+  if (action == "toggle-reader-mode")
+  {
+    // Toggle reader mode on active tab
+    OnToggleReaderMode({}, {});
+    return true;
+  }
   return false;
 }
 
@@ -1492,6 +1498,9 @@ void UI::OnDOMReady(View *caller, uint64_t frame_id, bool is_main_frame, const S
   global["GetPerformanceOverlayEnabled"] = BindJSCallbackWithRetval(&UI::OnGetPerformanceOverlayEnabled);
   global["OnToggleAdblock"] = BindJSCallback(&UI::OnToggleAdblock);
   global["GetAdblockEnabled"] = BindJSCallbackWithRetval(&UI::OnGetAdblockEnabled);
+  // Reader mode callbacks
+  global["OnToggleReaderMode"] = BindJSCallback(&UI::OnToggleReaderMode);
+  global["GetReaderModeEnabled"] = BindJSCallbackWithRetval(&UI::OnGetReaderModeEnabled);
   global["OnToggleBookmark"] = BindJSCallback(&UI::OnToggleBookmark);
   global["OnExportBookmarks"] = BindJSCallback(&UI::OnExportBookmarks);
   global["OnImportBookmarks"] = BindJSCallback(&UI::OnImportBookmarks);
@@ -1563,6 +1572,9 @@ void UI::OnDOMReady(View *caller, uint64_t frame_id, bool is_main_frame, const S
   global["OnOpenExtensionsNewTab"] = BindJSCallback(&UI::OnOpenExtensionsNewTab);
   global["OnOpenThemesNewTab"] = BindJSCallback(&UI::OnOpenThemesNewTab);
   global["OnOpenThemesDirectory"] = BindJSCallback(&UI::OnOpenThemesDirectory);
+  global["OnImportThemeFile"] = BindJSCallback(&UI::OnImportThemeFile);
+  global["OnExportThemeFile"] = BindJSCallback(&UI::OnExportThemeFile);
+  global["OnSaveThemeToFile"] = BindJSCallback(&UI::OnSaveThemeToFile);
   global["GetDownloadsSnapshot"] = BindJSCallbackWithRetval(&UI::OnDownloadsOverlayGet);
   global["ClearDownloadsSnapshot"] = BindJSCallback(&UI::OnDownloadsOverlayClear);
   global["OnAddressBarBlur"] = BindJSCallback(&UI::OnAddressBarBlur);
@@ -3270,6 +3282,219 @@ ultralight::JSValue UI::OnGetPerformanceOverlayEnabled(const JSObject &, const J
   return ultralight::JSValue(performance_overlay_enabled_ ? 1.0 : 0.0);
 }
 
+void UI::OnToggleReaderMode(const JSObject &, const JSArgs &)
+{
+  bool new_value = !settings_.enable_reader_mode;
+  settings_.enable_reader_mode = new_value;
+  if (settings_.auto_save_settings)
+    SaveSettingsToDisk();
+
+  // Apply reader mode to active tab
+  if (active_tab() && active_tab()->view())
+  {
+    if (new_value)
+      ApplyReaderModeToView(active_tab()->view());
+    else
+      RemoveReaderModeFromView(active_tab()->view());
+  }
+}
+
+ultralight::JSValue UI::OnGetReaderModeEnabled(const JSObject &, const JSArgs &)
+{
+  return ultralight::JSValue(settings_.enable_reader_mode ? 1.0 : 0.0);
+}
+
+void UI::OnImportThemeFile(const JSObject &, const JSArgs &args)
+{
+  // Open file dialog to select a theme JSON file
+  std::string file_path;
+#ifdef _WIN32
+  OPENFILENAMEW ofn = {0};
+  wchar_t file_name[MAX_PATH] = {0};
+  ofn.lStructSize = sizeof(ofn);
+  ofn.hwndOwner = static_cast<HWND>(window_->native_handle());
+  ofn.lpstrFilter = L"JSON Files\0*.json\0All Files\0*.*\0";
+  ofn.lpstrFile = file_name;
+  ofn.nMaxFile = MAX_PATH;
+  ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR;
+  ofn.lpstrTitle = L"Import Theme";
+
+  if (GetOpenFileNameW(&ofn))
+  {
+    int len = WideCharToMultiByte(CP_UTF8, 0, file_name, -1, nullptr, 0, nullptr, nullptr);
+    if (len > 0)
+    {
+      std::vector<char> buf(len);
+      WideCharToMultiByte(CP_UTF8, 0, file_name, -1, buf.data(), len, nullptr, nullptr);
+      file_path = std::string(buf.data(), buf.size() - 1); // Exclude null terminator
+    }
+  }
+#elif defined(__APPLE__)
+  // Use osascript for file dialog on macOS
+  std::string script = "POSIX path of (choose file with prompt \"Import Theme\" of type {\"public.json\"})";
+  FILE *pipe = popen(("osascript -e " + util::EscapeShellArg(script)).c_str(), "r");
+  if (pipe)
+  {
+    char buffer[1024];
+    if (fgets(buffer, sizeof(buffer), pipe))
+    {
+      file_path = buffer;
+      // Trim newline
+      if (!file_path.empty() && file_path.back() == '\n')
+        file_path.pop_back();
+    }
+    pclose(pipe);
+  }
+#else
+  // Linux - use zenity or kdialog
+  std::string cmd = "zenity --file-selection --title=\"Import Theme\" --file-filter=\"*.json\" 2>/dev/null || kdialog --getopenfilename . \"*.json\" 2>/dev/null";
+  FILE *pipe = popen(cmd.c_str(), "r");
+  if (pipe)
+  {
+    char buffer[1024];
+    if (fgets(buffer, sizeof(buffer), pipe))
+    {
+      file_path = buffer;
+      if (!file_path.empty() && file_path.back() == '\n')
+        file_path.pop_back();
+    }
+    pclose(pipe);
+  }
+#endif
+
+  if (file_path.empty())
+    return;
+
+  // Read the file content
+  std::ifstream file(file_path);
+  if (!file.is_open())
+    return;
+
+  std::stringstream buffer;
+  buffer << file.rdbuf();
+  std::string json_content = buffer.str();
+  file.close();
+
+  // Send the JSON content to the JavaScript side for import
+  if (overlay_ && overlay_->view())
+  {
+    std::string js = "if (window.ThemeManager) { const theme = window.ThemeManager.importTheme(" + util::EscapeJsStringLiteral(json_content) + "); if (theme) { window.ThemeManager.applyTheme(theme.id); window.dispatchEvent(new CustomEvent('theme-imported', { detail: theme })); } }";
+    overlay_->view()->EvaluateScript(js.c_str());
+  }
+}
+
+void UI::OnExportThemeFile(const JSObject &, const JSArgs &args)
+{
+  // Get theme ID from args
+  if (args.size() < 1 || !args[0].IsString())
+    return;
+
+  ultralight::String theme_id_ul = args[0].ToString();
+  auto theme_id_str = theme_id_ul.utf8();
+  std::string theme_id = theme_id_str.data() ? theme_id_str.data() : "";
+  if (theme_id.empty())
+    return;
+
+  // Get theme from ThemeManager in JavaScript and call OnSaveThemeToFile
+  if (overlay_ && overlay_->view())
+  {
+    std::string js = "if (window.ThemeManager && window.OnSaveThemeToFile) { const theme = window.ThemeManager.getTheme('" + util::EscapeJsStringLiteral(theme_id) + "'); if (theme) { const json = JSON.stringify(theme, null, 2); window.OnSaveThemeToFile('" + util::EscapeJsStringLiteral(theme_id) + "', json); } }";
+    overlay_->view()->EvaluateScript(js.c_str());
+  }
+}
+
+void UI::OnSaveThemeToFile(const JSObject &, const JSArgs &args)
+{
+  // Get theme ID and JSON content from args
+  if (args.size() < 2 || !args[0].IsString() || !args[1].IsString())
+    return;
+
+  ultralight::String theme_id_ul = args[0].ToString();
+  auto theme_id_str = theme_id_ul.utf8();
+  std::string theme_id = theme_id_str.data() ? theme_id_str.data() : "";
+
+  ultralight::String json_ul = args[1].ToString();
+  auto json_str = json_ul.utf8();
+  std::string json_content = json_str.data() ? json_str.data() : "";
+
+  if (theme_id.empty() || json_content.empty())
+    return;
+
+  SaveThemeToFile(theme_id, json_content);
+}
+
+// Helper to save theme JSON to file via native dialog
+void UI::SaveThemeToFile(const std::string &theme_id, const std::string &json_content)
+{
+  std::string file_path;
+#ifdef _WIN32
+  OPENFILENAMEW ofn = {0};
+  wchar_t file_name[MAX_PATH] = {0};
+  // Default filename
+  std::wstring default_name(theme_id.begin(), theme_id.end());
+  default_name += L".json";
+  wcscpy_s(file_name, default_name.c_str());
+  ofn.lStructSize = sizeof(ofn);
+  ofn.hwndOwner = static_cast<HWND>(window_->native_handle());
+  ofn.lpstrFilter = L"JSON Files\0*.json\0All Files\0*.*\0";
+  ofn.lpstrFile = file_name;
+  ofn.nMaxFile = MAX_PATH;
+  ofn.Flags = OFN_OVERWRITEPROMPT | OFN_NOCHANGEDIR;
+  ofn.lpstrTitle = L"Export Theme";
+  ofn.lpstrDefExt = L"json";
+
+  if (GetSaveFileNameW(&ofn))
+  {
+    int len = WideCharToMultiByte(CP_UTF8, 0, file_name, -1, nullptr, 0, nullptr, nullptr);
+    if (len > 0)
+    {
+      std::vector<char> buf(len);
+      WideCharToMultiByte(CP_UTF8, 0, file_name, -1, buf.data(), len, nullptr, nullptr);
+      file_path = std::string(buf.data(), buf.size() - 1); // Exclude null terminator
+    }
+  }
+#elif defined(__APPLE__)
+  std::string script = "POSIX path of (choose file name with prompt \"Export Theme\" default name \"" + theme_id + ".json\")";
+  FILE *pipe = popen(("osascript -e " + util::EscapeShellArg(script)).c_str(), "r");
+  if (pipe)
+  {
+    char buffer[1024];
+    if (fgets(buffer, sizeof(buffer), pipe))
+    {
+      file_path = buffer;
+      if (!file_path.empty() && file_path.back() == '\n')
+        file_path.pop_back();
+    }
+    pclose(pipe);
+  }
+#else
+  std::string cmd = "zenity --file-selection --save --title=\"Export Theme\" --filename=\"" + theme_id + ".json\" --file-filter=\"*.json\" 2>/dev/null || kdialog --getsavefilename . \"" + theme_id + ".json\" 2>/dev/null";
+  FILE *pipe = popen(cmd.c_str(), "r");
+  if (pipe)
+  {
+    char buffer[1024];
+    if (fgets(buffer, sizeof(buffer), pipe))
+    {
+      file_path = buffer;
+      if (!file_path.empty() && file_path.back() == '\n')
+        file_path.pop_back();
+    }
+    pclose(pipe);
+  }
+#endif
+
+  if (file_path.empty())
+    return;
+
+  // Write the JSON content to file
+  std::ofstream file(file_path);
+  if (file.is_open())
+  {
+    file << json_content;
+    file.close();
+  }
+}
+
 void UI::OnToggleAdblock(const JSObject &, const JSArgs &)
 {
   HandleSettingMutation("enable_adblock", !settings_.enable_adblock);
@@ -4495,6 +4720,83 @@ void UI::RemoveCaretBrowsingFromView(RefPtr<View> v)
     try{
       document.body.removeAttribute('contenteditable');
       document.designMode = 'off';
+      return true;
+    }catch(e){return false;}
+  })())JS";
+  v->EvaluateScript(js, nullptr);
+}
+
+// Reader mode CSS injections
+void UI::ApplyReaderModeToView(RefPtr<View> v)
+{
+  if (!v)
+    return;
+  const char *js = R"JS((function(){
+    try{
+      var sid='__ul_reader_mode';
+      if(document.getElementById(sid)) return false;
+      
+      // Clone the main content
+      var article = document.querySelector('article') || document.querySelector('main') || document.body;
+      if (!article) return false;
+      
+      // Create reader mode overlay
+      var readerDiv = document.createElement('div');
+      readerDiv.id = '__ul_reader_overlay';
+      readerDiv.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#fefefe;z-index:2147483647;overflow:auto;padding:2rem;font-family:Georgia,serif;line-height:1.7;color:#333;';
+      
+      // Extract content
+      var content = article.cloneNode(true);
+      // Remove scripts, styles, nav, aside, footer, header
+      var toRemove = content.querySelectorAll('script,style,nav,aside,footer,header,.nav,.sidebar,.ads,.advertisement,[class*="ad-"],[id*="ad-"]');
+      toRemove.forEach(function(el){ el.remove(); });
+      
+      readerDiv.innerHTML = content.innerHTML;
+      
+      // Style the content
+      var style = document.createElement('style');
+      style.textContent = 
+        '#__ul_reader_overlay * { max-width: 800px; margin-left:auto; margin-right:auto; }' +
+        '#__ul_reader_overlay h1, #__ul_reader_overlay h2, #__ul_reader_overlay h3 { color:#1a1a1a; margin-top:2em; margin-bottom:0.5em; }' +
+        '#__ul_reader_overlay p { margin-bottom:1.2em; text-align:justify; }' +
+        '#__ul_reader_overlay img, #__ul_reader_overlay video { max-width:100%; height:auto; display:block; margin:1.5em auto; }' +
+        '#__ul_reader_overlay a { color:#0066cc; text-decoration:underline; }' +
+        '#__ul_reader_overlay blockquote { border-left:4px solid #ddd; margin:1.5em 0; padding-left:1em; color:#666; font-style:italic; }' +
+        '#__ul_reader_overlay pre { background:#f5f5f5; padding:1em; overflow:auto; border-radius:4px; }' +
+        '#__ul_reader_overlay code { background:#f5f5f5; padding:0.2em 0.4em; border-radius:3px; font-family:monospace; }' +
+        '@media (prefers-color-scheme: dark) { ' +
+        '  #__ul_reader_overlay { background:#1a1a2e; color:#e0e0e0; } ' +
+        '  #__ul_reader_overlay h1, #__ul_reader_overlay h2, #__ul_reader_overlay h3 { color:#fff; } ' +
+        '  #__ul_reader_overlay a { color:#6ab0f3; } ' +
+        '  #__ul_reader_overlay blockquote { border-left-color:#444; color:#aaa; } ' +
+        '  #__ul_reader_overlay pre, #__ul_reader_overlay code { background:#2a2a3e; } ' +
+        '}';
+      
+      document.head.appendChild(style);
+      document.body.innerHTML = '';
+      document.body.appendChild(readerDiv);
+      document.body.style.margin = '0';
+      document.body.style.overflow = 'hidden';
+      
+      return true;
+    }catch(e){console.error(e); return false;}
+  })())JS";
+  v->EvaluateScript(js, nullptr);
+}
+
+void UI::RemoveReaderModeFromView(RefPtr<View> v)
+{
+  if (!v)
+    return;
+  const char *js = R"JS((function(){
+    try{
+      var overlay = document.getElementById('__ul_reader_overlay');
+      if (overlay) overlay.remove();
+      var style = document.querySelector('style[text-content*="__ul_reader_overlay"]');
+      if (style) style.remove();
+      document.body.style.margin = '';
+      document.body.style.overflow = '';
+      location.reload();
       return true;
     }catch(e){return false;}
   })())JS";
