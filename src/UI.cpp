@@ -1,9 +1,14 @@
 #include "UI.h"
+#include "ProfileManager.h"
+#include "SyncService.h"
 #include <cstring>
 #include <cmath>
 #include <iostream>
 #include <Ultralight/Renderer.h>
+#include <Ultralight/platform/Surface.h>
+#include <Ultralight/Bitmap.h>
 #include <chrono>
+#include <ctime>
 #include <fstream>
 #include <sstream>
 #include <cctype>
@@ -39,8 +44,8 @@
 
 static UI *g_ui = 0;
 
-#define UI_HEIGHT 80
-#define UI_HEIGHT_COMPACT 60 // Reduced height when compact tabs mode is enabled
+#define UI_HEIGHT 84
+#define UI_HEIGHT_COMPACT 76 // Reduced height when compact tabs mode is enabled
 
 namespace
 {
@@ -58,7 +63,7 @@ namespace
     bool default_value;
   };
 
-  constexpr std::array<SettingDescriptor, 32> kFallbackSettingsCatalog = {
+  constexpr std::array<SettingDescriptor, 33> kFallbackSettingsCatalog = {
       // Appearance
       SettingDescriptor{"launch_dark_theme", "Launch in dark theme",
                         "Start Ultralight with dark chrome, toolbars, and tabs by default.",
@@ -121,7 +126,7 @@ namespace
       // Performance
       SettingDescriptor{"smooth_scrolling", "Smooth scrolling",
                         "Enable smooth animated scrolling for a more fluid browsing experience.",
-                        "performance", nullptr, false, &UI::BrowserSettings::smooth_scrolling, true},
+                        "performance", nullptr, false, &UI::BrowserSettings::smooth_scrolling, false},
       SettingDescriptor{"hardware_acceleration", "Hardware acceleration",
                         "Use GPU to accelerate graphics rendering for better performance.",
                         "performance", nullptr, false, &UI::BrowserSettings::hardware_acceleration, true},
@@ -142,6 +147,9 @@ namespace
       SettingDescriptor{"enable_caret_browsing", "Enable caret browsing",
                         "Navigate web pages using keyboard cursor like in a text editor.",
                         "accessibility", nullptr, false, &UI::BrowserSettings::enable_caret_browsing, false},
+      SettingDescriptor{"reader_mode", "Reader mode",
+                        "Strip web pages down to essential text and images for easier reading.",
+                        "accessibility", nullptr, false, &UI::BrowserSettings::reader_mode, false},
 
       // Developer
       SettingDescriptor{"enable_remote_inspector", "Enable remote inspector",
@@ -341,7 +349,7 @@ namespace
 
   void LoadSettingsCatalogFromFile(std::unordered_map<std::string, ParsedCatalogEntry> &out)
   {
-    std::ifstream in("assets/settings_catalog.json", std::ios::in | std::ios::binary);
+    std::ifstream in("assets/data/settings_catalog.json", std::ios::in | std::ios::binary);
     if (!in.is_open())
       return;
     std::ostringstream ss;
@@ -480,7 +488,17 @@ UI::UI(RefPtr<Window> window)
   // Prepare settings and state BEFORE loading the main UI document so the first snapshot reflects persisted values.
   LoadSuggestionsFaviconsFlag();
   EnsureDataDirectoryExists();
-  settings_storage_path_ = SettingsFilePath().string();
+
+  // Initialize profile manager and compute profile-specific data directory
+  profile_manager_ = std::make_unique<ProfileManager>();
+  profile_manager_->Initialize(SettingsDirectory());
+  profile_data_dir_ = profile_manager_->GetCurrentProfileDataDirectory();
+
+  // Initialize sync service
+  sync_service_ = std::make_unique<SyncService>(this);
+  sync_service_->Initialize(profile_data_dir_);
+
+  settings_storage_path_ = (profile_data_dir_ / "settings.json").string();
   LoadSettingsFromDisk();
 
   // No adblock-specific hooks here; UA overrides are applied in Tab
@@ -497,13 +515,13 @@ UI::UI(RefPtr<Window> window)
   download_manager_->SetWebPConversionCallback([this]()
                                                { return settings_.convert_webp_to_png; });
 
-  // Initialize password manager
+  // Initialize password manager with profile-specific directory
   password_manager_ = std::make_unique<password::PasswordManager>();
-  password_manager_->Initialize(SettingsDirectory());
+  password_manager_->Initialize(profile_data_dir_);
 
-  // Initialize bookmark store
+  // Initialize bookmark store with profile-specific directory
   bookmark_store_ = std::make_unique<BookmarkStore>();
-  bookmark_store_->Initialize(SettingsDirectory());
+  bookmark_store_->Initialize(profile_data_dir_);
 
   // Apply runtime toggles (visual sync happens on DOMReady via SyncSettingsStateToUI)
   ApplySettings(true, true);
@@ -543,7 +561,17 @@ UI::UI(RefPtr<Window> window, AdBlocker *adblock, AdBlocker *tracker)
 
   LoadSuggestionsFaviconsFlag();
   EnsureDataDirectoryExists();
-  settings_storage_path_ = SettingsFilePath().string();
+
+  // Initialize profile manager and compute profile-specific data directory
+  profile_manager_ = std::make_unique<ProfileManager>();
+  profile_manager_->Initialize(SettingsDirectory());
+  profile_data_dir_ = profile_manager_->GetCurrentProfileDataDirectory();
+
+  // Initialize sync service
+  sync_service_ = std::make_unique<SyncService>(this);
+  sync_service_->Initialize(profile_data_dir_);
+
+  settings_storage_path_ = (profile_data_dir_ / "settings.json").string();
   LoadSettingsFromDisk();
   // UA overrides are applied in Tab when views are created.
 
@@ -557,13 +585,13 @@ UI::UI(RefPtr<Window> window, AdBlocker *adblock, AdBlocker *tracker)
   download_manager_->SetWebPConversionCallback([this]()
                                                { return settings_.convert_webp_to_png; });
 
-  // Initialize password manager
+  // Initialize password manager with profile-specific directory
   password_manager_ = std::make_unique<password::PasswordManager>();
-  password_manager_->Initialize(SettingsDirectory());
+  password_manager_->Initialize(profile_data_dir_);
 
-  // Initialize bookmark store
+  // Initialize bookmark store with profile-specific directory
   bookmark_store_ = std::make_unique<BookmarkStore>();
-  bookmark_store_->Initialize(SettingsDirectory());
+  bookmark_store_->Initialize(profile_data_dir_);
 
   // Apply runtime toggles (visual sync happens on DOMReady via SyncSettingsStateToUI)
   ApplySettings(true, true);
@@ -1011,7 +1039,7 @@ void UI::LoadCachedStartPage()
 {
   // Pre-load the start page HTML into memory for instant tab creation
   // This eliminates file I/O delay when opening new tabs
-  
+
   // Get current working directory to construct absolute path
   char cwd_buf[1024] = {0};
 #ifdef _WIN32
@@ -1019,23 +1047,23 @@ void UI::LoadCachedStartPage()
 #else
   getcwd(cwd_buf, sizeof(cwd_buf));
 #endif
-  
+
   std::string cwd(cwd_buf);
-std::string file_path = cwd + "/assets/static-sites/google-static.html";
+  std::string file_path = cwd + "/assets/static/google-static.html";
 
   std::ifstream in(file_path, std::ios::in | std::ios::binary);
   if (!in.is_open())
   {
     // Try alternative path (in case assets folder is in a different location)
-    std::string alt_path = cwd + "/../assets/static-sites/google-static.html";
+    std::string alt_path = cwd + "/../assets/static/google-static.html";
     in.open(alt_path, std::ios::in | std::ios::binary);
-    
+
     if (!in.is_open())
     {
       // Last resort: try new_tab_page.html
-      std::string fallback_path = cwd + "/assets/new_tab_page.html";
+      std::string fallback_path = cwd + "/assets/pages/new_tab_page.html";
       in.open(fallback_path, std::ios::in | std::ios::binary);
-      
+
       if (!in.is_open())
       {
         // Final fallback: minimal dark page if file not found
@@ -1046,7 +1074,7 @@ std::string file_path = cwd + "/assets/static-sites/google-static.html";
       }
     }
   }
-  
+
   std::ostringstream ss;
   ss << in.rdbuf();
   cached_start_page_html_ = ss.str();
@@ -1057,13 +1085,13 @@ void UI::LoadCachedInternalPages()
 {
   // Pre-load frequently used internal pages for instant loading
   static const char *pages[] = {
-      "assets/settings.html",
-      "assets/history.html",
-      "assets/downloads.html",
-      "assets/passwords.html",
-      "assets/extensions.html",
-      "assets/about.html",
-      "assets/new_tab_page.html"};
+      "assets/pages/settings.html",
+      "assets/pages/history.html",
+      "assets/pages/downloads.html",
+      "assets/pages/passwords.html",
+      "assets/pages/extensions.html",
+      "assets/pages/about.html",
+      "assets/pages/new_tab_page.html"};
 
   static const char *urls[] = {
       "file:///settings.html",
@@ -1081,7 +1109,7 @@ void UI::LoadCachedInternalPages()
 #else
   getcwd(cwd_buf, sizeof(cwd_buf));
 #endif
-  
+
   std::string cwd(cwd_buf);
 
   for (size_t i = 0; i < sizeof(pages) / sizeof(pages[0]); ++i)
@@ -1089,14 +1117,14 @@ void UI::LoadCachedInternalPages()
     // Try primary path
     std::string file_path = cwd + "/" + pages[i];
     std::ifstream in(file_path, std::ios::in | std::ios::binary);
-    
+
     // If not found, try alternative path
     if (!in.is_open())
     {
       file_path = cwd + "/../" + pages[i];
       in.open(file_path, std::ios::in | std::ios::binary);
     }
-    
+
     if (in.is_open())
     {
       std::ostringstream ss;
@@ -1125,8 +1153,8 @@ void UI::LoadShortcuts()
   shortcuts_["Ctrl+H"] = "open-history";
   shortcuts_["Ctrl+L"] = "focus-address";
 
-  // Try load from assets/shortcuts.json
-  std::ifstream in("assets/shortcuts.json", std::ios::in | std::ios::binary);
+  // Try load from assets/data/shortcuts.json
+  std::ifstream in("assets/data/shortcuts.json", std::ios::in | std::ios::binary);
   if (!in.is_open())
     return;
   std::ostringstream ss;
@@ -1478,8 +1506,9 @@ void UI::OnDOMReady(View *caller, uint64_t frame_id, bool is_main_frame, const S
     focusAddressBar = global["focusAddressBar"];
     isAddressBarFocused = global["isAddressBarFocused"];
     updateAdblockEnabled = global["updateAdblockEnabled"];
-    setTabDrmState = global["setTabDrmState"];
-    applySettings = global["applySettings"];
+setTabDrmState = global["setTabDrmState"];
+  applySettings = global["applySettings"];
+  // Window state is now queried from JS via GetWindowMaximized()
   }
 
   global["OnBack"] = BindJSCallback(&UI::OnBack);
@@ -1572,9 +1601,25 @@ void UI::OnDOMReady(View *caller, uint64_t frame_id, bool is_main_frame, const S
   global["OnOpenExtensionsNewTab"] = BindJSCallback(&UI::OnOpenExtensionsNewTab);
   global["OnOpenThemesNewTab"] = BindJSCallback(&UI::OnOpenThemesNewTab);
   global["OnOpenThemesDirectory"] = BindJSCallback(&UI::OnOpenThemesDirectory);
-  global["OnImportThemeFile"] = BindJSCallback(&UI::OnImportThemeFile);
-  global["OnExportThemeFile"] = BindJSCallback(&UI::OnExportThemeFile);
-  global["OnSaveThemeToFile"] = BindJSCallback(&UI::OnSaveThemeToFile);
+  // Window control bindings (for borderless window)
+  global["OnWindowMinimize"] = BindJSCallback(&UI::OnWindowMinimize);
+  global["OnWindowMaximize"] = BindJSCallback(&UI::OnWindowMaximize);
+  global["OnWindowClose"] = BindJSCallback(&UI::OnWindowClose);
+  global["OnWindowDragStart"] = BindJSCallback(&UI::OnWindowDragStart);
+
+  // Profile management callbacks
+  global["OnGetProfiles"] = BindJSCallbackWithRetval(&UI::OnGetProfiles);
+  global["OnGetCurrentProfile"] = BindJSCallbackWithRetval(&UI::OnGetCurrentProfile);
+  global["OnCreateProfile"] = BindJSCallbackWithRetval(&UI::OnCreateProfile);
+  global["OnSwitchProfile"] = BindJSCallbackWithRetval(&UI::OnSwitchProfile);
+  global["OnDeleteProfile"] = BindJSCallbackWithRetval(&UI::OnDeleteProfile);
+  global["OnToggleReaderMode"] = BindJSCallback(&UI::OnToggleReaderMode);
+  global["GetReaderModeEnabled"] = BindJSCallbackWithRetval(&UI::GetReaderModeEnabled);
+  global["OnTakeScreenshot"] = BindJSCallback(&UI::OnTakeScreenshot);
+  global["OnSyncExport"] = BindJSCallback(&UI::OnSyncExport);
+  global["OnSyncImport"] = BindJSCallback(&UI::OnSyncImport);
+  global["GetSyncStatus"] = BindJSCallbackWithRetval(&UI::OnGetSyncStatus);
+  global["GetWindowMaximized"] = BindJSCallbackWithRetval(&UI::GetWindowMaximized);
   global["GetDownloadsSnapshot"] = BindJSCallbackWithRetval(&UI::OnDownloadsOverlayGet);
   global["ClearDownloadsSnapshot"] = BindJSCallback(&UI::OnDownloadsOverlayClear);
   global["OnAddressBarBlur"] = BindJSCallback(&UI::OnAddressBarBlur);
@@ -2065,6 +2110,100 @@ void UI::OnOpenThemesDirectory(const JSObject &obj, const JSArgs &args)
   std::string cmd = "xdg-open " + util::EscapeShellArg(path_str);
   system(cmd.c_str());
 #endif
+}
+
+// Window control implementations (for borderless window)
+void UI::OnWindowMinimize(const JSObject &obj, const JSArgs &args)
+{
+  (void)obj;
+  (void)args;
+#if defined(_WIN32)
+  if (window_) {
+    HWND hwnd = (HWND)window_->native_handle();
+    if (hwnd) {
+      ShowWindow(hwnd, SW_MINIMIZE);
+      return;
+    }
+  }
+#endif
+  if (window_)
+    window_->Hide();
+}
+
+void UI::OnWindowMaximize(const JSObject &obj, const JSArgs &args)
+{
+  (void)obj;
+  (void)args;
+#if defined(_WIN32)
+  if (window_) {
+    HWND hwnd = (HWND)window_->native_handle();
+    if (hwnd) {
+      WINDOWPLACEMENT wp = { sizeof(WINDOWPLACEMENT) };
+      GetWindowPlacement(hwnd, &wp);
+      if (wp.showCmd == SW_SHOWMAXIMIZED) {
+        ShowWindow(hwnd, SW_RESTORE);
+      } else {
+        ShowWindow(hwnd, SW_MAXIMIZE);
+      }
+      return;
+    }
+  }
+#elif defined(__APPLE__)
+  // macOS: use NSWindow methods
+  // Not implemented yet
+#else
+  // Linux: use GTK/GLFW methods
+  // Not implemented yet
+#endif
+}
+
+void UI::OnWindowClose(const JSObject &obj, const JSArgs &args)
+{
+  (void)obj;
+  (void)args;
+#if defined(_WIN32)
+  if (window_) {
+    HWND hwnd = (HWND)window_->native_handle();
+    if (hwnd) {
+      PostMessage(hwnd, WM_CLOSE, 0, 0);
+      return;
+    }
+  }
+#endif
+  if (window_)
+    window_->Close();
+}
+
+void UI::OnWindowDragStart(const JSObject &obj, const JSArgs &args)
+{
+  (void)obj;
+  (void)args;
+#if defined(_WIN32)
+  if (window_) {
+    HWND hwnd = (HWND)window_->native_handle();
+    if (hwnd) {
+      ReleaseCapture();
+      SendMessage(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
+    }
+  }
+#endif
+}
+
+JSValue UI::GetWindowMaximized(const JSObject &obj, const JSArgs &args)
+{
+  (void)obj;
+  (void)args;
+#if defined(_WIN32)
+  if (window_) {
+    HWND hwnd = (HWND)window_->native_handle();
+    if (hwnd) {
+      WINDOWPLACEMENT wp = { sizeof(WINDOWPLACEMENT) };
+      GetWindowPlacement(hwnd, &wp);
+      return JSValue(wp.showCmd == 3);
+    }
+  }
+#endif
+  return JSValue(false);
 }
 
 // ============================================================================
@@ -3176,7 +3315,7 @@ void UI::ReloadActiveNonSettingsTab()
             std::fprintf(stderr, "[UI] Closing old tab id=%llu (replaced by id=%llu)\n", (unsigned long long)old_id, (unsigned long long)new_id);
             tabs_[old_id].reset();
             tabs_.erase(old_id);
-            RefPtr<JSContext> lock(view()->LockJSContext());
+  RefPtr<JSContext> lock(this->view()->LockJSContext());
             closeTab({old_id});
           }
         }
@@ -4025,6 +4164,63 @@ void UI::RestoreSettingsToDefaults()
   SettingsManager::RestoreSettingsToDefaults(*this);
 }
 
+std::string UI::GetProfilesJSON() const
+{
+  std::ostringstream ss;
+  ss << "{";
+  ss << "\"current\":\"" << util::EscapeJsonString(profile_manager_->GetCurrentProfileName()) << "\",";
+  ss << "\"profiles\":[";
+  bool first = true;
+  for (const auto &p : profile_manager_->GetProfiles())
+  {
+    if (!first)
+      ss << ",";
+    first = false;
+    ss << "{";
+    ss << "\"name\":\"" << util::EscapeJsonString(p.name) << "\",";
+    ss << "\"directory\":\"" << util::EscapeJsonString(p.directory_name) << "\",";
+    ss << "\"is_default\":" << (p.is_default ? "true" : "false");
+    ss << "}";
+  }
+  ss << "]";
+  ss << "}";
+  return ss.str();
+}
+
+const std::string &UI::GetCurrentProfileName() const
+{
+  return profile_manager_->GetCurrentProfileName();
+}
+
+std::string UI::GetProfileDataDirectoryPath() const
+{
+  return profile_data_dir_.string();
+}
+
+bool UI::CreateProfile(const std::string &name)
+{
+  return profile_manager_->CreateProfile(name);
+}
+
+bool UI::SwitchProfile(const std::string &name)
+{
+  if (!profile_manager_->SwitchProfile(name))
+    return false;
+  profile_data_dir_ = profile_manager_->GetCurrentProfileDataDirectory();
+  settings_storage_path_ = (profile_data_dir_ / "settings.json").string();
+  return true;
+}
+
+bool UI::DeleteProfile(const std::string &name)
+{
+  return profile_manager_->DeleteProfile(name);
+}
+
+bool UI::ProfileExists(const std::string &name) const
+{
+  return profile_manager_->ProfileExists(name);
+}
+
 bool UI::ParseSettingsBool(const std::string &buffer, const char *key, bool fallback) const
 {
   if (!key)
@@ -4735,27 +4931,27 @@ void UI::ApplyReaderModeToView(RefPtr<View> v)
     try{
       var sid='__ul_reader_mode';
       if(document.getElementById(sid)) return false;
-      
+
       // Clone the main content
       var article = document.querySelector('article') || document.querySelector('main') || document.body;
       if (!article) return false;
-      
+
       // Create reader mode overlay
       var readerDiv = document.createElement('div');
       readerDiv.id = '__ul_reader_overlay';
       readerDiv.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#fefefe;z-index:2147483647;overflow:auto;padding:2rem;font-family:Georgia,serif;line-height:1.7;color:#333;';
-      
+
       // Extract content
       var content = article.cloneNode(true);
       // Remove scripts, styles, nav, aside, footer, header
       var toRemove = content.querySelectorAll('script,style,nav,aside,footer,header,.nav,.sidebar,.ads,.advertisement,[class*="ad-"],[id*="ad-"]');
       toRemove.forEach(function(el){ el.remove(); });
-      
+
       readerDiv.innerHTML = content.innerHTML;
-      
+
       // Style the content
       var style = document.createElement('style');
-      style.textContent = 
+      style.textContent =
         '#__ul_reader_overlay * { max-width: 800px; margin-left:auto; margin-right:auto; }' +
         '#__ul_reader_overlay h1, #__ul_reader_overlay h2, #__ul_reader_overlay h3 { color:#1a1a1a; margin-top:2em; margin-bottom:0.5em; }' +
         '#__ul_reader_overlay p { margin-bottom:1.2em; text-align:justify; }' +
@@ -4771,13 +4967,13 @@ void UI::ApplyReaderModeToView(RefPtr<View> v)
         '  #__ul_reader_overlay blockquote { border-left-color:#444; color:#aaa; } ' +
         '  #__ul_reader_overlay pre, #__ul_reader_overlay code { background:#2a2a3e; } ' +
         '}';
-      
+
       document.head.appendChild(style);
       document.body.innerHTML = '';
       document.body.appendChild(readerDiv);
       document.body.style.margin = '0';
       document.body.style.overflow = 'hidden';
-      
+
       return true;
     }catch(e){console.error(e); return false;}
   })())JS";
@@ -4896,9 +5092,9 @@ void UI::RemoveTransparentToolbar()
 // --- URL Suggestions Implementation ---
 
 void UI::LoadPopularSites()
-{
-  popular_sites_.clear();
-  std::ifstream in("assets/popular_sites.json", std::ios::in | std::ios::binary);
+  {
+    popular_sites_.clear();
+    std::ifstream in("assets/data/popular_sites.json", std::ios::in | std::ios::binary);
   if (!in.is_open())
     return;
 
@@ -6208,9 +6404,9 @@ void UI::PruneFaviconDiskCacheToLimit()
 }
 
 void UI::LoadSuggestionsFaviconsFlag()
-{
-  suggestion_favicons_enabled_ = true; // default
-  std::ifstream in("assets/suggestions_favicons.txt", std::ios::in | std::ios::binary);
+  {
+    suggestion_favicons_enabled_ = true; // default
+    std::ifstream in("assets/data/suggestions_favicons.txt", std::ios::in | std::ios::binary);
   if (!in.is_open())
     return;
   std::ostringstream ss;
@@ -6353,7 +6549,7 @@ void UI::ShowPerformanceOverlay()
             const now = performance.now();
             frames++;
             frameTime = now - lastTime;
-            
+
             if (frameTime >= 1000) {
                 fps = frames;
                 frames = 0;
@@ -6362,7 +6558,7 @@ void UI::ShowPerformanceOverlay()
 
             document.getElementById('fps').textContent = fps;
             document.getElementById('fps').className = 'perf-value' + (fps < 30 ? ' danger' : fps < 55 ? ' warning' : '');
-            
+
             document.getElementById('frameTime').textContent = frameTime.toFixed(2) + ' ms';
             document.getElementById('frameTime').className = 'perf-value' + (frameTime > 33 ? ' danger' : frameTime > 18 ? ' warning' : '');
 
@@ -6385,7 +6581,7 @@ void UI::ShowPerformanceOverlay()
 )HTML";
 
   view->LoadHTML(String(html.c_str()), String("about:performance-overlay"));
-  
+
   performance_overlay_ = overlay;
   performance_overlay_->Show();
 }
@@ -6514,8 +6710,9 @@ bool UI::BrowserSettings::operator==(const BrowserSettings &other) const
          enable_database == other.enable_database &&
          reduce_motion == other.reduce_motion &&
          high_contrast_ui == other.high_contrast_ui &&
-         enable_caret_browsing == other.enable_caret_browsing &&
-         enable_remote_inspector == other.enable_remote_inspector &&
+          enable_caret_browsing == other.enable_caret_browsing &&
+          reader_mode == other.reader_mode &&
+          enable_remote_inspector == other.enable_remote_inspector &&
          show_performance_overlay == other.show_performance_overlay &&
          use_custom_user_agent == other.use_custom_user_agent &&
          custom_user_agent == other.custom_user_agent &&
@@ -7248,6 +7445,271 @@ void UI::OnDeleteTabGroup(const JSObject &obj, const JSArgs &args)
                           ultralight::String(std::to_string(group_id).c_str()) +
                           ultralight::String(");");
   view()->EvaluateScript(js, nullptr);
+}
+
+ultralight::JSValue UI::OnGetProfiles(const JSObject &obj, const JSArgs &args)
+{
+  return JSValue(String(GetProfilesJSON().c_str()));
+}
+
+ultralight::JSValue UI::OnGetCurrentProfile(const JSObject &obj, const JSArgs &args)
+{
+  std::ostringstream ss;
+  ss << "{\"name\":\"" << util::EscapeJsonString(profile_manager_->GetCurrentProfileName()) << "\"}";
+  return JSValue(String(ss.str().c_str()));
+}
+
+ultralight::JSValue UI::OnCreateProfile(const JSObject &obj, const JSArgs &args)
+{
+  if (args.empty())
+    return JSValue(String("{\"success\":false,\"error\":\"no name provided\"}"));
+
+  ultralight::String name_ul = args[0].ToString();
+  auto name_str = name_ul.utf8();
+  std::string name = name_str.data() ? name_str.data() : "";
+
+  bool success = profile_manager_->CreateProfile(name);
+  std::ostringstream ss;
+  ss << "{\"success\":" << (success ? "true" : "false");
+  if (success)
+  {
+    ss << ",\"name\":\"" << util::EscapeJsonString(name) << "\"";
+    // Notify UI of profile change
+    RefPtr<JSContext> lock(view()->LockJSContext());
+    ultralight::String js = ultralight::String("if(typeof onProfileCreated === 'function') onProfileCreated(") +
+                            ultralight::String("\"") +
+                            ultralight::String(name.c_str()) +
+                            ultralight::String("\");");
+    view()->EvaluateScript(js, nullptr);
+  }
+  ss << "}";
+  return JSValue(String(ss.str().c_str()));
+}
+
+ultralight::JSValue UI::OnSwitchProfile(const JSObject &obj, const JSArgs &args)
+{
+  if (args.empty())
+    return JSValue(String("{\"success\":false,\"error\":\"no name provided\"}"));
+
+  ultralight::String name_ul = args[0].ToString();
+  auto name_str = name_ul.utf8();
+  std::string name = name_str.data() ? name_str.data() : "";
+
+  bool success = SwitchProfile(name);
+  std::ostringstream ss;
+  ss << "{\"success\":" << (success ? "true" : "false");
+  if (success)
+  {
+    ss << ",\"name\":\"" << util::EscapeJsonString(name) << "\"";
+    ss << ",\"restart_required\":true";
+  }
+  ss << "}";
+  return JSValue(String(ss.str().c_str()));
+}
+
+ultralight::JSValue UI::OnDeleteProfile(const JSObject &obj, const JSArgs &args)
+{
+  if (args.empty())
+    return JSValue(String("{\"success\":false,\"error\":\"no name provided\"}"));
+
+  ultralight::String name_ul = args[0].ToString();
+  auto name_str = name_ul.utf8();
+  std::string name = name_str.data() ? name_str.data() : "";
+
+  bool success = DeleteProfile(name);
+  std::ostringstream ss;
+  ss << "{\"success\":" << (success ? "true" : "false") << "}";
+  return JSValue(String(ss.str().c_str()));
+}
+
+void UI::OnToggleReaderMode(const JSObject &obj, const JSArgs &args)
+{
+  settings_.reader_mode = !settings_.reader_mode;
+  reader_mode_enabled_ = settings_.reader_mode;
+
+  // Notify UI of reader mode state change
+  RefPtr<JSContext> lock(view()->LockJSContext());
+  ultralight::String js = ultralight::String("if(typeof onReaderModeChanged === 'function') onReaderModeChanged(") +
+                          (reader_mode_enabled_ ? "true" : "false") +
+                          ultralight::String(");");
+  view()->EvaluateScript(js, nullptr);
+}
+
+ultralight::JSValue UI::GetReaderModeEnabled(const JSObject &obj, const JSArgs &args)
+{
+  return JSValue(String(reader_mode_enabled_ ? "true" : "false"));
+}
+
+void UI::OnTakeScreenshot(const JSObject &obj, const JSArgs &args)
+{
+  auto tab = GetUltralightTab(active_tab_id_);
+  if (!tab)
+    return;
+
+  auto view = tab->view();
+  if (!view)
+    return;
+
+  auto surface = view->surface();
+  if (!surface)
+    return;
+
+  auto bitmap_surface = static_cast<BitmapSurface*>(surface);
+  auto bitmap = bitmap_surface->bitmap();
+  if (!bitmap)
+    return;
+
+  uint32_t width = bitmap->width();
+  uint32_t height = bitmap->height();
+
+  // Lock pixels for reading
+  auto locked = bitmap->LockPixelsSafe();
+  if (!locked.data())
+    return;
+
+  // Generate filename with timestamp
+  auto now = std::chrono::system_clock::now();
+  auto time_t_now = std::chrono::system_clock::to_time_t(now);
+  std::tm tm_now;
+  localtime_s(&tm_now, &time_t_now);
+  char timestamp[64];
+  std::strftime(timestamp, sizeof(timestamp), "%Y%m%d_%H%M%S", &tm_now);
+
+  std::string filename = "screenshot_" + std::string(timestamp) + ".bmp";
+  auto filepath = profile_data_dir_ / filename;
+
+  // Write BMP file
+  std::ofstream file(filepath, std::ios::binary);
+  if (!file.is_open())
+    return;
+
+  uint32_t rb = bitmap->row_bytes();
+  uint32_t row_padded = ((width * 24 + 31) / 32) * 4;
+  uint32_t image_size = row_padded * height;
+  uint32_t file_size = 54 + image_size;
+
+  // BMP header
+  uint8_t header[54] = {0};
+  header[0] = 'B';
+  header[1] = 'M';
+  *(uint32_t*)&header[2] = file_size;
+  *(uint32_t*)&header[10] = 54;
+  *(uint32_t*)&header[14] = 40;
+  *(uint32_t*)&header[18] = width;
+  *(uint32_t*)&header[22] = height;
+  *(uint16_t*)&header[26] = 1;
+  *(uint16_t*)&header[28] = 24;
+
+  file.write(reinterpret_cast<const char*>(header), 54);
+
+  // Bitmap pixels (BMP is BGR, bottom-up)
+  const uint8_t* src = static_cast<const uint8_t*>(locked.data());
+  std::vector<uint8_t> row(row_padded, 0);
+
+  for (uint32_t y = 0; y < height; ++y)
+  {
+    uint32_t src_y = height - 1 - y;
+    const uint8_t* row_src = src + src_y * rb;
+
+    for (uint32_t x = 0; x < width; ++x)
+    {
+      size_t src_offset = x * 4;
+      size_t dst_offset = x * 3;
+      row[dst_offset + 0] = row_src[src_offset + 2]; // B
+      row[dst_offset + 1] = row_src[src_offset + 1]; // G
+      row[dst_offset + 2] = row_src[src_offset + 0]; // R
+    }
+
+    file.write(reinterpret_cast<const char*>(row.data()), row_padded);
+  }
+
+  file.close();
+
+  // Notify UI that screenshot was saved
+  RefPtr<JSContext> lock(view->LockJSContext());
+  ultralight::String js = ultralight::String("if(typeof onScreenshotSaved === 'function') onScreenshotSaved(") +
+                          ultralight::String("\"") +
+                          ultralight::String(filename.c_str()) +
+                          ultralight::String("\");");
+  view->EvaluateScript(js, nullptr);
+}
+
+void UI::OnSyncExport(const JSObject &obj, const JSArgs &args)
+{
+  if (args.empty())
+    return;
+  ultralight::String path_ul = args[0].ToString();
+  auto path_str = path_ul.utf8();
+  std::string filepath = path_str.data() ? path_str.data() : "";
+  SyncExportToFile(filepath);
+}
+
+void UI::OnSyncImport(const JSObject &obj, const JSArgs &args)
+{
+  if (args.empty())
+    return;
+  ultralight::String path_ul = args[0].ToString();
+  auto path_str = path_ul.utf8();
+  std::string filepath = path_str.data() ? path_str.data() : "";
+  SyncImportFromFile(filepath);
+}
+
+ultralight::JSValue UI::OnGetSyncStatus(const JSObject &obj, const JSArgs &args)
+{
+  return JSValue(String(GetSyncStatus().c_str()));
+}
+
+void UI::SyncExportToFile(const std::string &filepath)
+{
+  if (sync_service_)
+    sync_service_->ExportToFile(filepath);
+}
+
+bool UI::SyncImportFromFile(const std::string &filepath)
+{
+  if (sync_service_)
+    return sync_service_->ImportFromFile(filepath);
+  return false;
+}
+
+std::string UI::GetSyncStatus() const
+{
+  if (sync_service_)
+    return sync_service_->GetLastSyncStatus();
+  return "Sync service not initialized";
+}
+
+bool UI::GetSyncSuccess() const
+{
+  if (sync_service_)
+    return sync_service_->GetLastSyncSuccess();
+  return false;
+}
+
+void UI::SetSyncEndpoint(const std::string &url)
+{
+  if (sync_service_)
+    sync_service_->SetSyncEndpoint(url);
+}
+
+std::string UI::GetSyncEndpoint() const
+{
+  if (sync_service_)
+    return sync_service_->GetSyncEndpoint();
+  return "";
+}
+
+void UI::SetAutoSync(bool enabled)
+{
+  if (sync_service_)
+    sync_service_->SetAutoSync(enabled);
+}
+
+bool UI::GetAutoSync() const
+{
+  if (sync_service_)
+    return sync_service_->GetAutoSync();
+  return false;
 }
 
 void UI::OnUpdateTabGroup(const JSObject &obj, const JSArgs &args)

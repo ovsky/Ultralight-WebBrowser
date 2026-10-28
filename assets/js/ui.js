@@ -398,6 +398,55 @@ class TabGroupsManager {
     }
 }
 
+// ============================================================================
+// Window Controls (for borderless window)
+// ============================================================================
+
+(function() {
+    // Initialize window controls after DOM is ready
+    document.addEventListener('DOMContentLoaded', () => {
+        const minimizeBtn = document.getElementById('window-minimize');
+        const maximizeBtn = document.getElementById('window-maximize');
+        const closeBtn = document.getElementById('window-close');
+        
+        if (minimizeBtn && window.OnWindowMinimize) {
+            minimizeBtn.addEventListener('click', () => window.OnWindowMinimize());
+        }
+        if (maximizeBtn && window.OnWindowMaximize) {
+            maximizeBtn.addEventListener('click', () => window.OnWindowMaximize());
+        }
+        if (closeBtn && window.OnWindowClose) {
+            closeBtn.addEventListener('click', () => window.OnWindowClose());
+        }
+        
+        // Update maximize/restore button icon based on window state
+        function updateMaximizeIcon(isMaximized) {
+            const maximizeIcon = maximizeBtn?.querySelector('use');
+            if (maximizeIcon) {
+                maximizeIcon.setAttribute('xlink:href', isMaximized ? '#svg_window_restore' : '#svg_window_maximize');
+                maximizeBtn.setAttribute('aria-label', isMaximized ? 'Restore' : 'Maximize');
+            }
+        }
+        
+        // Get initial window state
+        if (window.GetWindowMaximized) {
+            try {
+                const isMaximized = window.GetWindowMaximized();
+                updateMaximizeIcon(isMaximized);
+            } catch (e) {
+                // Ignore errors
+            }
+        }
+        
+        // Listen for window state changes from native
+        if (window.onWindowStateChanged) {
+            window.onWindowStateChanged = (isMaximized) => {
+                updateMaximizeIcon(isMaximized);
+            };
+        }
+    });
+})();
+
 // Initialize tab groups manager after chromeTabs is ready
 let tabGroupsManager = null;
 

@@ -2,21 +2,36 @@
 
 <head>
     <!-- Theme system - must load first -->
-    <link rel="stylesheet" type="text/css" href="themes/theme-variables.css">
-    <link rel="stylesheet" type="text/css" href="ui.css">
-    <link rel="stylesheet" type="text/css" href="chrome-tabs.css">
-    <script src="themes/theme.js"></script>
-    <script src="ui.js"></script>
-    <script src="anchorme.js"></script>
-
+    <link rel="stylesheet" type="text/css" href="../themes/theme-variables.css">
+    <link rel="stylesheet" type="text/css" href="../css/ui.css">
+    <link rel="stylesheet" type="text/css" href="../css/tabs.css">
+    <script src="../themes/theme.js"></script>
+    <script src="../js/ui.js"></script>
+    <script src="../js/anchorme.js"></script>
+    <script src="../js/draggabilly.pkgd.min.js"></script>
 </head>
 
 <body>
-    <div class="chrome-tabs" data-chrome-tabs-instance-id="0">
-        <div class="chrome-tabs-content">
-            <button id="chrome-tabs-add-tab" class="chrome-tabs-add-tab" aria-label="New Tab"></button>
+    <div id="chrome-titlebar" style="display:flex;align-items:flex-end;height:39px;background:linear-gradient(180deg,#f9f9f9 0%,#f1f1f1 100%);border-bottom:1px solid #bebebe;padding:0;">
+        <div style="flex:1;display:flex;align-items:flex-end;height:39px;min-width:0;">
+            <div class="tabs" data-tabs-instance-id="0" style="height:34px;background:transparent;border:none;padding:0;margin:0 6px;">
+                <div class="tabs-content" style="height:34px;">
+                    <button id="tabs-add-tab" class="tabs-add-tab" aria-label="New Tab" style="height:29px;margin:5px 4px 0 6px;border-radius:8px 8px 0 0;padding:0 10px;-webkit-app-region:no-drag;"></button>
+                </div>
+                <div class="tabs-bottom-bar" style="z-index:3;"></div>
+            </div>
         </div>
-        <div class="chrome-tabs-bottom-bar" style="z-index: 3;"></div>
+        <div style="display:flex;height:39px;align-items:center;-webkit-app-region:no-drag;">
+            <button id="window-minimize" class="ch-win" style="width:46px;height:39px;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;" onclick="window.OnWindowMinimize && OnWindowMinimize(); event.stopPropagation();">
+                <svg width="10" height="1"><rect width="10" height="1" fill="#5f6368"/></svg>
+            </button>
+            <button id="window-maximize" class="ch-win" style="width:46px;height:39px;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;" onclick="window.OnWindowMaximize && OnWindowMaximize(); event.stopPropagation();">
+                <svg width="10" height="10"><rect x="0" y="0" width="10" height="10" fill="none" stroke="#5f6368" stroke-width="1"/></svg>
+            </button>
+            <button id="window-close" class="ch-win ch-close" style="width:46px;height:39px;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;" onclick="window.OnWindowClose && OnWindowClose(); event.stopPropagation();">
+                <svg width="10" height="10"><line x1="0" y1="0" x2="10" y2="10" stroke="#5f6368" stroke-width="1"/><line x1="10" y1="0" x2="0" y2="10" stroke="#5f6368" stroke-width="1"/></svg>
+            </button>
+        </div>
     </div>
 
     <svg style="display: none;">
@@ -57,6 +72,24 @@
                 <circle cx="5" cy="12" r="2" fill="currentColor"></circle>
                 <circle cx="12" cy="12" r="2" fill="currentColor"></circle>
                 <circle cx="19" cy="12" r="2" fill="currentColor"></circle>
+            </g>
+            <g id="svg_window_minimize">
+                <path d="M4 14h16v2H4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </g>
+            <g id="svg_window_maximize">
+                <path d="M4 4h16v16H4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </g>
+            <g id="svg_window_restore">
+                <path d="M8 4h12v12H8zM4 8v12h12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </g>
+            <g id="svg_window_close">
+                <path d="M6 6l12 12M18 6l-12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </g>
+            <g id="svg_reader_mode">
+                <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10l-4 4h-3l-4-4 2.83-2.83L13 15.17l8.17-8.17z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </g>
+            <g id="svg_camera">
+                <path d="M14.946 1.696l-5.022-.722A2 2 0 0 0 9 1H5c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-4c-1.103 0-2.037.847-2.275 1.978l-5.022.722A2 2 0 0 0 13 3H8c-1.102 0-2.037.847-2.275 1.978zM8 5H7c-.6 0-1 .4-1 1s.4 1 1 1h1c.6 0 1-.4 1-1s-.4-1-1-1zm10 14H6v-8c0-1.1-.9-2-2-2H4c-1.1 0-2-.9-2-2V5c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             </g>
         </defs>
     </svg>
@@ -112,6 +145,20 @@
             </svg>
         </span>
 
+        <span id="toggle-reader-mode" class="icon" role="button" tabindex="0" aria-label="Toggle reader mode"
+            data-tooltip="Reader View">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" id="reader-mode-icon">
+                <use xlink:href="#svg_reader_mode" />
+            </svg>
+        </span>
+
+        <span id="toggle-screenshot" class="icon" role="button" tabindex="0" aria-label="Take screenshot"
+            data-tooltip="Screenshot">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                <use xlink:href="#svg_camera" />
+            </svg>
+        </span>
+
         <span id="toggle-menu" class="icon" role="button" tabindex="0" aria-label="Open menu" aria-haspopup="true"
             data-tooltip="Menu">
             <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
@@ -152,18 +199,18 @@
         <div class="menu-item" data-action="downloads">Downloads</div>
     </div>
 
-    <script src="draggabilly.pkgd.min.js"></script>
-    <script src="chrome-tabs.js"></script>
+    <script src="../js/draggabilly.pkgd.min.js"></script>
+    <script src="../js/tabs.js"></script>
     <script>
-        var el = document.querySelector('.chrome-tabs')
-        var chromeTabs = new ChromeTabs()
+        var el = document.querySelector('.tabs')
+        var tabs = new ChromeTabs()
         var select_next_mouseup = false;
         var defaultFavicon = "earth.svg";
         var suggEl = null;
         var suggActiveIndex = -1;
         var suggOverlayOpen = false;
 
-        chromeTabs.init(el, {
+        tabs.init(el, {
             tabOverlapDistance: 6,
             minWidth: 45,
             maxWidth: 243
@@ -171,20 +218,20 @@
 
         function addTab(id, title, faviconUrl, isLoading) {
             const icon = (typeof faviconUrl === 'string' && faviconUrl.length > 0) ? faviconUrl : defaultFavicon;
-            chromeTabs.addTab({ id: id, title: title, favicon: icon, loading: isLoading });
+            tabs.addTab({ id: id, title: title, favicon: icon, loading: isLoading });
         }
 
         function updateTab(id, title, faviconUrl, isLoading) {
             const tab = document.querySelector("[data-tab-id='" + id + "']");
             const icon = (typeof faviconUrl === 'string' && faviconUrl.length > 0) ? faviconUrl : defaultFavicon;
             if (tab)
-                chromeTabs.updateTab(tab, { title: title, favicon: icon, loading: isLoading });
+                tabs.updateTab(tab, { title: title, favicon: icon, loading: isLoading });
         }
 
         function closeTab(id) {
             const tab = document.querySelector("[data-tab-id='" + id + "']");
             if (tab)
-                chromeTabs.removeTab(tab);
+                tabs.removeTab(tab);
         }
 
         // Update bookmark button state (called from C++)
@@ -268,9 +315,9 @@
                 try {
                     const href = e.detail && e.detail.href ? String(e.detail.href) : '';
                     if (!href) return;
-                    const cur = document.querySelector('.chrome-tab.chrome-tab-current');
-                    if (cur && window.chromeTabs && typeof chromeTabs.updateTab === 'function') {
-                        chromeTabs.updateTab(cur, { favicon: href });
+                    const cur = document.querySelector('.tab.tab-current');
+                    if (cur && window.tabs && typeof tabs.updateTab === 'function') {
+                        tabs.updateTab(cur, { favicon: href });
                     }
                 } catch (err) {
                     // no-op
@@ -375,6 +422,59 @@
                     }
                 }, 100);
             }
+            const readerModeBtn = document.querySelector('#toggle-reader-mode');
+            if (readerModeBtn) {
+                const readerModeIcon = document.getElementById('reader-mode-icon');
+                const toggleReaderMode = () => {
+                    if (window.OnToggleReaderMode) {
+                        OnToggleReaderMode();
+                    }
+                };
+                readerModeBtn.addEventListener('click', event => {
+                    event.stopPropagation();
+                    toggleReaderMode();
+                });
+                readerModeBtn.addEventListener('keydown', event => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        toggleReaderMode();
+                    }
+                });
+                // Initialize state
+                setTimeout(() => {
+                    if (window.GetReaderModeEnabled) {
+                        const isEnabled = GetReaderModeEnabled();
+                        readerModeBtn.classList.toggle('active', isEnabled);
+                    }
+                }, 100);
+            }
+
+            const screenshotBtn = document.querySelector('#toggle-screenshot');
+            if (screenshotBtn) {
+                screenshotBtn.addEventListener('click', event => {
+                    event.stopPropagation();
+                    if (window.OnTakeScreenshot) OnTakeScreenshot();
+                });
+                screenshotBtn.addEventListener('keydown', event => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        if (window.OnTakeScreenshot) OnTakeScreenshot();
+                    }
+                });
+            }
+
+            // Native callback: reader mode state changed
+            window.onReaderModeChanged = function (enabled) {
+                if (readerModeBtn) {
+                    readerModeBtn.classList.toggle('active', enabled);
+                }
+                if (enabled) {
+                    showReaderMode();
+                } else {
+                    hideReaderMode();
+                }
+            };
+
             var address = document.querySelector('#address');
             address.onkeypress = (function (e) {
                 if (e.which == '13') {
@@ -1068,6 +1168,302 @@
                     window.hideDrmPromptBar();
                 });
             }
+        })();
+    </script>
+
+    <!-- Reader Mode Overlay -->
+    <div id="reader-mode-overlay" class="reader-mode-overlay hidden">
+        <div class="reader-mode-header">
+            <button id="reader-mode-close" class="reader-mode-btn" aria-label="Exit reader view">
+                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+            <h1 id="reader-mode-title">Article Title</h1>
+            <div class="reader-mode-meta" id="reader-mode-meta"></div>
+        </div>
+        <div class="reader-mode-content" id="reader-mode-content"></div>
+    </div>
+
+    <style>
+        .reader-mode-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--color-bg-primary, #ffffff);
+            color: var(--color-text-primary, #333333);
+            z-index: 20000;
+            display: flex;
+            flex-direction: column;
+            font-family: var(--font-family-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+            transition: transform 0.3s ease;
+        }
+
+        .reader-mode-overlay.hidden {
+            display: none;
+        }
+
+        .reader-mode-header {
+            padding: 24px 32px;
+            border-bottom: 1px solid var(--color-border, #e1e4e8);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .reader-mode-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .reader-mode-btn:hover {
+            background: var(--color-bg-hover, #f5f5f5);
+        }
+
+        .reader-mode-btn svg {
+            fill: var(--color-text-secondary, #666666);
+            width: 20px;
+            height: 20px;
+        }
+
+        .reader-mode-title {
+            font-size: 28px;
+            font-weight: 600;
+            color: var(--color-text-primary, #333333);
+            line-height: 1.4;
+            margin: 0;
+            flex: 1;
+        }
+
+        .reader-mode-meta {
+            font-size: 14px;
+            color: var(--color-text-secondary, #666666);
+            margin-top: 8px;
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .reader-mode-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 32px;
+            max-width: 720px;
+            margin: 0 auto;
+            width: 100%;
+            box-sizing: border-box;
+            line-height: 1.7;
+            font-size: 18px;
+            color: var(--color-text-primary, #333333);
+        }
+
+        .reader-mode-content p {
+            margin-bottom: 1.5em;
+        }
+
+        .reader-mode-content img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            margin: 1.5em auto;
+            border-radius: 8px;
+        }
+
+        .reader-mode-content h1, .reader-mode-content h2, .reader-mode-content h3 {
+            margin: 1.5em 0 0.75em;
+            color: var(--color-text-primary, #333333);
+        }
+
+        .reader-mode-content h1 { font-size: 24px; }
+        .reader-mode-content h2 { font-size: 20px; }
+        .reader-mode-content h3 { font-size: 18px; }
+
+        .reader-mode-content a {
+            color: var(--color-accent-primary, #1a73e8);
+            text-decoration: underline;
+        }
+
+        body.dark-theme .reader-mode-overlay,
+        body.dark .reader-mode-overlay {
+            background: var(--color-bg-primary, #1a1a1a);
+            color: var(--color-text-primary, #e0e0e0);
+        }
+
+        body.dark-theme .reader-mode-btn svg,
+        body.dark .reader-mode-btn svg {
+            fill: var(--color-text-secondary, #9e9e9e);
+        }
+
+        body.dark-theme .reader-mode-content,
+        body.dark .reader-mode-content {
+            color: var(--color-text-primary, #e0e0e0);
+        }
+
+        body.dark-theme .reader-mode-content a,
+        body.dark .reader-mode-content a {
+            color: var(--color-accent-primary, #6495ed);
+        }
+    </style>
+
+    <style>
+        .screenshot-toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 16px;
+            border-radius: 4px;
+            font-size: 14px;
+            z-index: 25000;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+    </style>
+
+    <script>
+        // Reader Mode - Content extraction and display
+        (function () {
+            var overlay = document.getElementById('reader-mode-overlay');
+            var closeBtn = document.getElementById('reader-mode-close');
+            var titleEl = document.getElementById('reader-mode-title');
+            var metaEl = document.getElementById('reader-mode-meta');
+            var contentEl = document.getElementById('reader-mode-content');
+            var isActive = false;
+
+            function extractArticleContent() {
+                // Simple article content extraction (readability-like)
+                var candidates = [];
+
+                // Score elements based on content density
+                var elements = document.querySelectorAll('article, main, .post, .entry, .article, .story, [role="main"]');
+                if (elements.length === 0) {
+                    elements = document.querySelectorAll('div');
+                }
+
+                var best = null;
+                var bestScore = 0;
+
+                elements.forEach(function (el) {
+                    var text = el.innerText || el.textContent || '';
+                    var textLen = text.trim().length;
+                    if (textLen < 200) return;
+
+                    var score = textLen;
+                    // Boost score for semantic tags
+                    if (el.tagName === 'ARTICLE' || el.tagName === 'MAIN') score *= 2;
+                    if (el.className.match(/article|post|entry|story|content|main/i)) score *= 1.5;
+
+                    // Penalize for too many links
+                    var links = el.querySelectorAll('a').length;
+                    score /= (1 + links * 0.1);
+
+                    if (score > bestScore) {
+                        bestScore = score;
+                        best = el;
+                    }
+                });
+
+                if (!best) return null;
+
+                // Extract title
+                var title = document.title || '';
+                var h1 = document.querySelector('h1');
+                if (h1 && h1.innerText) title = h1.innerText.trim();
+
+                // Extract meta (author, date)
+                var metaParts = [];
+                var author = document.querySelector('[rel="author"], .author, .byline');
+                if (author) metaParts.push(author.innerText.trim());
+                var date = document.querySelector('time, .date, .published');
+                if (date) metaParts.push(date.innerText.trim());
+
+                // Clone and clean content
+                var content = best.cloneNode(true);
+
+                // Remove unwanted elements
+                var selectors = 'script, style, nav, header, footer, aside, .ad, .advertisement, .sidebar, .menu, .social, .share, .comments, .related, iframe, button';
+                content.querySelectorAll(selectors).forEach(function (el) { el.remove(); });
+
+                // Convert to plain text structure
+                var resultHtml = '';
+                var paras = content.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, blockquote');
+                if (paras.length === 0) {
+                    resultHtml = content.innerHTML;
+                } else {
+                    paras.forEach(function (p) {
+                        var tag = p.tagName.toLowerCase();
+                        var text = p.innerText.trim();
+                        if (!text) return;
+                        if (tag.startsWith('h')) {
+                            resultHtml += '<' + tag + '>' + text + '</' + tag + '>';
+                        } else if (tag === 'blockquote') {
+                            resultHtml += '<blockquote>' + text + '</blockquote>';
+                        } else {
+                            resultHtml += '<p>' + text + '</p>';
+                        }
+                    });
+                }
+
+                return {
+                    title: title,
+                    meta: metaParts.join(' • '),
+                    content: resultHtml
+                };
+            }
+
+            function showReaderMode() {
+                var data = extractArticleContent();
+                if (!data) return;
+
+                titleEl.textContent = data.title;
+                metaEl.textContent = data.meta;
+                contentEl.innerHTML = data.content;
+
+                overlay.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+                isActive = true;
+            }
+
+            function hideReaderMode() {
+                overlay.classList.add('hidden');
+                document.body.style.overflow = '';
+                contentEl.innerHTML = '';
+                isActive = false;
+            }
+
+            closeBtn.addEventListener('click', hideReaderMode);
+
+            // Expose to native
+            window.__ul_reader_mode_active = function () { return isActive; };
+            window.showReaderMode = showReaderMode;
+            window.hideReaderMode = hideReaderMode;
+
+            // Native callback: screenshot saved
+            window.onScreenshotSaved = function (filename) {
+                var toast = document.createElement('div');
+                toast.className = 'screenshot-toast';
+                toast.textContent = 'Screenshot saved: ' + filename;
+                document.body.appendChild(toast);
+                setTimeout(function () { toast.remove(); }, 3000);
+            };
+
+            // Keyboard shortcut: Esc to exit
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape' && isActive) hideReaderMode();
+            });
         })();
     </script>
 </body>

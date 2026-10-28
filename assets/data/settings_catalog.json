@@ -65,6 +65,14 @@
     "default": false
   },
   {
+    "key": "reader_mode",
+    "name": "Reader mode",
+    "description": "Strip web pages down to essential text and images for easier reading.",
+    "category": "accessibility",
+    "note": null,
+    "default": false
+  },
+  {
     "key": "enable_adblock",
     "name": "Enable ad blocking",
     "description": "Filter network requests using bundled block lists to hide intrusive ads.",
@@ -174,7 +182,7 @@
     "description": "Enable smooth animated scrolling for a more fluid browsing experience.",
     "category": "performance",
     "note": null,
-    "default": true
+    "default": false
   },
   {
     "key": "hardware_acceleration",
