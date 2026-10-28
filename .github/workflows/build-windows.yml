@@ -89,7 +89,7 @@ jobs:
       - name: Configure CMake
         shell: pwsh
         run: |
-          cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DULTRALIGHT_SDK_ROOT="data" -DBUILD_TESTING=OFF -DCMAKE_BUILD_TYPE=Release
+          cmake -S . -B build -G "Visual Studio 18 2026" -A x64 -DULTRALIGHT_SDK_ROOT="data" -DBUILD_TESTING=OFF -DCMAKE_BUILD_TYPE=Release
 
       - name: Build
         shell: pwsh
