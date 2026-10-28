@@ -18,6 +18,9 @@ namespace drm
   class DRMWebViewTab;
 }
 
+class ProfileManager;
+class SyncService;
+
 namespace password
 {
   class PasswordManager;
@@ -84,6 +87,7 @@ public:
     bool reduce_motion = false;
     bool high_contrast_ui = false;
     bool enable_caret_browsing = false;
+    bool reader_mode = false;
 
     // Developer
     bool enable_remote_inspector = false;
@@ -175,6 +179,25 @@ public:
   void OnSaveSettings(const JSObject &obj, const JSArgs &args);
   ultralight::JSValue OnGetDrmStatus(const JSObject &obj, const JSArgs &args);
   ultralight::JSValue OnInstallDrmDependencies(const JSObject &obj, const JSArgs &args);
+
+  // Profile management JS callbacks
+  ultralight::JSValue OnGetProfiles(const JSObject &obj, const JSArgs &args);
+  ultralight::JSValue OnGetCurrentProfile(const JSObject &obj, const JSArgs &args);
+  ultralight::JSValue OnCreateProfile(const JSObject &obj, const JSArgs &args);
+  ultralight::JSValue OnSwitchProfile(const JSObject &obj, const JSArgs &args);
+  ultralight::JSValue OnDeleteProfile(const JSObject &obj, const JSArgs &args);
+
+  // Reader mode JS callbacks
+  void OnToggleReaderMode(const JSObject &obj, const JSArgs &args);
+  ultralight::JSValue GetReaderModeEnabled(const JSObject &obj, const JSArgs &args);
+
+  // Screenshot JS callback
+  void OnTakeScreenshot(const JSObject &obj, const JSArgs &args);
+
+  // Sync service JS callbacks
+  void OnSyncExport(const JSObject &obj, const JSArgs &args);
+  void OnSyncImport(const JSObject &obj, const JSArgs &args);
+  ultralight::JSValue OnGetSyncStatus(const JSObject &obj, const JSArgs &args);
   // Reload the main chrome UI overlay (ui.html) so layout-dependent
   // settings such as compact tabs take effect immediately.
   void OnReloadChromeUI(const JSObject &obj, const JSArgs &args);
@@ -197,6 +220,13 @@ public:
   void OnLoadExtension(const JSObject &obj, const JSArgs &args);
   void OnCreateExtension(const JSObject &obj, const JSArgs &args);
   void OnOpenExtensionsFolder(const JSObject &obj, const JSArgs &args);
+
+  // Window control callbacks (for borderless window)
+  void OnWindowMinimize(const JSObject &obj, const JSArgs &args);
+  void OnWindowMaximize(const JSObject &obj, const JSArgs &args);
+  void OnWindowClose(const JSObject &obj, const JSArgs &args);
+  void OnWindowDragStart(const JSObject &obj, const JSArgs &args);
+  ultralight::JSValue GetWindowMaximized(const JSObject &obj, const JSArgs &args);
 
   // Bookmark Manager callbacks
   ultralight::JSValue OnGetBookmarks(const JSObject &obj, const JSArgs &args);
@@ -255,6 +285,13 @@ public:
   bool do_not_track_enabled() const { return settings_.do_not_track; }
   bool block_third_party_cookies_enabled() const { return settings_.block_third_party_cookies; }
   bool web_security_enabled() const { return settings_.enable_web_security; }
+
+  // Performance settings accessors for Tab's JavaScript injection
+  bool enable_local_storage_enabled() const { return settings_.enable_local_storage; }
+  bool enable_database_enabled() const { return settings_.enable_database; }
+
+  // Reader mode accessor
+  bool reader_mode_enabled() const { return settings_.reader_mode; }
 
   // Location spoofing accessors for Tab's JavaScript injection
   bool location_spoofing_enabled() const { return settings_.enable_location_spoofing; }
@@ -339,6 +376,30 @@ protected:
   bool SaveSettingsToDisk();
   void EnsureDataDirectoryExists();
   void RestoreSettingsToDefaults();
+public:
+  // Public accessor for settings reload (used by SyncService)
+  void ReloadSettingsFromDisk() { LoadSettingsFromDisk(); }
+
+  // Profile management
+  std::string GetProfilesJSON() const;
+  const std::string &GetCurrentProfileName() const;
+  std::string GetProfileDataDirectoryPath() const;
+  bool CreateProfile(const std::string &name);
+  bool SwitchProfile(const std::string &name);
+  bool DeleteProfile(const std::string &name);
+  bool ProfileExists(const std::string &name) const;
+
+  // Sync service
+  void SyncExportToFile(const std::string &filepath);
+  bool SyncImportFromFile(const std::string &filepath);
+  std::string GetSyncStatus() const;
+  bool GetSyncSuccess() const;
+  void SetSyncEndpoint(const std::string &url);
+  std::string GetSyncEndpoint() const;
+  void SetAutoSync(bool enabled);
+  bool GetAutoSync() const;
+  // Public accessor for settings JSON (used by SyncService)
+  std::string GetSettingsJSONPublic() const { return BuildSettingsJSON(); }
   // Helper used by OnReloadChromeUI to refresh the chrome overlay.
   void ReloadChromeUI();
   std::string BuildSettingsJSON() const;
@@ -402,6 +463,9 @@ protected:
   std::unique_ptr<DownloadManager> download_manager_;
   std::unique_ptr<password::PasswordManager> password_manager_;
   std::unique_ptr<BookmarkStore> bookmark_store_;
+  std::unique_ptr<ProfileManager> profile_manager_;
+  std::filesystem::path profile_data_dir_;
+  std::unique_ptr<SyncService> sync_service_;
   bool downloads_overlay_had_active_ = false;
   bool downloads_overlay_user_dismissed_ = false;
   uint64_t downloads_last_sequence_seen_ = 0;
@@ -441,6 +505,7 @@ protected:
   bool high_contrast_ui_enabled_ = false;
   bool vibrant_window_theme_enabled_ = false;
   bool smooth_scrolling_enabled_ = true;
+  bool reader_mode_enabled_ = false;
 
   // Session restore state
   bool session_restore_pending_ = false;     // True if we should prompt to restore session

@@ -1,0 +1,1519 @@
+10/7/2026, 7:45:34 PM 2 AutomaticUpdateCheck
+Checking for updates after 300000. Last Update Date: 1970-01-01T00:00:00.000Z. Current Date: 2026-10-07T17:45:34.000Z
+
+10/7/2026, 7:45:34 PM 3 AutomaticUpdateCheck
+Commencing updates at 1791395134003 in 300000 ms.
+
+10/7/2026, 7:45:34 PM 9 DotnetVSCodeExtensionFound
+true
+Checking extension TypeScriptTeam.jsts-chat-features for .NET installation requests
+
+10/7/2026, 7:45:34 PM 9 DotnetVSCodeExtensionFound
+true
+Checking extension vscode.csharp for .NET installation requests
+
+10/7/2026, 7:45:34 PM 9 DotnetVSCodeExtensionFound
+true
+Checking extension vscode.dotenv for .NET installation requests
+
+10/7/2026, 7:45:34 PM 9 DotnetVSCodeExtensionFound
+true
+Checking extension vscode.mermaid-markdown-features for .NET installation requests
+
+10/7/2026, 7:45:34 PM 9 DotnetVSCodeExtensionFound
+true
+Checking extension vscode.prompt for .NET installation requests
+
+10/7/2026, 7:45:34 PM 10 DotnetVSCodeExtensionFound
+true
+Checking extension anseki.vscode-color for .NET installation requests
+
+10/7/2026, 7:45:34 PM 10 DotnetVSCodeExtensionFound
+true
+Checking extension Anthropic.claude-code for .NET installation requests
+
+10/7/2026, 7:45:34 PM 10 DotnetVSCodeExtensionFound
+true
+Checking extension awwsky.regionmarker for .NET installation requests
+
+10/7/2026, 7:45:34 PM 10 DotnetVSCodeExtensionFound
+true
+Checking extension chouzz.vscode-better-align for .NET installation requests
+
+10/7/2026, 7:45:34 PM 10 DotnetVSCodeExtensionFound
+true
+Checking extension christian-kohler.path-intellisense for .NET installation requests
+
+10/7/2026, 7:45:34 PM 10 DotnetVSCodeExtensionFound
+true
+Checking extension CiberTurtle.sharp-icons for .NET installation requests
+
+10/7/2026, 7:45:34 PM 10 DotnetVSCodeExtensionFound
+true
+Checking extension codeflow-studio.claude-code-extension for .NET installation requests
+
+10/7/2026, 7:45:34 PM 10 DotnetVSCodeExtensionFound
+true
+Checking extension davidbabel.antigravity-icons-supercharged-gray for .NET installation requests
+
+10/7/2026, 7:45:34 PM 10 DotnetVSCodeExtensionFound
+true
+Checking extension DrDesten.asi-glsl for .NET installation requests
+
+10/7/2026, 7:45:34 PM 10 DotnetVSCodeExtensionFound
+true
+Checking extension eamodio.gitlens for .NET installation requests
+
+10/7/2026, 7:45:34 PM 10 DotnetVSCodeExtensionFound
+true
+Checking extension google.geminicodeassist for .NET installation requests
+
+10/7/2026, 7:45:34 PM 10 DotnetVSCodeExtensionFound
+true
+Checking extension josefpihrt-vscode.roslynator for .NET installation requests
+
+10/7/2026, 7:45:34 PM 11 DotnetVSCodeExtensionFound
+true
+Checking extension kleber-swf.unity-code-snippets for .NET installation requests
+
+10/7/2026, 7:45:34 PM 11 DotnetVSCodeExtensionFound
+true
+Checking extension lucasazzola.vscode-csproj for .NET installation requests
+
+10/7/2026, 7:45:34 PM 11 DotnetVSCodeExtensionFound
+true
+Checking extension mechatroner.rainbow-csv for .NET installation requests
+
+10/7/2026, 7:45:34 PM 11 DotnetVSCodeExtensionFound
+true
+Checking extension miguelsolorio.fluent-icons for .NET installation requests
+
+10/7/2026, 7:45:34 PM 11 DotnetVSCodeExtensionFound
+true
+Checking extension ms-dotnettools.csdevkit for .NET installation requests
+
+10/7/2026, 7:45:34 PM 11 DotnetVSCodeExtensionFound
+true
+Checking extension ms-dotnettools.csharp for .NET installation requests
+
+10/7/2026, 7:45:34 PM 11 DotnetVSCodeExtensionFound
+true
+Checking extension ms-dotnettools.vscode-dotnet-pack for .NET installation requests
+
+10/7/2026, 7:45:34 PM 11 DotnetVSCodeExtensionFound
+true
+Checking extension ms-dotnettools.vscode-dotnet-runtime for .NET installation requests
+
+10/7/2026, 7:45:34 PM 11 DotnetVSCodeExtensionFound
+true
+Checking extension ms-python.vscode-python-envs for .NET installation requests
+
+10/7/2026, 7:45:34 PM 11 DotnetVSCodeExtensionFound
+true
+Checking extension ms-vscode.cmake-tools for .NET installation requests
+
+10/7/2026, 7:45:34 PM 11 DotnetVSCodeExtensionFound
+true
+Checking extension redhat.vscode-xml for .NET installation requests
+
+10/7/2026, 7:45:34 PM 11 DotnetVSCodeExtensionFound
+true
+Checking extension seunghwan.smartsemicolon for .NET installation requests
+
+10/7/2026, 7:45:34 PM 11 DotnetVSCodeExtensionFound
+true
+Checking extension shadeview.shadeview for .NET installation requests
+
+10/7/2026, 7:45:34 PM 11 DotnetVSCodeExtensionFound
+true
+Checking extension SmukkeKim.theme-setimonokai for .NET installation requests
+
+10/7/2026, 7:45:34 PM 11 DotnetVSCodeExtensionFound
+true
+Checking extension spencerjames.csharpen for .NET installation requests
+
+10/7/2026, 7:45:34 PM 11 DotnetVSCodeExtensionFound
+true
+Checking extension streetsidesoftware.code-spell-checker for .NET installation requests
+
+10/7/2026, 7:45:34 PM 11 DotnetVSCodeExtensionFound
+true
+Checking extension visualstudiotoolsforunity.vstuc for .NET installation requests
+
+10/7/2026, 7:45:35 PM 282 DotnetVSCodeExtensionChange
+true
+A change was detected in the extensions. Installing .NET for new extensions.
+
+10/7/2026, 7:45:35 PM 283 DotnetVSCodeExtensionFound
+true
+Checking extension TypeScriptTeam.jsts-chat-features for .NET installation requests
+
+10/7/2026, 7:45:35 PM 283 DotnetVSCodeExtensionFound
+true
+Checking extension vscode.csharp for .NET installation requests
+
+10/7/2026, 7:45:35 PM 283 DotnetVSCodeExtensionFound
+true
+Checking extension vscode.dotenv for .NET installation requests
+
+10/7/2026, 7:45:35 PM 283 DotnetVSCodeExtensionFound
+true
+Checking extension vscode.mermaid-markdown-features for .NET installation requests
+
+10/7/2026, 7:45:35 PM 283 DotnetVSCodeExtensionFound
+true
+Checking extension vscode.prompt for .NET installation requests
+
+10/7/2026, 7:45:35 PM 283 DotnetVSCodeExtensionFound
+true
+Checking extension anseki.vscode-color for .NET installation requests
+
+10/7/2026, 7:45:35 PM 283 DotnetVSCodeExtensionFound
+true
+Checking extension Anthropic.claude-code for .NET installation requests
+
+10/7/2026, 7:45:35 PM 283 DotnetVSCodeExtensionFound
+true
+Checking extension awwsky.regionmarker for .NET installation requests
+
+10/7/2026, 7:45:35 PM 283 DotnetVSCodeExtensionFound
+true
+Checking extension chouzz.vscode-better-align for .NET installation requests
+
+10/7/2026, 7:45:35 PM 283 DotnetVSCodeExtensionFound
+true
+Checking extension christian-kohler.path-intellisense for .NET installation requests
+
+10/7/2026, 7:45:35 PM 283 DotnetVSCodeExtensionFound
+true
+Checking extension CiberTurtle.sharp-icons for .NET installation requests
+
+10/7/2026, 7:45:35 PM 283 DotnetVSCodeExtensionFound
+true
+Checking extension codeflow-studio.claude-code-extension for .NET installation requests
+
+10/7/2026, 7:45:35 PM 283 DotnetVSCodeExtensionFound
+true
+Checking extension davidbabel.antigravity-icons-supercharged-gray for .NET installation requests
+
+10/7/2026, 7:45:35 PM 283 DotnetVSCodeExtensionFound
+true
+Checking extension DrDesten.asi-glsl for .NET installation requests
+
+10/7/2026, 7:45:35 PM 283 DotnetVSCodeExtensionFound
+true
+Checking extension eamodio.gitlens for .NET installation requests
+
+10/7/2026, 7:45:35 PM 283 DotnetVSCodeExtensionFound
+true
+Checking extension google.geminicodeassist for .NET installation requests
+
+10/7/2026, 7:45:35 PM 283 DotnetVSCodeExtensionFound
+true
+Checking extension josefpihrt-vscode.roslynator for .NET installation requests
+
+10/7/2026, 7:45:35 PM 283 DotnetVSCodeExtensionFound
+true
+Checking extension kleber-swf.unity-code-snippets for .NET installation requests
+
+10/7/2026, 7:45:35 PM 283 DotnetVSCodeExtensionFound
+true
+Checking extension lucasazzola.vscode-csproj for .NET installation requests
+
+10/7/2026, 7:45:35 PM 284 DotnetVSCodeExtensionFound
+true
+Checking extension mechatroner.rainbow-csv for .NET installation requests
+
+10/7/2026, 7:45:35 PM 284 DotnetVSCodeExtensionFound
+true
+Checking extension miguelsolorio.fluent-icons for .NET installation requests
+
+10/7/2026, 7:45:35 PM 284 DotnetVSCodeExtensionFound
+true
+Checking extension ms-dotnettools.csdevkit for .NET installation requests
+
+10/7/2026, 7:45:35 PM 284 DotnetVSCodeExtensionFound
+true
+Checking extension ms-dotnettools.csharp for .NET installation requests
+
+10/7/2026, 7:45:35 PM 284 DotnetVSCodeExtensionFound
+true
+Checking extension ms-dotnettools.vscode-dotnet-pack for .NET installation requests
+
+10/7/2026, 7:45:35 PM 284 DotnetVSCodeExtensionFound
+true
+Checking extension ms-dotnettools.vscode-dotnet-runtime for .NET installation requests
+
+10/7/2026, 7:45:35 PM 284 DotnetVSCodeExtensionFound
+true
+Checking extension ms-python.vscode-python-envs for .NET installation requests
+
+10/7/2026, 7:45:35 PM 284 DotnetVSCodeExtensionFound
+true
+Checking extension ms-vscode.cmake-tools for .NET installation requests
+
+10/7/2026, 7:45:35 PM 284 DotnetVSCodeExtensionFound
+true
+Checking extension redhat.vscode-xml for .NET installation requests
+
+10/7/2026, 7:45:35 PM 284 DotnetVSCodeExtensionFound
+true
+Checking extension seunghwan.smartsemicolon for .NET installation requests
+
+10/7/2026, 7:45:35 PM 284 DotnetVSCodeExtensionFound
+true
+Checking extension shadeview.shadeview for .NET installation requests
+
+10/7/2026, 7:45:35 PM 284 DotnetVSCodeExtensionFound
+true
+Checking extension SmukkeKim.theme-setimonokai for .NET installation requests
+
+10/7/2026, 7:45:35 PM 284 DotnetVSCodeExtensionFound
+true
+Checking extension spencerjames.csharpen for .NET installation requests
+
+10/7/2026, 7:45:35 PM 284 DotnetVSCodeExtensionFound
+true
+Checking extension streetsidesoftware.code-spell-checker for .NET installation requests
+
+10/7/2026, 7:45:35 PM 284 DotnetVSCodeExtensionFound
+true
+Checking extension visualstudiotoolsforunity.vstuc for .NET installation requests
+
+10/7/2026, 7:45:35 PM 952 DotnetVSCodeExtensionChange
+true
+A change was detected in the extensions. Installing .NET for new extensions.
+
+10/7/2026, 7:45:35 PM 954 DotnetVSCodeExtensionFound
+true
+Checking extension TypeScriptTeam.jsts-chat-features for .NET installation requests
+
+10/7/2026, 7:45:35 PM 954 DotnetVSCodeExtensionFound
+true
+Checking extension vscode.csharp for .NET installation requests
+
+10/7/2026, 7:45:35 PM 955 DotnetVSCodeExtensionFound
+true
+Checking extension vscode.dotenv for .NET installation requests
+
+10/7/2026, 7:45:35 PM 955 DotnetVSCodeExtensionFound
+true
+Checking extension vscode.mermaid-markdown-features for .NET installation requests
+
+10/7/2026, 7:45:35 PM 955 DotnetVSCodeExtensionFound
+true
+Checking extension vscode.prompt for .NET installation requests
+
+10/7/2026, 7:45:35 PM 955 DotnetVSCodeExtensionFound
+true
+Checking extension anseki.vscode-color for .NET installation requests
+
+10/7/2026, 7:45:35 PM 955 DotnetVSCodeExtensionFound
+true
+Checking extension Anthropic.claude-code for .NET installation requests
+
+10/7/2026, 7:45:35 PM 955 DotnetVSCodeExtensionFound
+true
+Checking extension awwsky.regionmarker for .NET installation requests
+
+10/7/2026, 7:45:35 PM 955 DotnetVSCodeExtensionFound
+true
+Checking extension chouzz.vscode-better-align for .NET installation requests
+
+10/7/2026, 7:45:35 PM 955 DotnetVSCodeExtensionFound
+true
+Checking extension christian-kohler.path-intellisense for .NET installation requests
+
+10/7/2026, 7:45:35 PM 955 DotnetVSCodeExtensionFound
+true
+Checking extension CiberTurtle.sharp-icons for .NET installation requests
+
+10/7/2026, 7:45:35 PM 955 DotnetVSCodeExtensionFound
+true
+Checking extension codeflow-studio.claude-code-extension for .NET installation requests
+
+10/7/2026, 7:45:35 PM 955 DotnetVSCodeExtensionFound
+true
+Checking extension davidbabel.antigravity-icons-supercharged-gray for .NET installation requests
+
+10/7/2026, 7:45:35 PM 955 DotnetVSCodeExtensionFound
+true
+Checking extension DrDesten.asi-glsl for .NET installation requests
+
+10/7/2026, 7:45:35 PM 956 DotnetVSCodeExtensionFound
+true
+Checking extension eamodio.gitlens for .NET installation requests
+
+10/7/2026, 7:45:35 PM 956 DotnetVSCodeExtensionFound
+true
+Checking extension google.geminicodeassist for .NET installation requests
+
+10/7/2026, 7:45:35 PM 956 DotnetVSCodeExtensionFound
+true
+Checking extension josefpihrt-vscode.roslynator for .NET installation requests
+
+10/7/2026, 7:45:35 PM 956 DotnetVSCodeExtensionFound
+true
+Checking extension kleber-swf.unity-code-snippets for .NET installation requests
+
+10/7/2026, 7:45:35 PM 956 DotnetVSCodeExtensionFound
+true
+Checking extension lucasazzola.vscode-csproj for .NET installation requests
+
+10/7/2026, 7:45:35 PM 956 DotnetVSCodeExtensionFound
+true
+Checking extension mechatroner.rainbow-csv for .NET installation requests
+
+10/7/2026, 7:45:35 PM 956 DotnetVSCodeExtensionFound
+true
+Checking extension miguelsolorio.fluent-icons for .NET installation requests
+
+10/7/2026, 7:45:35 PM 956 DotnetVSCodeExtensionFound
+true
+Checking extension ms-dotnettools.csdevkit for .NET installation requests
+
+10/7/2026, 7:45:35 PM 956 DotnetVSCodeExtensionFound
+true
+Checking extension ms-dotnettools.csharp for .NET installation requests
+
+10/7/2026, 7:45:35 PM 956 DotnetVSCodeExtensionFound
+true
+Checking extension ms-dotnettools.vscode-dotnet-pack for .NET installation requests
+
+10/7/2026, 7:45:35 PM 956 DotnetVSCodeExtensionFound
+true
+Checking extension ms-dotnettools.vscode-dotnet-runtime for .NET installation requests
+
+10/7/2026, 7:45:35 PM 956 DotnetVSCodeExtensionFound
+true
+Checking extension ms-python.vscode-python-envs for .NET installation requests
+
+10/7/2026, 7:45:35 PM 956 DotnetVSCodeExtensionFound
+true
+Checking extension ms-vscode.cmake-tools for .NET installation requests
+
+10/7/2026, 7:45:35 PM 956 DotnetVSCodeExtensionFound
+true
+Checking extension redhat.vscode-xml for .NET installation requests
+
+10/7/2026, 7:45:35 PM 956 DotnetVSCodeExtensionFound
+true
+Checking extension seunghwan.smartsemicolon for .NET installation requests
+
+10/7/2026, 7:45:35 PM 956 DotnetVSCodeExtensionFound
+true
+Checking extension shadeview.shadeview for .NET installation requests
+
+10/7/2026, 7:45:35 PM 956 DotnetVSCodeExtensionFound
+true
+Checking extension SmukkeKim.theme-setimonokai for .NET installation requests
+
+10/7/2026, 7:45:35 PM 956 DotnetVSCodeExtensionFound
+true
+Checking extension spencerjames.csharpen for .NET installation requests
+
+10/7/2026, 7:45:35 PM 956 DotnetVSCodeExtensionFound
+true
+Checking extension streetsidesoftware.code-spell-checker for .NET installation requests
+
+10/7/2026, 7:45:35 PM 956 DotnetVSCodeExtensionFound
+true
+Checking extension visualstudiotoolsforunity.vstuc for .NET installation requests
+
+10/7/2026, 7:46:49 PM 598 DotnetVSCodeExtensionChange
+true
+A change was detected in the extensions. Installing .NET for new extensions.
+
+10/7/2026, 7:46:49 PM 607 DotnetVSCodeExtensionFound
+true
+Checking extension TypeScriptTeam.jsts-chat-features for .NET installation requests
+
+10/7/2026, 7:46:49 PM 607 DotnetVSCodeExtensionFound
+true
+Checking extension vscode.csharp for .NET installation requests
+
+10/7/2026, 7:46:49 PM 607 DotnetVSCodeExtensionFound
+true
+Checking extension vscode.dotenv for .NET installation requests
+
+10/7/2026, 7:46:49 PM 607 DotnetVSCodeExtensionFound
+true
+Checking extension vscode.mermaid-markdown-features for .NET installation requests
+
+10/7/2026, 7:46:49 PM 607 DotnetVSCodeExtensionFound
+true
+Checking extension vscode.prompt for .NET installation requests
+
+10/7/2026, 7:46:49 PM 607 DotnetVSCodeExtensionFound
+true
+Checking extension anseki.vscode-color for .NET installation requests
+
+10/7/2026, 7:46:49 PM 607 DotnetVSCodeExtensionFound
+true
+Checking extension Anthropic.claude-code for .NET installation requests
+
+10/7/2026, 7:46:49 PM 607 DotnetVSCodeExtensionFound
+true
+Checking extension awwsky.regionmarker for .NET installation requests
+
+10/7/2026, 7:46:49 PM 607 DotnetVSCodeExtensionFound
+true
+Checking extension chouzz.vscode-better-align for .NET installation requests
+
+10/7/2026, 7:46:49 PM 607 DotnetVSCodeExtensionFound
+true
+Checking extension christian-kohler.path-intellisense for .NET installation requests
+
+10/7/2026, 7:46:49 PM 607 DotnetVSCodeExtensionFound
+true
+Checking extension CiberTurtle.sharp-icons for .NET installation requests
+
+10/7/2026, 7:46:49 PM 607 DotnetVSCodeExtensionFound
+true
+Checking extension codeflow-studio.claude-code-extension for .NET installation requests
+
+10/7/2026, 7:46:49 PM 607 DotnetVSCodeExtensionFound
+true
+Checking extension davidbabel.antigravity-icons-supercharged-gray for .NET installation requests
+
+10/7/2026, 7:46:49 PM 607 DotnetVSCodeExtensionFound
+true
+Checking extension DrDesten.asi-glsl for .NET installation requests
+
+10/7/2026, 7:46:49 PM 607 DotnetVSCodeExtensionFound
+true
+Checking extension eamodio.gitlens for .NET installation requests
+
+10/7/2026, 7:46:49 PM 607 DotnetVSCodeExtensionFound
+true
+Checking extension google.geminicodeassist for .NET installation requests
+
+10/7/2026, 7:46:49 PM 607 DotnetVSCodeExtensionFound
+true
+Checking extension josefpihrt-vscode.roslynator for .NET installation requests
+
+10/7/2026, 7:46:49 PM 607 DotnetVSCodeExtensionFound
+true
+Checking extension kleber-swf.unity-code-snippets for .NET installation requests
+
+10/7/2026, 7:46:49 PM 608 DotnetVSCodeExtensionFound
+true
+Checking extension lucasazzola.vscode-csproj for .NET installation requests
+
+10/7/2026, 7:46:49 PM 608 DotnetVSCodeExtensionFound
+true
+Checking extension mechatroner.rainbow-csv for .NET installation requests
+
+10/7/2026, 7:46:49 PM 608 DotnetVSCodeExtensionFound
+true
+Checking extension miguelsolorio.fluent-icons for .NET installation requests
+
+10/7/2026, 7:46:49 PM 608 DotnetVSCodeExtensionFound
+true
+Checking extension ms-dotnettools.csdevkit for .NET installation requests
+
+10/7/2026, 7:46:49 PM 608 DotnetVSCodeExtensionFound
+true
+Checking extension ms-dotnettools.csharp for .NET installation requests
+
+10/7/2026, 7:46:49 PM 608 DotnetVSCodeExtensionFound
+true
+Checking extension ms-dotnettools.vscode-dotnet-pack for .NET installation requests
+
+10/7/2026, 7:46:49 PM 608 DotnetVSCodeExtensionFound
+true
+Checking extension ms-dotnettools.vscode-dotnet-runtime for .NET installation requests
+
+10/7/2026, 7:46:49 PM 608 DotnetVSCodeExtensionFound
+true
+Checking extension ms-python.vscode-python-envs for .NET installation requests
+
+10/7/2026, 7:46:49 PM 608 DotnetVSCodeExtensionFound
+true
+Checking extension ms-vscode.cmake-tools for .NET installation requests
+
+10/7/2026, 7:46:49 PM 608 DotnetVSCodeExtensionFound
+true
+Checking extension redhat.vscode-xml for .NET installation requests
+
+10/7/2026, 7:46:49 PM 608 DotnetVSCodeExtensionFound
+true
+Checking extension seunghwan.smartsemicolon for .NET installation requests
+
+10/7/2026, 7:46:49 PM 608 DotnetVSCodeExtensionFound
+true
+Checking extension shadeview.shadeview for .NET installation requests
+
+10/7/2026, 7:46:49 PM 608 DotnetVSCodeExtensionFound
+true
+Checking extension SmukkeKim.theme-setimonokai for .NET installation requests
+
+10/7/2026, 7:46:49 PM 609 DotnetVSCodeExtensionFound
+true
+Checking extension spencerjames.csharpen for .NET installation requests
+
+10/7/2026, 7:46:49 PM 609 DotnetVSCodeExtensionFound
+true
+Checking extension streetsidesoftware.code-spell-checker for .NET installation requests
+
+10/7/2026, 7:46:49 PM 609 DotnetVSCodeExtensionFound
+true
+Checking extension visualstudiotoolsforunity.vstuc for .NET installation requests
+
+10/7/2026, 7:46:49 PM 950 DotnetVSCodeExtensionChange
+true
+A change was detected in the extensions. Installing .NET for new extensions.
+
+10/7/2026, 7:46:49 PM 951 DotnetVSCodeExtensionFound
+true
+Checking extension TypeScriptTeam.jsts-chat-features for .NET installation requests
+
+10/7/2026, 7:46:49 PM 951 DotnetVSCodeExtensionFound
+true
+Checking extension vscode.csharp for .NET installation requests
+
+10/7/2026, 7:46:49 PM 951 DotnetVSCodeExtensionFound
+true
+Checking extension vscode.dotenv for .NET installation requests
+
+10/7/2026, 7:46:49 PM 951 DotnetVSCodeExtensionFound
+true
+Checking extension vscode.mermaid-markdown-features for .NET installation requests
+
+10/7/2026, 7:46:49 PM 951 DotnetVSCodeExtensionFound
+true
+Checking extension vscode.prompt for .NET installation requests
+
+10/7/2026, 7:46:49 PM 951 DotnetVSCodeExtensionFound
+true
+Checking extension anseki.vscode-color for .NET installation requests
+
+10/7/2026, 7:46:49 PM 953 DotnetVSCodeExtensionFound
+true
+Checking extension Anthropic.claude-code for .NET installation requests
+
+10/7/2026, 7:46:49 PM 953 DotnetVSCodeExtensionFound
+true
+Checking extension awwsky.regionmarker for .NET installation requests
+
+10/7/2026, 7:46:49 PM 954 DotnetVSCodeExtensionFound
+true
+Checking extension chouzz.vscode-better-align for .NET installation requests
+
+10/7/2026, 7:46:49 PM 954 DotnetVSCodeExtensionFound
+true
+Checking extension christian-kohler.path-intellisense for .NET installation requests
+
+10/7/2026, 7:46:49 PM 954 DotnetVSCodeExtensionFound
+true
+Checking extension CiberTurtle.sharp-icons for .NET installation requests
+
+10/7/2026, 7:46:49 PM 954 DotnetVSCodeExtensionFound
+true
+Checking extension codeflow-studio.claude-code-extension for .NET installation requests
+
+10/7/2026, 7:46:49 PM 954 DotnetVSCodeExtensionFound
+true
+Checking extension davidbabel.antigravity-icons-supercharged-gray for .NET installation requests
+
+10/7/2026, 7:46:49 PM 954 DotnetVSCodeExtensionFound
+true
+Checking extension DrDesten.asi-glsl for .NET installation requests
+
+10/7/2026, 7:46:49 PM 954 DotnetVSCodeExtensionFound
+true
+Checking extension eamodio.gitlens for .NET installation requests
+
+10/7/2026, 7:46:49 PM 954 DotnetVSCodeExtensionFound
+true
+Checking extension google.geminicodeassist for .NET installation requests
+
+10/7/2026, 7:46:49 PM 954 DotnetVSCodeExtensionFound
+true
+Checking extension josefpihrt-vscode.roslynator for .NET installation requests
+
+10/7/2026, 7:46:49 PM 954 DotnetVSCodeExtensionFound
+true
+Checking extension kleber-swf.unity-code-snippets for .NET installation requests
+
+10/7/2026, 7:46:49 PM 954 DotnetVSCodeExtensionFound
+true
+Checking extension lucasazzola.vscode-csproj for .NET installation requests
+
+10/7/2026, 7:46:49 PM 954 DotnetVSCodeExtensionFound
+true
+Checking extension mechatroner.rainbow-csv for .NET installation requests
+
+10/7/2026, 7:46:49 PM 954 DotnetVSCodeExtensionFound
+true
+Checking extension miguelsolorio.fluent-icons for .NET installation requests
+
+10/7/2026, 7:46:49 PM 954 DotnetVSCodeExtensionFound
+true
+Checking extension ms-dotnettools.csdevkit for .NET installation requests
+
+10/7/2026, 7:46:49 PM 954 DotnetVSCodeExtensionFound
+true
+Checking extension ms-dotnettools.csharp for .NET installation requests
+
+10/7/2026, 7:46:49 PM 954 DotnetVSCodeExtensionFound
+true
+Checking extension ms-dotnettools.vscode-dotnet-pack for .NET installation requests
+
+10/7/2026, 7:46:49 PM 954 DotnetVSCodeExtensionFound
+true
+Checking extension ms-dotnettools.vscode-dotnet-runtime for .NET installation requests
+
+10/7/2026, 7:46:49 PM 954 DotnetVSCodeExtensionFound
+true
+Checking extension ms-python.vscode-python-envs for .NET installation requests
+
+10/7/2026, 7:46:49 PM 955 DotnetVSCodeExtensionFound
+true
+Checking extension ms-vscode.cmake-tools for .NET installation requests
+
+10/7/2026, 7:46:49 PM 955 DotnetVSCodeExtensionFound
+true
+Checking extension redhat.vscode-xml for .NET installation requests
+
+10/7/2026, 7:46:49 PM 955 DotnetVSCodeExtensionFound
+true
+Checking extension seunghwan.smartsemicolon for .NET installation requests
+
+10/7/2026, 7:46:49 PM 955 DotnetVSCodeExtensionFound
+true
+Checking extension shadeview.shadeview for .NET installation requests
+
+10/7/2026, 7:46:49 PM 955 DotnetVSCodeExtensionFound
+true
+Checking extension SmukkeKim.theme-setimonokai for .NET installation requests
+
+10/7/2026, 7:46:49 PM 955 DotnetVSCodeExtensionFound
+true
+Checking extension spencerjames.csharpen for .NET installation requests
+
+10/7/2026, 7:46:49 PM 955 DotnetVSCodeExtensionFound
+true
+Checking extension streetsidesoftware.code-spell-checker for .NET installation requests
+
+10/7/2026, 7:46:49 PM 955 DotnetVSCodeExtensionFound
+true
+Checking extension visualstudiotoolsforunity.vstuc for .NET installation requests
+
+10/7/2026, 7:47:53 PM 104 DotnetVSCodeExtensionChange
+true
+A change was detected in the extensions. Installing .NET for new extensions.
+
+10/7/2026, 7:47:53 PM 108 DotnetVSCodeExtensionFound
+true
+Checking extension TypeScriptTeam.jsts-chat-features for .NET installation requests
+
+10/7/2026, 7:47:53 PM 111 DotnetVSCodeExtensionFound
+true
+Checking extension vscode.csharp for .NET installation requests
+
+10/7/2026, 7:47:53 PM 111 DotnetVSCodeExtensionFound
+true
+Checking extension vscode.dotenv for .NET installation requests
+
+10/7/2026, 7:47:53 PM 111 DotnetVSCodeExtensionFound
+true
+Checking extension vscode.mermaid-markdown-features for .NET installation requests
+
+10/7/2026, 7:47:53 PM 111 DotnetVSCodeExtensionFound
+true
+Checking extension vscode.prompt for .NET installation requests
+
+10/7/2026, 7:47:53 PM 111 DotnetVSCodeExtensionFound
+true
+Checking extension anseki.vscode-color for .NET installation requests
+
+10/7/2026, 7:47:53 PM 111 DotnetVSCodeExtensionFound
+true
+Checking extension Anthropic.claude-code for .NET installation requests
+
+10/7/2026, 7:47:53 PM 111 DotnetVSCodeExtensionFound
+true
+Checking extension awwsky.regionmarker for .NET installation requests
+
+10/7/2026, 7:47:53 PM 111 DotnetVSCodeExtensionFound
+true
+Checking extension chouzz.vscode-better-align for .NET installation requests
+
+10/7/2026, 7:47:53 PM 111 DotnetVSCodeExtensionFound
+true
+Checking extension christian-kohler.path-intellisense for .NET installation requests
+
+10/7/2026, 7:47:53 PM 111 DotnetVSCodeExtensionFound
+true
+Checking extension CiberTurtle.sharp-icons for .NET installation requests
+
+10/7/2026, 7:47:53 PM 111 DotnetVSCodeExtensionFound
+true
+Checking extension codeflow-studio.claude-code-extension for .NET installation requests
+
+10/7/2026, 7:47:53 PM 111 DotnetVSCodeExtensionFound
+true
+Checking extension davidbabel.antigravity-icons-supercharged-gray for .NET installation requests
+
+10/7/2026, 7:47:53 PM 111 DotnetVSCodeExtensionFound
+true
+Checking extension DrDesten.asi-glsl for .NET installation requests
+
+10/7/2026, 7:47:53 PM 111 DotnetVSCodeExtensionFound
+true
+Checking extension eamodio.gitlens for .NET installation requests
+
+10/7/2026, 7:47:53 PM 111 DotnetVSCodeExtensionFound
+true
+Checking extension google.geminicodeassist for .NET installation requests
+
+10/7/2026, 7:47:53 PM 112 DotnetVSCodeExtensionFound
+true
+Checking extension josefpihrt-vscode.roslynator for .NET installation requests
+
+10/7/2026, 7:47:53 PM 112 DotnetVSCodeExtensionFound
+true
+Checking extension kleber-swf.unity-code-snippets for .NET installation requests
+
+10/7/2026, 7:47:53 PM 112 DotnetVSCodeExtensionFound
+true
+Checking extension lucasazzola.vscode-csproj for .NET installation requests
+
+10/7/2026, 7:47:53 PM 112 DotnetVSCodeExtensionFound
+true
+Checking extension mechatroner.rainbow-csv for .NET installation requests
+
+10/7/2026, 7:47:53 PM 112 DotnetVSCodeExtensionFound
+true
+Checking extension miguelsolorio.fluent-icons for .NET installation requests
+
+10/7/2026, 7:47:53 PM 112 DotnetVSCodeExtensionFound
+true
+Checking extension ms-dotnettools.csdevkit for .NET installation requests
+
+10/7/2026, 7:47:53 PM 112 DotnetVSCodeExtensionFound
+true
+Checking extension ms-dotnettools.csharp for .NET installation requests
+
+10/7/2026, 7:47:53 PM 112 DotnetVSCodeExtensionFound
+true
+Checking extension ms-dotnettools.vscode-dotnet-pack for .NET installation requests
+
+10/7/2026, 7:47:53 PM 112 DotnetVSCodeExtensionFound
+true
+Checking extension ms-dotnettools.vscode-dotnet-runtime for .NET installation requests
+
+10/7/2026, 7:47:53 PM 112 DotnetVSCodeExtensionFound
+true
+Checking extension ms-python.vscode-python-envs for .NET installation requests
+
+10/7/2026, 7:47:53 PM 112 DotnetVSCodeExtensionFound
+true
+Checking extension ms-vscode.cmake-tools for .NET installation requests
+
+10/7/2026, 7:47:53 PM 114 DotnetVSCodeExtensionFound
+true
+Checking extension redhat.vscode-xml for .NET installation requests
+
+10/7/2026, 7:47:53 PM 114 DotnetVSCodeExtensionFound
+true
+Checking extension seunghwan.smartsemicolon for .NET installation requests
+
+10/7/2026, 7:47:53 PM 114 DotnetVSCodeExtensionFound
+true
+Checking extension shadeview.shadeview for .NET installation requests
+
+10/7/2026, 7:47:53 PM 114 DotnetVSCodeExtensionFound
+true
+Checking extension SmukkeKim.theme-setimonokai for .NET installation requests
+
+10/7/2026, 7:47:53 PM 114 DotnetVSCodeExtensionFound
+true
+Checking extension spencerjames.csharpen for .NET installation requests
+
+10/7/2026, 7:47:53 PM 114 DotnetVSCodeExtensionFound
+true
+Checking extension streetsidesoftware.code-spell-checker for .NET installation requests
+
+10/7/2026, 7:47:53 PM 114 DotnetVSCodeExtensionFound
+true
+Checking extension visualstudiotoolsforunity.vstuc for .NET installation requests
+
+10/7/2026, 7:47:53 PM 677 DotnetVSCodeExtensionChange
+true
+A change was detected in the extensions. Installing .NET for new extensions.
+
+10/7/2026, 7:47:53 PM 684 DotnetVSCodeExtensionFound
+true
+Checking extension TypeScriptTeam.jsts-chat-features for .NET installation requests
+
+10/7/2026, 7:47:53 PM 684 DotnetVSCodeExtensionFound
+true
+Checking extension vscode.csharp for .NET installation requests
+
+10/7/2026, 7:47:53 PM 684 DotnetVSCodeExtensionFound
+true
+Checking extension vscode.dotenv for .NET installation requests
+
+10/7/2026, 7:47:53 PM 684 DotnetVSCodeExtensionFound
+true
+Checking extension vscode.mermaid-markdown-features for .NET installation requests
+
+10/7/2026, 7:47:53 PM 684 DotnetVSCodeExtensionFound
+true
+Checking extension vscode.prompt for .NET installation requests
+
+10/7/2026, 7:47:53 PM 684 DotnetVSCodeExtensionFound
+true
+Checking extension anseki.vscode-color for .NET installation requests
+
+10/7/2026, 7:47:53 PM 684 DotnetVSCodeExtensionFound
+true
+Checking extension Anthropic.claude-code for .NET installation requests
+
+10/7/2026, 7:47:53 PM 684 DotnetVSCodeExtensionFound
+true
+Checking extension awwsky.regionmarker for .NET installation requests
+
+10/7/2026, 7:47:53 PM 684 DotnetVSCodeExtensionFound
+true
+Checking extension chouzz.vscode-better-align for .NET installation requests
+
+10/7/2026, 7:47:53 PM 684 DotnetVSCodeExtensionFound
+true
+Checking extension christian-kohler.path-intellisense for .NET installation requests
+
+10/7/2026, 7:47:53 PM 684 DotnetVSCodeExtensionFound
+true
+Checking extension CiberTurtle.sharp-icons for .NET installation requests
+
+10/7/2026, 7:47:53 PM 684 DotnetVSCodeExtensionFound
+true
+Checking extension codeflow-studio.claude-code-extension for .NET installation requests
+
+10/7/2026, 7:47:53 PM 684 DotnetVSCodeExtensionFound
+true
+Checking extension davidbabel.antigravity-icons-supercharged-gray for .NET installation requests
+
+10/7/2026, 7:47:53 PM 684 DotnetVSCodeExtensionFound
+true
+Checking extension DrDesten.asi-glsl for .NET installation requests
+
+10/7/2026, 7:47:53 PM 684 DotnetVSCodeExtensionFound
+true
+Checking extension eamodio.gitlens for .NET installation requests
+
+10/7/2026, 7:47:53 PM 684 DotnetVSCodeExtensionFound
+true
+Checking extension google.geminicodeassist for .NET installation requests
+
+10/7/2026, 7:47:53 PM 684 DotnetVSCodeExtensionFound
+true
+Checking extension josefpihrt-vscode.roslynator for .NET installation requests
+
+10/7/2026, 7:47:53 PM 684 DotnetVSCodeExtensionFound
+true
+Checking extension kleber-swf.unity-code-snippets for .NET installation requests
+
+10/7/2026, 7:47:53 PM 684 DotnetVSCodeExtensionFound
+true
+Checking extension lucasazzola.vscode-csproj for .NET installation requests
+
+10/7/2026, 7:47:53 PM 684 DotnetVSCodeExtensionFound
+true
+Checking extension mechatroner.rainbow-csv for .NET installation requests
+
+10/7/2026, 7:47:53 PM 684 DotnetVSCodeExtensionFound
+true
+Checking extension miguelsolorio.fluent-icons for .NET installation requests
+
+10/7/2026, 7:47:53 PM 684 DotnetVSCodeExtensionFound
+true
+Checking extension ms-dotnettools.csdevkit for .NET installation requests
+
+10/7/2026, 7:47:53 PM 684 DotnetVSCodeExtensionFound
+true
+Checking extension ms-dotnettools.csharp for .NET installation requests
+
+10/7/2026, 7:47:53 PM 684 DotnetVSCodeExtensionFound
+true
+Checking extension ms-dotnettools.vscode-dotnet-pack for .NET installation requests
+
+10/7/2026, 7:47:53 PM 684 DotnetVSCodeExtensionFound
+true
+Checking extension ms-dotnettools.vscode-dotnet-runtime for .NET installation requests
+
+10/7/2026, 7:47:53 PM 684 DotnetVSCodeExtensionFound
+true
+Checking extension ms-python.vscode-python-envs for .NET installation requests
+
+10/7/2026, 7:47:53 PM 684 DotnetVSCodeExtensionFound
+true
+Checking extension ms-vscode.cmake-tools for .NET installation requests
+
+10/7/2026, 7:47:53 PM 685 DotnetVSCodeExtensionFound
+true
+Checking extension redhat.vscode-xml for .NET installation requests
+
+10/7/2026, 7:47:53 PM 685 DotnetVSCodeExtensionFound
+true
+Checking extension seunghwan.smartsemicolon for .NET installation requests
+
+10/7/2026, 7:47:53 PM 685 DotnetVSCodeExtensionFound
+true
+Checking extension shadeview.shadeview for .NET installation requests
+
+10/7/2026, 7:47:53 PM 685 DotnetVSCodeExtensionFound
+true
+Checking extension SmukkeKim.theme-setimonokai for .NET installation requests
+
+10/7/2026, 7:47:53 PM 685 DotnetVSCodeExtensionFound
+true
+Checking extension spencerjames.csharpen for .NET installation requests
+
+10/7/2026, 7:47:53 PM 685 DotnetVSCodeExtensionFound
+true
+Checking extension streetsidesoftware.code-spell-checker for .NET installation requests
+
+10/7/2026, 7:47:53 PM 685 DotnetVSCodeExtensionFound
+true
+Checking extension visualstudiotoolsforunity.vstuc for .NET installation requests
+
+10/7/2026, 7:48:30 PM 966 DotnetVSCodeExtensionChange
+true
+A change was detected in the extensions. Installing .NET for new extensions.
+
+10/7/2026, 7:48:30 PM 967 DotnetVSCodeExtensionFound
+true
+Checking extension TypeScriptTeam.jsts-chat-features for .NET installation requests
+
+10/7/2026, 7:48:30 PM 967 DotnetVSCodeExtensionFound
+true
+Checking extension vscode.csharp for .NET installation requests
+
+10/7/2026, 7:48:30 PM 967 DotnetVSCodeExtensionFound
+true
+Checking extension vscode.dotenv for .NET installation requests
+
+10/7/2026, 7:48:30 PM 967 DotnetVSCodeExtensionFound
+true
+Checking extension vscode.mermaid-markdown-features for .NET installation requests
+
+10/7/2026, 7:48:30 PM 967 DotnetVSCodeExtensionFound
+true
+Checking extension vscode.prompt for .NET installation requests
+
+10/7/2026, 7:48:30 PM 967 DotnetVSCodeExtensionFound
+true
+Checking extension anseki.vscode-color for .NET installation requests
+
+10/7/2026, 7:48:30 PM 967 DotnetVSCodeExtensionFound
+true
+Checking extension Anthropic.claude-code for .NET installation requests
+
+10/7/2026, 7:48:30 PM 967 DotnetVSCodeExtensionFound
+true
+Checking extension awwsky.regionmarker for .NET installation requests
+
+10/7/2026, 7:48:30 PM 977 DotnetVSCodeExtensionFound
+true
+Checking extension chouzz.vscode-better-align for .NET installation requests
+
+10/7/2026, 7:48:30 PM 983 DotnetVSCodeExtensionFound
+true
+Checking extension christian-kohler.path-intellisense for .NET installation requests
+
+10/7/2026, 7:48:30 PM 993 DotnetVSCodeExtensionFound
+true
+Checking extension CiberTurtle.sharp-icons for .NET installation requests
+
+10/7/2026, 7:48:30 PM 994 DotnetVSCodeExtensionFound
+true
+Checking extension codeflow-studio.claude-code-extension for .NET installation requests
+
+10/7/2026, 7:48:30 PM 994 DotnetVSCodeExtensionFound
+true
+Checking extension davidbabel.antigravity-icons-supercharged-gray for .NET installation requests
+
+10/7/2026, 7:48:30 PM 994 DotnetVSCodeExtensionFound
+true
+Checking extension DrDesten.asi-glsl for .NET installation requests
+
+10/7/2026, 7:48:30 PM 994 DotnetVSCodeExtensionFound
+true
+Checking extension eamodio.gitlens for .NET installation requests
+
+10/7/2026, 7:48:30 PM 994 DotnetVSCodeExtensionFound
+true
+Checking extension google.geminicodeassist for .NET installation requests
+
+10/7/2026, 7:48:30 PM 994 DotnetVSCodeExtensionFound
+true
+Checking extension josefpihrt-vscode.roslynator for .NET installation requests
+
+10/7/2026, 7:48:30 PM 994 DotnetVSCodeExtensionFound
+true
+Checking extension kilocode.kilo-code for .NET installation requests
+
+10/7/2026, 7:48:31 PM 2 DotnetVSCodeExtensionFound
+true
+Checking extension kleber-swf.unity-code-snippets for .NET installation requests
+
+10/7/2026, 7:48:31 PM 2 DotnetVSCodeExtensionFound
+true
+Checking extension lucasazzola.vscode-csproj for .NET installation requests
+
+10/7/2026, 7:48:31 PM 2 DotnetVSCodeExtensionFound
+true
+Checking extension mechatroner.rainbow-csv for .NET installation requests
+
+10/7/2026, 7:48:31 PM 2 DotnetVSCodeExtensionFound
+true
+Checking extension miguelsolorio.fluent-icons for .NET installation requests
+
+10/7/2026, 7:48:31 PM 2 DotnetVSCodeExtensionFound
+true
+Checking extension ms-dotnettools.csdevkit for .NET installation requests
+
+10/7/2026, 7:48:31 PM 2 DotnetVSCodeExtensionFound
+true
+Checking extension ms-dotnettools.csharp for .NET installation requests
+
+10/7/2026, 7:48:31 PM 2 DotnetVSCodeExtensionFound
+true
+Checking extension ms-dotnettools.vscode-dotnet-pack for .NET installation requests
+
+10/7/2026, 7:48:31 PM 2 DotnetVSCodeExtensionFound
+true
+Checking extension ms-dotnettools.vscode-dotnet-runtime for .NET installation requests
+
+10/7/2026, 7:48:31 PM 2 DotnetVSCodeExtensionFound
+true
+Checking extension ms-python.vscode-python-envs for .NET installation requests
+
+10/7/2026, 7:48:31 PM 2 DotnetVSCodeExtensionFound
+true
+Checking extension ms-vscode.cmake-tools for .NET installation requests
+
+10/7/2026, 7:48:31 PM 2 DotnetVSCodeExtensionFound
+true
+Checking extension redhat.vscode-xml for .NET installation requests
+
+10/7/2026, 7:48:31 PM 2 DotnetVSCodeExtensionFound
+true
+Checking extension seunghwan.smartsemicolon for .NET installation requests
+
+10/7/2026, 7:48:31 PM 2 DotnetVSCodeExtensionFound
+true
+Checking extension shadeview.shadeview for .NET installation requests
+
+10/7/2026, 7:48:31 PM 2 DotnetVSCodeExtensionFound
+true
+Checking extension SmukkeKim.theme-setimonokai for .NET installation requests
+
+10/7/2026, 7:48:31 PM 2 DotnetVSCodeExtensionFound
+true
+Checking extension spencerjames.csharpen for .NET installation requests
+
+10/7/2026, 7:48:31 PM 2 DotnetVSCodeExtensionFound
+true
+Checking extension streetsidesoftware.code-spell-checker for .NET installation requests
+
+10/7/2026, 7:48:31 PM 2 DotnetVSCodeExtensionFound
+true
+Checking extension visualstudiotoolsforunity.vstuc for .NET installation requests
+
+10/7/2026, 7:49:20 PM 747 DotnetVSCodeExtensionChange
+true
+A change was detected in the extensions. Installing .NET for new extensions.
+
+10/7/2026, 7:49:20 PM 757 DotnetVSCodeExtensionFound
+true
+Checking extension TypeScriptTeam.jsts-chat-features for .NET installation requests
+
+10/7/2026, 7:49:20 PM 758 DotnetVSCodeExtensionFound
+true
+Checking extension vscode.csharp for .NET installation requests
+
+10/7/2026, 7:49:20 PM 758 DotnetVSCodeExtensionFound
+true
+Checking extension vscode.dotenv for .NET installation requests
+
+10/7/2026, 7:49:20 PM 758 DotnetVSCodeExtensionFound
+true
+Checking extension vscode.mermaid-markdown-features for .NET installation requests
+
+10/7/2026, 7:49:20 PM 774 DotnetVSCodeExtensionFound
+true
+Checking extension vscode.prompt for .NET installation requests
+
+10/7/2026, 7:49:20 PM 774 DotnetVSCodeExtensionFound
+true
+Checking extension anseki.vscode-color for .NET installation requests
+
+10/7/2026, 7:49:20 PM 774 DotnetVSCodeExtensionFound
+true
+Checking extension Anthropic.claude-code for .NET installation requests
+
+10/7/2026, 7:49:20 PM 774 DotnetVSCodeExtensionFound
+true
+Checking extension awwsky.regionmarker for .NET installation requests
+
+10/7/2026, 7:49:20 PM 774 DotnetVSCodeExtensionFound
+true
+Checking extension chouzz.vscode-better-align for .NET installation requests
+
+10/7/2026, 7:49:20 PM 774 DotnetVSCodeExtensionFound
+true
+Checking extension christian-kohler.path-intellisense for .NET installation requests
+
+10/7/2026, 7:49:20 PM 774 DotnetVSCodeExtensionFound
+true
+Checking extension CiberTurtle.sharp-icons for .NET installation requests
+
+10/7/2026, 7:49:20 PM 774 DotnetVSCodeExtensionFound
+true
+Checking extension codeflow-studio.claude-code-extension for .NET installation requests
+
+10/7/2026, 7:49:20 PM 774 DotnetVSCodeExtensionFound
+true
+Checking extension davidbabel.antigravity-icons-supercharged-gray for .NET installation requests
+
+10/7/2026, 7:49:20 PM 774 DotnetVSCodeExtensionFound
+true
+Checking extension DrDesten.asi-glsl for .NET installation requests
+
+10/7/2026, 7:49:20 PM 774 DotnetVSCodeExtensionFound
+true
+Checking extension eamodio.gitlens for .NET installation requests
+
+10/7/2026, 7:49:20 PM 774 DotnetVSCodeExtensionFound
+true
+Checking extension google.geminicodeassist for .NET installation requests
+
+10/7/2026, 7:49:20 PM 774 DotnetVSCodeExtensionFound
+true
+Checking extension josefpihrt-vscode.roslynator for .NET installation requests
+
+10/7/2026, 7:49:20 PM 774 DotnetVSCodeExtensionFound
+true
+Checking extension kilocode.kilo-code for .NET installation requests
+
+10/7/2026, 7:49:20 PM 774 DotnetVSCodeExtensionFound
+true
+Checking extension kleber-swf.unity-code-snippets for .NET installation requests
+
+10/7/2026, 7:49:20 PM 775 DotnetVSCodeExtensionFound
+true
+Checking extension lucasazzola.vscode-csproj for .NET installation requests
+
+10/7/2026, 7:49:20 PM 775 DotnetVSCodeExtensionFound
+true
+Checking extension mechatroner.rainbow-csv for .NET installation requests
+
+10/7/2026, 7:49:20 PM 775 DotnetVSCodeExtensionFound
+true
+Checking extension miguelsolorio.fluent-icons for .NET installation requests
+
+10/7/2026, 7:49:20 PM 775 DotnetVSCodeExtensionFound
+true
+Checking extension ms-dotnettools.csdevkit for .NET installation requests
+
+10/7/2026, 7:49:20 PM 775 DotnetVSCodeExtensionFound
+true
+Checking extension ms-dotnettools.csharp for .NET installation requests
+
+10/7/2026, 7:49:20 PM 776 DotnetVSCodeExtensionFound
+true
+Checking extension ms-dotnettools.vscode-dotnet-pack for .NET installation requests
+
+10/7/2026, 7:49:20 PM 776 DotnetVSCodeExtensionFound
+true
+Checking extension ms-dotnettools.vscode-dotnet-runtime for .NET installation requests
+
+10/7/2026, 7:49:20 PM 776 DotnetVSCodeExtensionFound
+true
+Checking extension ms-python.vscode-python-envs for .NET installation requests
+
+10/7/2026, 7:49:20 PM 776 DotnetVSCodeExtensionFound
+true
+Checking extension ms-vscode.cmake-tools for .NET installation requests
+
+10/7/2026, 7:49:20 PM 776 DotnetVSCodeExtensionFound
+true
+Checking extension redhat.vscode-xml for .NET installation requests
+
+10/7/2026, 7:49:20 PM 776 DotnetVSCodeExtensionFound
+true
+Checking extension seunghwan.smartsemicolon for .NET installation requests
+
+10/7/2026, 7:49:20 PM 776 DotnetVSCodeExtensionFound
+true
+Checking extension shadeview.shadeview for .NET installation requests
+
+10/7/2026, 7:49:20 PM 777 DotnetVSCodeExtensionFound
+true
+Checking extension SmukkeKim.theme-setimonokai for .NET installation requests
+
+10/7/2026, 7:49:20 PM 777 DotnetVSCodeExtensionFound
+true
+Checking extension spencerjames.csharpen for .NET installation requests
+
+10/7/2026, 7:49:20 PM 777 DotnetVSCodeExtensionFound
+true
+Checking extension streetsidesoftware.code-spell-checker for .NET installation requests
+
+10/7/2026, 7:49:20 PM 777 DotnetVSCodeExtensionFound
+true
+Checking extension visualstudiotoolsforunity.vstuc for .NET installation requests
+
+10/7/2026, 7:49:21 PM 222 DotnetVSCodeExtensionChange
+true
+A change was detected in the extensions. Installing .NET for new extensions.
+
+10/7/2026, 7:49:21 PM 223 DotnetVSCodeExtensionFound
+true
+Checking extension TypeScriptTeam.jsts-chat-features for .NET installation requests
+
+10/7/2026, 7:49:21 PM 223 DotnetVSCodeExtensionFound
+true
+Checking extension vscode.csharp for .NET installation requests
+
+10/7/2026, 7:49:21 PM 223 DotnetVSCodeExtensionFound
+true
+Checking extension vscode.dotenv for .NET installation requests
+
+10/7/2026, 7:49:21 PM 224 DotnetVSCodeExtensionFound
+true
+Checking extension vscode.mermaid-markdown-features for .NET installation requests
+
+10/7/2026, 7:49:21 PM 224 DotnetVSCodeExtensionFound
+true
+Checking extension vscode.prompt for .NET installation requests
+
+10/7/2026, 7:49:21 PM 224 DotnetVSCodeExtensionFound
+true
+Checking extension anseki.vscode-color for .NET installation requests
+
+10/7/2026, 7:49:21 PM 224 DotnetVSCodeExtensionFound
+true
+Checking extension Anthropic.claude-code for .NET installation requests
+
+10/7/2026, 7:49:21 PM 224 DotnetVSCodeExtensionFound
+true
+Checking extension awwsky.regionmarker for .NET installation requests
+
+10/7/2026, 7:49:21 PM 224 DotnetVSCodeExtensionFound
+true
+Checking extension chouzz.vscode-better-align for .NET installation requests
+
+10/7/2026, 7:49:21 PM 224 DotnetVSCodeExtensionFound
+true
+Checking extension christian-kohler.path-intellisense for .NET installation requests
+
+10/7/2026, 7:49:21 PM 224 DotnetVSCodeExtensionFound
+true
+Checking extension CiberTurtle.sharp-icons for .NET installation requests
+
+10/7/2026, 7:49:21 PM 224 DotnetVSCodeExtensionFound
+true
+Checking extension codeflow-studio.claude-code-extension for .NET installation requests
+
+10/7/2026, 7:49:21 PM 224 DotnetVSCodeExtensionFound
+true
+Checking extension davidbabel.antigravity-icons-supercharged-gray for .NET installation requests
+
+10/7/2026, 7:49:21 PM 224 DotnetVSCodeExtensionFound
+true
+Checking extension DrDesten.asi-glsl for .NET installation requests
+
+10/7/2026, 7:49:21 PM 224 DotnetVSCodeExtensionFound
+true
+Checking extension eamodio.gitlens for .NET installation requests
+
+10/7/2026, 7:49:21 PM 224 DotnetVSCodeExtensionFound
+true
+Checking extension google.geminicodeassist for .NET installation requests
+
+10/7/2026, 7:49:21 PM 224 DotnetVSCodeExtensionFound
+true
+Checking extension josefpihrt-vscode.roslynator for .NET installation requests
+
+10/7/2026, 7:49:21 PM 224 DotnetVSCodeExtensionFound
+true
+Checking extension kilocode.kilo-code for .NET installation requests
+
+10/7/2026, 7:49:21 PM 224 DotnetVSCodeExtensionFound
+true
+Checking extension kleber-swf.unity-code-snippets for .NET installation requests
+
+10/7/2026, 7:49:21 PM 224 DotnetVSCodeExtensionFound
+true
+Checking extension lucasazzola.vscode-csproj for .NET installation requests
+
+10/7/2026, 7:49:21 PM 224 DotnetVSCodeExtensionFound
+true
+Checking extension mechatroner.rainbow-csv for .NET installation requests
+
+10/7/2026, 7:49:21 PM 224 DotnetVSCodeExtensionFound
+true
+Checking extension miguelsolorio.fluent-icons for .NET installation requests
+
+10/7/2026, 7:49:21 PM 224 DotnetVSCodeExtensionFound
+true
+Checking extension ms-dotnettools.csdevkit for .NET installation requests
+
+10/7/2026, 7:49:21 PM 224 DotnetVSCodeExtensionFound
+true
+Checking extension ms-dotnettools.csharp for .NET installation requests
+
+10/7/2026, 7:49:21 PM 224 DotnetVSCodeExtensionFound
+true
+Checking extension ms-dotnettools.vscode-dotnet-pack for .NET installation requests
+
+10/7/2026, 7:49:21 PM 224 DotnetVSCodeExtensionFound
+true
+Checking extension ms-dotnettools.vscode-dotnet-runtime for .NET installation requests
+
+10/7/2026, 7:49:21 PM 224 DotnetVSCodeExtensionFound
+true
+Checking extension ms-python.vscode-python-envs for .NET installation requests
+
+10/7/2026, 7:49:21 PM 224 DotnetVSCodeExtensionFound
+true
+Checking extension ms-vscode.cmake-tools for .NET installation requests
+
+10/7/2026, 7:49:21 PM 224 DotnetVSCodeExtensionFound
+true
+Checking extension redhat.vscode-xml for .NET installation requests
+
+10/7/2026, 7:49:21 PM 224 DotnetVSCodeExtensionFound
+true
+Checking extension seunghwan.smartsemicolon for .NET installation requests
+
+10/7/2026, 7:49:21 PM 224 DotnetVSCodeExtensionFound
+true
+Checking extension shadeview.shadeview for .NET installation requests
+
+10/7/2026, 7:49:21 PM 224 DotnetVSCodeExtensionFound
+true
+Checking extension SmukkeKim.theme-setimonokai for .NET installation requests
+
+10/7/2026, 7:49:21 PM 224 DotnetVSCodeExtensionFound
+true
+Checking extension spencerjames.csharpen for .NET installation requests
+
+10/7/2026, 7:49:21 PM 224 DotnetVSCodeExtensionFound
+true
+Checking extension streetsidesoftware.code-spell-checker for .NET installation requests
+
+10/7/2026, 7:49:21 PM 224 DotnetVSCodeExtensionFound
+true
+Checking extension visualstudiotoolsforunity.vstuc for .NET installation requests
+
+10/7/2026, 7:50:34 PM 860 OfflineDetectionLogicTriggered
+DNS resolution failed at microsoft.com, {"code":"ECONNREFUSED","syscall":"queryA","hostname":"www.microsoft.com"}.
+Error
+ queryA ECONNREFUSED www.microsoft.com
+ Error: queryA ECONNREFUSED www.microsoft.com
+	at QueryReqWrap.onresolve [as oncomplete] (node:internal/dns/promises:294:17)
+	at QueryReqWrap.callbackTrampoline (node:internal/async_hooks:130:17)
+
+10/7/2026, 10:49:06 PM 820 DotnetFindPathCommandInvoked
+The find path command was invoked.
+{"acquireContext":{"version":"10.0.5","requestingExtensionId":"ms-dotnettools.csharp","architecture":"x64","mode":"aspnetcore"},"versionSpecRequirement":"greater_than_or_equal","rejectPreviews":true}
+
+10/7/2026, 10:49:07 PM 4 DotnetFindPathLookupSetting
+Looking up vscode setting.
+
+10/7/2026, 10:49:07 PM 152 [696d5b1f-c79a-4335-a9eb-87dd2daf02c0] CacheGetEvent
+Checking the cache at 2026-10-07T20:49:07.152Z
+"C:\Program Files\dotnet\dotnet.exe" --list-runtimes --arch x64{"cwd":"c:\\Users\\przem\\.vscode\\extensions\\ms-dotnettools.vscode-dotnet-runtime-3.2.0\\dist","encoding":"utf8","env":"ALLUSERSPROFILE: C:\\ProgramData\nComSpec: C:\\WINDOWS\\system32\\cmd.exe\nCommonProgramFiles: C:\\Program Files\\Common Files\nDOTNET_MULTILEVEL_LOOKUP: 0\nELECTRON_RUN_AS_NODE: 1\nPATHEXT: .COM;.EXE;.BAT;.CMD;.VBS;.VBE;.JS;.JSE;.WSF;.WSH;.MSC\nPROCESSOR_ARCHITECTURE: AMD64\nPROCESSOR_IDENTIFIER: Intel64 Family 6 Model 142 Stepping 9, GenuineIntel\nPSModulePath: C:\\Program Files\\WindowsPowerShell\\Modules;C:\\WINDOWS\\system32\\WindowsPowerShell\\v1.0\\Modules\nPath: C:\\WINDOWS\\system32;C:\\WINDOWS;C:\\WINDOWS\\System32\\Wbem;C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\;C:\\WINDOWS\\System32\\OpenSSH\\;C:\\Program Files\\Bandizip\\;C:\\Program Files\\CMake\\bin;C:\\Program Files\\Git\\cmd;C:\\Program Files (x86)\\Intel\\Intel(R) Management Engine Components\\DAL;C:\\Program Files\\Intel\\Intel(R) Management Engine Components\\DAL;C:\\Program Files\\dotnet\\;C:\\Users\\przem\\AppData\\Local\\Programs\\Python\\Python313\\Scripts\\;C:\\Users\\przem\\AppData\\Local\\Programs\\Python\\Python313\\;C:\\Program Files\\platform-tools;C:\\Users\\przem\\AppData\\Local\\Microsoft\\WindowsApps;C:\\Users\\przem\\AppData\\Local\\Programs\\Microsoft VS Code\\bin;C:\\ProgramData\\przem\\GitHubDesktop\\bin;C:\\Users\\przem\\AppData\\Local\\GitHubDesktop\\bin;C:\\Users\\przem\\AppData\\Local\\Microsoft\\WinGet\\Links;\nProgramFiles: C:\\Program Files\nSystemRoot: C:\\WINDOWS\nVSCODE_CODE_CACHE_PATH: C:\\Users\\przem\\AppData\\Roaming\\Code\\CachedData\\8761a5560cfd65fdd19ce7e2bd18dab5c0a4d84e\nVSCODE_HANDLES_UNCAUGHT_ERRORS: true\nVSCODE_PID: 5476\nwindir: C:\\WINDOWS\nDOTNET_CLI_UI_LANGUAGE: en-US\nDOTNET_NOLOGO: true\n","shell":true}
+undefined
+true
+
+10/7/2026, 10:49:07 PM 153 [696d5b1f-c79a-4335-a9eb-87dd2daf02c0] CommandExecutionEvent
+Executing command "C:\Program Files\dotnet\dotnet.exe" --list-runtimes --arch x64 with options {"env":"ALLUSERSPROFILE: C:\\ProgramData\nComSpec: C:\\WINDOWS\\system32\\cmd.exe\nCommonProgramFiles: C:\\Program Files\\Common Files\nDOTNET_MULTILEVEL_LOOKUP: 0\nELECTRON_RUN_AS_NODE: 1\nPATHEXT: .COM;.EXE;.BAT;.CMD;.VBS;.VBE;.JS;.JSE;.WSF;.WSH;.MSC\nPROCESSOR_ARCHITECTURE: AMD64\nPROCESSOR_IDENTIFIER: Intel64 Family 6 Model 142 Stepping 9, GenuineIntel\nPSModulePath: C:\\Program Files\\WindowsPowerShell\\Modules;C:\\WINDOWS\\system32\\WindowsPowerShell\\v1.0\\Modules\nPath: C:\\WINDOWS\\system32;C:\\WINDOWS;C:\\WINDOWS\\System32\\Wbem;C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\;C:\\WINDOWS\\System32\\OpenSSH\\;C:\\Program Files\\Bandizip\\;C:\\Program Files\\CMake\\bin;C:\\Program Files\\Git\\cmd;C:\\Program Files (x86)\\Intel\\Intel(R) Management Engine Components\\DAL;C:\\Program Files\\Intel\\Intel(R) Management Engine Components\\DAL;C:\\Program Files\\dotnet\\;C:\\Users\\przem\\AppData\\Local\\Programs\\Python\\Python313\\Scripts\\;C:\\Users\\przem\\AppData\\Local\\Programs\\Python\\Python313\\;C:\\Program Files\\platform-tools;C:\\Users\\przem\\AppData\\Local\\Microsoft\\WindowsApps;C:\\Users\\przem\\AppData\\Local\\Programs\\Microsoft VS Code\\bin;C:\\ProgramData\\przem\\GitHubDesktop\\bin;C:\\Users\\przem\\AppData\\Local\\GitHubDesktop\\bin;C:\\Users\\przem\\AppData\\Local\\Microsoft\\WinGet\\Links;\nProgramFiles: C:\\Program Files\nSystemRoot: C:\\WINDOWS\nVSCODE_CODE_CACHE_PATH: C:\\Users\\przem\\AppData\\Roaming\\Code\\CachedData\\8761a5560cfd65fdd19ce7e2bd18dab5c0a4d84e\nVSCODE_HANDLES_UNCAUGHT_ERRORS: true\nVSCODE_PID: 5476\nwindir: C:\\WINDOWS\nDOTNET_CLI_UI_LANGUAGE: en-US\nDOTNET_NOLOGO: true\n","dotnetInstallToolCacheTtlMs":9000,"cwd":"c:\\Users\\przem\\.vscode\\extensions\\ms-dotnettools.vscode-dotnet-runtime-3.2.0\\dist","shell":true,"encoding":"utf8"}.
+
+10/7/2026, 10:49:07 PM 768 [696d5b1f-c79a-4335-a9eb-87dd2daf02c0] CommandExecutionTimer
+The command "C:\Program Files\dotnet\dotnet.exe" --list-runtimes --arch x64 took 571.90 ms to run.
+571.90
+ "C:\Program Files\dotnet\dotnet.exe" --list-runtimes --arch x64
+d86fcb2260fd940f8c2160f1e6b52a387b5f37461eb92d6496832c6ed4e29053
+
+10/7/2026, 10:49:07 PM 797 [696d5b1f-c79a-4335-a9eb-87dd2daf02c0] CommandExecutionStatusEvent
+The command "C:\Program Files\dotnet\dotnet.exe" --list-runtimes --arch x64 exited:
+0.
+
+10/7/2026, 10:49:07 PM 798 [696d5b1f-c79a-4335-a9eb-87dd2daf02c0] CommandExecutionStdOut
+The command "C:\Program Files\dotnet\dotnet.exe" --list-runtimes --arch x64 encountered stdout:
+Microsoft.NETCore.App 3.1.32 [C:\Program Files\dotnet\shared\Microsoft.NETCore.App]
+Microsoft.NETCore.App 6.0.31 [C:\Program Files\dotnet\shared\Microsoft.NETCore.App]
+Microsoft.NETCore.App 8.0.31 [C:\Program Files\dotnet\shared\Microsoft.NETCore.App]
+Microsoft.NETCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.NETCore.App]
+Microsoft.WindowsDesktop.App 3.1.32 [C:\Program Files\dotnet\shared\Microsoft.WindowsDesktop.App]
+Microsoft.WindowsDesktop.App 6.0.31 [C:\Program Files\dotnet\shared\Microsoft.WindowsDesktop.App]
+Microsoft.WindowsDesktop.App 8.0.31 [C:\Program Files\dotnet\shared\Microsoft.WindowsDesktop.App]
+Microsoft.WindowsDesktop.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.WindowsDesktop.App]
+
+
+10/7/2026, 10:49:07 PM 809 [696d5b1f-c79a-4335-a9eb-87dd2daf02c0] CommandExecutionStdError
+The command "C:\Program Files\dotnet\dotnet.exe" --list-runtimes --arch x64 encountered stderr:
+
+
+10/7/2026, 10:49:07 PM 810 [696d5b1f-c79a-4335-a9eb-87dd2daf02c0] CachePutEvent
+Adding to the cache at 2026-10-07T20:49:07.810Z
+"C:\Program Files\dotnet\dotnet.exe" --list-runtimes --arch x64{"cwd":"c:\\Users\\przem\\.vscode\\extensions\\ms-dotnettools.vscode-dotnet-runtime-3.2.0\\dist","encoding":"utf8","env":"ALLUSERSPROFILE: C:\\ProgramData\nComSpec: C:\\WINDOWS\\system32\\cmd.exe\nCommonProgramFiles: C:\\Program Files\\Common Files\nDOTNET_MULTILEVEL_LOOKUP: 0\nELECTRON_RUN_AS_NODE: 1\nPATHEXT: .COM;.EXE;.BAT;.CMD;.VBS;.VBE;.JS;.JSE;.WSF;.WSH;.MSC\nPROCESSOR_ARCHITECTURE: AMD64\nPROCESSOR_IDENTIFIER: Intel64 Family 6 Model 142 Stepping 9, GenuineIntel\nPSModulePath: C:\\Program Files\\WindowsPowerShell\\Modules;C:\\WINDOWS\\system32\\WindowsPowerShell\\v1.0\\Modules\nPath: C:\\WINDOWS\\system32;C:\\WINDOWS;C:\\WINDOWS\\System32\\Wbem;C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\;C:\\WINDOWS\\System32\\OpenSSH\\;C:\\Program Files\\Bandizip\\;C:\\Program Files\\CMake\\bin;C:\\Program Files\\Git\\cmd;C:\\Program Files (x86)\\Intel\\Intel(R) Management Engine Components\\DAL;C:\\Program Files\\Intel\\Intel(R) Management Engine Components\\DAL;C:\\Program Files\\dotnet\\;C:\\Users\\przem\\AppData\\Local\\Programs\\Python\\Python313\\Scripts\\;C:\\Users\\przem\\AppData\\Local\\Programs\\Python\\Python313\\;C:\\Program Files\\platform-tools;C:\\Users\\przem\\AppData\\Local\\Microsoft\\WindowsApps;C:\\Users\\przem\\AppData\\Local\\Programs\\Microsoft VS Code\\bin;C:\\ProgramData\\przem\\GitHubDesktop\\bin;C:\\Users\\przem\\AppData\\Local\\GitHubDesktop\\bin;C:\\Users\\przem\\AppData\\Local\\Microsoft\\WinGet\\Links;\nProgramFiles: C:\\Program Files\nSystemRoot: C:\\WINDOWS\nVSCODE_CODE_CACHE_PATH: C:\\Users\\przem\\AppData\\Roaming\\Code\\CachedData\\8761a5560cfd65fdd19ce7e2bd18dab5c0a4d84e\nVSCODE_HANDLES_UNCAUGHT_ERRORS: true\nVSCODE_PID: 5476\nwindir: C:\\WINDOWS\nDOTNET_CLI_UI_LANGUAGE: en-US\nDOTNET_NOLOGO: true\n","shell":true}
+{"stdout":"Microsoft.NETCore.App 3.1.32 [C:\\Program Files\\dotnet\\shared\\Microsoft.NETCore.App]\r\nMicrosoft.NETCore.App 6.0.31 [C:\\Program Files\\dotnet\\shared\\Microsoft.NETCore.App]\r\nMicrosoft.NETCore.App 8.0.31 [C:\\Program Files\\dotnet\\shared\\Microsoft.NETCore.App]\r\nMicrosoft.NETCore.App 10.0.12 [C:\\Program Files\\dotnet\\shared\\Microsoft.NETCore.App]\r\nMicrosoft.WindowsDesktop.App 3.1.32 [C:\\Program Files\\dotnet\\shared\\Microsoft.WindowsDesktop.App]\r\nMicrosoft.WindowsDesktop.App 6.0.31 [C:\\Program Files\\dotnet\\shared\\Microsoft.WindowsDesktop.App]\r\nMicrosoft.WindowsDesktop.App 8.0.31 [C:\\Program Files\\dotnet\\shared\\Microsoft.WindowsDesktop.App]\r\nMicrosoft.WindowsDesktop.App 10.0.12 [C:\\Program Files\\dotnet\\shared\\Microsoft.WindowsDesktop.App]\r\n","stderr":"","status":"0"}
+9000
+true
+
+10/7/2026, 10:49:07 PM 904 [696d5b1f-c79a-4335-a9eb-87dd2daf02c0] CacheGetEvent
+Checking the cache at 2026-10-07T20:49:07.904Z
+"C:\Program Files\dotnet\dotnet.exe" --list-runtimes --arch x64{"cwd":"c:\\Users\\przem\\.vscode\\extensions\\ms-dotnettools.vscode-dotnet-runtime-3.2.0\\dist","encoding":"utf8","env":"ALLUSERSPROFILE: C:\\ProgramData\nComSpec: C:\\WINDOWS\\system32\\cmd.exe\nCommonProgramFiles: C:\\Program Files\\Common Files\nDOTNET_MULTILEVEL_LOOKUP: 0\nELECTRON_RUN_AS_NODE: 1\nPATHEXT: .COM;.EXE;.BAT;.CMD;.VBS;.VBE;.JS;.JSE;.WSF;.WSH;.MSC\nPROCESSOR_ARCHITECTURE: AMD64\nPROCESSOR_IDENTIFIER: Intel64 Family 6 Model 142 Stepping 9, GenuineIntel\nPSModulePath: C:\\Program Files\\WindowsPowerShell\\Modules;C:\\WINDOWS\\system32\\WindowsPowerShell\\v1.0\\Modules\nPath: C:\\WINDOWS\\system32;C:\\WINDOWS;C:\\WINDOWS\\System32\\Wbem;C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\;C:\\WINDOWS\\System32\\OpenSSH\\;C:\\Program Files\\Bandizip\\;C:\\Program Files\\CMake\\bin;C:\\Program Files\\Git\\cmd;C:\\Program Files (x86)\\Intel\\Intel(R) Management Engine Components\\DAL;C:\\Program Files\\Intel\\Intel(R) Management Engine Components\\DAL;C:\\Program Files\\dotnet\\;C:\\Users\\przem\\AppData\\Local\\Programs\\Python\\Python313\\Scripts\\;C:\\Users\\przem\\AppData\\Local\\Programs\\Python\\Python313\\;C:\\Program Files\\platform-tools;C:\\Users\\przem\\AppData\\Local\\Microsoft\\WindowsApps;C:\\Users\\przem\\AppData\\Local\\Programs\\Microsoft VS Code\\bin;C:\\ProgramData\\przem\\GitHubDesktop\\bin;C:\\Users\\przem\\AppData\\Local\\GitHubDesktop\\bin;C:\\Users\\przem\\AppData\\Local\\Microsoft\\WinGet\\Links;\nProgramFiles: C:\\Program Files\nSystemRoot: C:\\WINDOWS\nVSCODE_CODE_CACHE_PATH: C:\\Users\\przem\\AppData\\Roaming\\Code\\CachedData\\8761a5560cfd65fdd19ce7e2bd18dab5c0a4d84e\nVSCODE_HANDLES_UNCAUGHT_ERRORS: true\nVSCODE_PID: 5476\nwindir: C:\\WINDOWS\nDOTNET_CLI_UI_LANGUAGE: en-US\nDOTNET_NOLOGO: true\n","shell":true}
+{"stdout":"Microsoft.NETCore.App 3.1.32 [C:\\Program Files\\dotnet\\shared\\Microsoft.NETCore.App]\r\nMicrosoft.NETCore.App 6.0.31 [C:\\Program Files\\dotnet\\shared\\Microsoft.NETCore.App]\r\nMicrosoft.NETCore.App 8.0.31 [C:\\Program Files\\dotnet\\shared\\Microsoft.NETCore.App]\r\nMicrosoft.NETCore.App 10.0.12 [C:\\Program Files\\dotnet\\shared\\Microsoft.NETCore.App]\r\nMicrosoft.WindowsDesktop.App 3.1.32 [C:\\Program Files\\dotnet\\shared\\Microsoft.WindowsDesktop.App]\r\nMicrosoft.WindowsDesktop.App 6.0.31 [C:\\Program Files\\dotnet\\shared\\Microsoft.WindowsDesktop.App]\r\nMicrosoft.WindowsDesktop.App 8.0.31 [C:\\Program Files\\dotnet\\shared\\Microsoft.WindowsDesktop.App]\r\nMicrosoft.WindowsDesktop.App 10.0.12 [C:\\Program Files\\dotnet\\shared\\Microsoft.WindowsDesktop.App]\r\n","stderr":"","status":"0"}
+true
+
+10/7/2026, 10:49:07 PM 908 [696d5b1f-c79a-4335-a9eb-87dd2daf02c0] CacheAliasCreated
+Aliasing command root "C:\Program Files\dotnet\dotnet.exe" to "C:\Program Files\dotnet\dotnet.exe"
+true
+
+10/7/2026, 10:49:07 PM 995 [696d5b1f-c79a-4335-a9eb-87dd2daf02c0] DotnetFindPathDidNotMeetCondition
+C:\Program Files\dotnet\dotnet.exe did NOT satisfy the conditions: hostArch: x64, requiredArch: x64,
+            required version: 10.0.5, required mode: aspnetcore
+
+10/7/2026, 10:49:08 PM 96 [696d5b1f-c79a-4335-a9eb-87dd2daf02c0] GenericDotnetLockEvent
+Action: session-07f05867fc Lock acquired: \\.\pipe\vscd-session-07f05867fc-sock
+2026-10-07T20:49:08.096Z
+session-07f05867fc
+session-07f05867fc
+true
+
+10/7/2026, 10:49:08 PM 96 [696d5b1f-c79a-4335-a9eb-87dd2daf02c0] GenericDotnetLockEvent
+Action: installedLk-49c4545c-461f-4ecd-992d-18e0e1835e79 Lock acquired: \\.\pipe\vscd-installedLk-sock
+2026-10-07T20:49:08.096Z
+installedLk
+installedLk
+true
+
+10/7/2026, 10:49:08 PM 105 [696d5b1f-c79a-4335-a9eb-87dd2daf02c0] MarkedInstallInUse
+Session session-07f05867fc marked C:\Program Files\dotnet\dotnet.exe as in use.
+Sessions: {"session-07f05867fc":["C:\\Program Files\\dotnet\\dotnet.exe"]}
+
+10/7/2026, 10:49:08 PM 379 [696d5b1f-c79a-4335-a9eb-87dd2daf02c0] GenericDotnetLockEvent
+Action: installedLk-49c4545c-461f-4ecd-992d-18e0e1835e79 Lock freed: \\.\pipe\vscd-installedLk-sock
+2026-10-07T20:49:08.379Z
+installedLk
+installedLk
+true
+
+10/7/2026, 10:49:08 PM 380 DotnetExistingPathResolutionCompleted
+C:\Program Files\dotnet\dotnet.exe
+
+10/7/2026, 10:49:08 PM 381 DotnetFindPathSettingFound
+Found vscode setting.
+
+10/7/2026, 10:49:08 PM 381 DotnetCommandSucceeded
+findPath
+

@@ -45,32 +45,37 @@ body {
 }
 
 #bar {
-     background: var(--toolbar-bg, linear-gradient(0deg, #232330, #282836));
-     height: 44px;
-     padding: 0 10px;
-     border-bottom: 1px solid var(--toolbar-border, #252532);
-     cursor: default;
-     display: flex;
-     align-items: center; /* vertically center the address bar and icons */
-     gap: 6px;
-  }
+      background: linear-gradient(0deg, #f1f1f1, #f1f1f1);
+      height: 44px;
+      padding: 0 8px;
+      border-bottom: 1px solid #b6b6b6;
+      cursor: default;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+   }
+
+.ch-win:hover { background: #e5e5e5; }
+.ch-close:hover { background: #e81123; }
+.ch-close:hover svg line { stroke: #ffffff; }
+.ch-close:hover svg rect { stroke: #ffffff; }
 
 #address {
 
-     border-radius: var(--radius-pill, 9999px);
-     border: none;
-     height: 40px;
-     flex: 1;
-     font-size: var(--font-size-md, 14px);
-     color: var(--address-text, #c4c2d0);
-     background-color: var(--address-bg, #1e1e2e);
-     display: inline-block;
-     padding: 0 18px;
-     margin: 0 6px;
-     user-select: auto !important;
-     -webkit-user-select: text !important;
-     outline: none;
-  }
+      border-radius: var(--radius-pill, 9999px);
+      border: 1px solid var(--address-border, #8a8a8a);
+      height: 32px;
+      flex: 1;
+      font-size: var(--font-size-md, 13px);
+      color: var(--address-text, #ffffff);
+      background-color: var(--address-bg, #303030);
+      display: inline-block;
+      padding: 0 16px;
+      margin: 0 6px;
+      user-select: auto !important;
+      -webkit-user-select: text !important;
+      outline: none;
+   }
 
 /* Ensure toolbar icons are vertically centered too */
 #bar .icon { align-self: center; }
@@ -450,11 +455,6 @@ header {
 /* Ensure toolbar icons render above the overlay */
 #bar .icon { position: relative; z-index: 1400; }
 
-/* Slight overlap to remove small gap between chrome-tabs and toolbar */
-/* Move the overlap to the tabs so the toolbar stays visually stable */
-.chrome-tabs { margin-bottom: -2px; }
-#bar { margin-top: 2px; }
-
 /* Remove any residual right-edge overlay artifact (fixes light tint in top-right corner) */
 /* Hide known overlay elements and ensure scroll corner is transparent */
 .chrome-tabs .chrome-tabs-bottom-bar,
@@ -691,4 +691,68 @@ body.session-restore-visible #bar {
 
 #toggle-inspector svg {
     transform: scale(0.81);
+}
+
+#chrome-titlebar {
+    display: flex;
+    align-items: stretch;
+    height: 40px;
+    background: linear-gradient(180deg, #353535 0%, #2d2d2d 100%);
+    border-bottom: 1px solid #151515;
+    position: relative;
+    -webkit-app-region: drag;
+}
+
+#chrome-tabs {
+    flex: 1;
+    display: flex;
+    align-items: flex-end;
+    min-width: 0;
+    -webkit-app-region: drag;
+}
+
+#window-controls {
+    display: flex;
+    align-items: stretch;
+    height: 40px;
+    -webkit-app-region: no-drag;
+}
+
+.window-control-btn {
+    background: transparent;
+    border: none;
+    width: 46px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #cccccc;
+    cursor: pointer;
+    padding: 0;
+    -webkit-app-region: no-drag;
+}
+
+.window-control-btn svg {
+    width: 14px;
+    height: 14px;
+    fill: currentColor;
+}
+
+.window-control-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+}
+
+.window-close-btn:hover {
+    background: #e81123;
+    color: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+    .window-control-btn:hover {
+        background: rgba(255, 255, 255, 0.1);
+    }
+    .window-close-btn:hover {
+        background: #e81123;
+    }
 }
