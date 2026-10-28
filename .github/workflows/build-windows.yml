@@ -1,18 +1,97 @@
 ﻿name: Build - Windows
 on:
   workflow_dispatch:
+    inputs:
+      sdk_url:
+        description: 'Override ULTRALIGHT_SDK_URL'
+        required: false
+        type: string
+      version:
+        description: 'Override ULTRALIGHT_VERSION'
+        required: false
+        type: string
+      webbrowser_version:
+        description: 'Override build version name'
+        required: false
+        type: string
+      create_installer:
+        description: 'Create Windows installer via CPack (NSIS)'
+        required: false
+        type: boolean
+      development_build:
+        description: 'Development build'
+        required: false
+        type: boolean
+        default: false
+      clean_build:
+        description: 'Clean build'
+        required: false
+        type: boolean
+        default: false
+  workflow_call:
+    inputs:
+      sdk_url:
+        required: false
+        type: string
+      version:
+        required: false
+        type: string
+      webbrowser_version:
+        required: false
+        type: string
+      create_installer:
+        required: false
+        type: boolean
+        default: false
+      development_build:
+        required: false
+        type: boolean
+        default: false
+      clean_build:
+        required: false
+        type: boolean
+        default: false
+  pull_request:
+
+permissions:
+  contents: read
+  actions: write
+
 jobs:
   build:
     runs-on: windows-2022
+    env:
+      ULTRALIGHT_SDK_URL: ${{ inputs.sdk_url || github.event.inputs.sdk_url }}
+      ULTRALIGHT_VERSION: ${{ inputs.version || github.event.inputs.version }}
+      WEBBROWSER_VERSION: ${{ inputs.webbrowser_version || github.event.inputs.webbrowser_version || 'dev' }}
+      CREATE_INSTALLER: ${{ inputs.create_installer || github.event.inputs.create_installer }}
+      DEVELOPMENT_BUILD: ${{ inputs.development_build || github.event.inputs.development_build || 'false' }}
+      CLEAN_BUILD: ${{ inputs.clean_build || github.event.inputs.clean_build || 'false' }}
+
     steps:
+      - name: Configure Git
+        shell: pwsh
+        run: |
+          git config --global core.longpaths true
+          git config --global core.autocrlf false
+
       - name: Setup MSVC
         uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x64
-      - uses: actions/checkout@v4
-      - name: Configure
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Configure CMake
         shell: pwsh
-        run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DULTRALIGHT_SDK_ROOT="data"
+        run: |
+          cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DULTRALIGHT_SDK_ROOT="data" -DBUILD_TESTING=OFF -DCMAKE_BUILD_TYPE=Release
+
       - name: Build
         shell: pwsh
-        run: cmake --build build --config Release
+        run: |
+          cmake --build build --config Release --parallel
