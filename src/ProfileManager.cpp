@@ -1,428 +1,316 @@
 #include "ProfileManager.h"
-
-#include "UI.h"
-#include "BookmarkStore.h"
+#include "Utils.h"
 #include <fstream>
-#include <sstream>
-#include <chrono>
-#include <random>
+#include <iostream>
 #include <algorithm>
-#include <cctype>
+#include <sstream>
 
-namespace {
-constexpr const char kProfilesFileName[] = "profiles.json";
-constexpr const char kDefaultProfileName[] = "Default";
-
-std::string GenerateRandomId() {
-  static std::random_device rd;
-  static std::mt19937 gen(rd());
-  static const char charset[] = "abcdefghijklmnopqrstuvwxyz0123456789";
-  std::uniform_int_distribution<> dis(0, sizeof(charset) - 2);
-  std::string id;
-  id.reserve(16);
-  for (int i = 0; i < 16; ++i) {
-    id += charset[dis(gen)];
+namespace
+{
+  bool ParseBoolLenient(const std::string &buffer, const std::string &key, bool fallback)
+  {
+    if (key.empty())
+      return fallback;
+    std::string needle = std::string("\"") + key + "\"";
+    auto pos = buffer.find(needle);
+    if (pos == std::string::npos)
+      return fallback;
+    pos = buffer.find(':', pos + needle.size());
+    if (pos == std::string::npos)
+      return fallback;
+    ++pos;
+    while (pos < buffer.size() && std::isspace(static_cast<unsigned char>(buffer[pos])))
+      ++pos;
+    if (pos >= buffer.size())
+      return fallback;
+    if (buffer.compare(pos, 4, "true") == 0)
+      return true;
+    if (buffer.compare(pos, 5, "false") == 0)
+      return false;
+    if (buffer[pos] == '1')
+      return true;
+    if (buffer[pos] == '0')
+      return false;
+    return fallback;
   }
-  return id;
-}
 
-std::string GetRandomAvatarColor() {
-  static const char* colors[] = {
-    "#6C63FF", "#FF6B6B", "#4ECDC4", "#FFD93D", "#A8E6CF",
-    "#FF8B94", "#C7CEEA", "#B8E0D2", "#F8B500", "#7DD3FC"
-  };
-  static std::random_device rd;
-  static std::mt19937 gen(rd());
-  static std::uniform_int_distribution<> dis(0, 9);
-  return colors[dis(gen)];
-}
-
-uint64_t GetCurrentTimestamp() {
-  return std::chrono::duration_cast<std::chrono::seconds>(
-    std::chrono::system_clock::now().time_since_epoch()).count();
-}
-
-std::string EscapeJsonString(const std::string& input) {
-  std::ostringstream ss;
-  for (char c : input) {
-    switch (c) {
-      case '"': ss << "\\\""; break;
-      case '\\': ss << "\\\\"; break;
-      case '\b': ss << "\\b"; break;
-      case '\f': ss << "\\f"; break;
-      case '\n': ss << "\\n"; break;
-      case '\r': ss << "\\r"; break;
-      case '\t': ss << "\\t"; break;
-      default:
-        if (static_cast<unsigned char>(c) < 0x20) {
-          ss << "\\u" << std::hex << std::setw(4) << std::setfill('0') << static_cast<int>(c);
-        } else {
-          ss << c;
+  std::string ParseStringLenient(const std::string &buffer, const std::string &key, const std::string &fallback)
+  {
+    if (key.empty())
+      return fallback;
+    std::string needle = std::string("\"") + key + "\"";
+    auto pos = buffer.find(needle);
+    if (pos == std::string::npos)
+      return fallback;
+    pos = buffer.find(':', pos + needle.size());
+    if (pos == std::string::npos)
+      return fallback;
+    ++pos;
+    while (pos < buffer.size() && std::isspace(static_cast<unsigned char>(buffer[pos])))
+      ++pos;
+    if (pos >= buffer.size() || buffer[pos] != '"')
+      return fallback;
+    ++pos;
+    std::string result;
+    while (pos < buffer.size() && buffer[pos] != '"')
+    {
+      if (buffer[pos] == '\\' && pos + 1 < buffer.size())
+      {
+        ++pos;
+        switch (buffer[pos])
+        {
+        case 'n': result += '\n'; break;
+        case 'r': result += '\r'; break;
+        case 't': result += '\t'; break;
+        case '"': result += '"'; break;
+        case '\\': result += '\\'; break;
+        default: result += buffer[pos]; break;
         }
+        ++pos;
+      }
+      else
+      {
+        result += buffer[pos];
+        ++pos;
+      }
     }
+    return result;
   }
-  return ss.str();
-}
+
+  std::string EscapeJsonString(const std::string &s)
+  {
+    std::string result;
+    for (char c : s)
+    {
+      switch (c)
+      {
+      case '"': result += "\\\""; break;
+      case '\\': result += "\\\\"; break;
+      case '\n': result += "\\n"; break;
+      case '\r': result += "\\r"; break;
+      case '\t': result += "\\t"; break;
+      default: result += c; break;
+      }
+    }
+    return result;
+  }
 }
 
-ProfileManager::ProfileManager(UI* ui) : ui_(ui) {
-  profiles_dir_ = GetProfilesDirectory();
+ProfileManager::ProfileManager()
+  : current_profile_("Default")
+{
 }
 
-ProfileManager::~ProfileManager() = default;
+ProfileManager::~ProfileManager()
+{
+}
 
-std::filesystem::path ProfileManager::GetProfilesDirectory() {
+void ProfileManager::Initialize(const std::filesystem::path &base_data_dir)
+{
+  base_data_dir_ = base_data_dir;
+  profiles_dir_ = base_data_dir_ / "profiles";
+
   std::error_code ec;
-  // Get the settings directory from UI (need to make it accessible)
-  std::filesystem::path base_dir = ui_->GetSettingsDirectoryForProfile();
-  std::filesystem::path profiles_dir = base_dir / "profiles";
-  std::filesystem::create_directories(profiles_dir, ec);
-  return profiles_dir;
+  std::filesystem::create_directories(profiles_dir_, ec);
+
+  LoadProfilesFromDisk();
+
+  if (profiles_.empty())
+  {
+    BrowserProfile default_profile;
+    default_profile.name = "Default";
+    default_profile.directory_name = "Default";
+    default_profile.is_default = true;
+    profiles_.push_back(default_profile);
+    current_profile_ = "Default";
+    SaveProfilesToDisk();
+  }
+  else if (current_profile_.empty() || !ProfileExists(current_profile_))
+  {
+    current_profile_ = profiles_[0].name;
+  }
 }
 
-void ProfileManager::LoadProfiles() {
-  profiles_.clear();
-  current_profile_id_.clear();
-
-  std::filesystem::path profiles_file = profiles_dir_ / kProfilesFileName;
-  if (!std::filesystem::exists(profiles_file)) {
-    return;
+std::filesystem::path ProfileManager::GetProfileDataDirectory(const std::string &profile_name) const
+{
+  for (const auto &p : profiles_)
+  {
+    if (p.name == profile_name)
+      return profiles_dir_ / p.directory_name;
   }
+  return profiles_dir_ / "Default";
+}
 
-  std::ifstream in(profiles_file);
-  if (!in.is_open()) {
-    return;
-  }
+std::filesystem::path ProfileManager::GetCurrentProfileDataDirectory() const
+{
+  return GetProfileDataDirectory(current_profile_);
+}
 
-  std::ostringstream ss;
-  ss << in.rdbuf();
-  std::string content = ss.str();
-  in.close();
+bool ProfileManager::CreateProfile(const std::string &name)
+{
+  if (name.empty() || ProfileExists(name))
+    return false;
 
-  if (content.empty()) {
-    return;
-  }
+  std::string dir_name = SanitizeDirectoryName(name);
+  if (dir_name.empty())
+    dir_name = "Profile";
 
-  // Simple JSON parsing for profiles
-  size_t profiles_pos = content.find("\"profiles\"");
-  if (profiles_pos == std::string::npos) {
-    return;
-  }
-
-  size_t array_start = content.find('[', profiles_pos);
-  if (array_start == std::string::npos) {
-    return;
-  }
-
-  int depth = 0;
-  size_t array_end = std::string::npos;
-  for (size_t i = array_start; i < content.size(); ++i) {
-    if (content[i] == '[' || content[i] == '{') {
-      ++depth;
-    } else if (content[i] == ']' || content[i] == '}') {
-      --depth;
-      if (depth == 0) {
-        array_end = i;
+  // Ensure unique directory name
+  std::string unique_dir = dir_name;
+  int counter = 1;
+  while (true)
+  {
+    bool exists = false;
+    for (const auto &p : profiles_)
+    {
+      if (p.directory_name == unique_dir)
+      {
+        exists = true;
         break;
       }
     }
+    if (!exists)
+      break;
+    unique_dir = dir_name + std::to_string(counter);
+    counter++;
   }
 
-  if (array_end == std::string::npos) {
-    return;
+  std::error_code ec;
+  std::filesystem::create_directories(profiles_dir_ / unique_dir, ec);
+
+  BrowserProfile new_profile;
+  new_profile.name = name;
+  new_profile.directory_name = unique_dir;
+  new_profile.is_default = false;
+  profiles_.push_back(new_profile);
+
+  SaveProfilesToDisk();
+  return true;
+}
+
+bool ProfileManager::SwitchProfile(const std::string &name)
+{
+  if (!ProfileExists(name))
+    return false;
+  current_profile_ = name;
+  SaveProfilesToDisk();
+  return true;
+}
+
+bool ProfileManager::DeleteProfile(const std::string &name)
+{
+  if (name == "Default" || !ProfileExists(name))
+    return false;
+
+  auto it = std::find_if(profiles_.begin(), profiles_.end(),
+    [&name](const BrowserProfile &p) { return p.name == name; });
+
+  if (it != profiles_.end())
+  {
+    std::error_code ec;
+    std::filesystem::remove_all(profiles_dir_ / it->directory_name, ec);
+    profiles_.erase(it);
+
+    if (current_profile_ == name && !profiles_.empty())
+      current_profile_ = profiles_[0].name;
+
+    SaveProfilesToDisk();
+    return true;
   }
+  return false;
+}
 
-  std::string array_content = content.substr(array_start + 1, array_end - array_start - 1);
-
-  // Parse each profile object
-  size_t pos = 0;
-  while (pos < array_content.size()) {
-    size_t obj_start = array_content.find('{', pos);
-    if (obj_start == std::string::npos) break;
-    int obj_depth = 0;
-    size_t obj_end = std::string::npos;
-    for (size_t i = obj_start; i < array_content.size(); ++i) {
-      if (array_content[i] == '{') ++obj_depth;
-      else if (array_content[i] == '}') {
-        --obj_depth;
-        if (obj_depth == 0) {
-          obj_end = i;
-          break;
-        }
-      }
-    }
-    if (obj_end == std::string::npos) break;
-
-    std::string obj = array_content.substr(obj_start, obj_end - obj_start + 1);
-
-    Profile profile;
-    auto extractField = [&obj](const std::string& key, std::string& out) {
-      size_t key_pos = obj.find("\"" + key + "\"");
-      if (key_pos == std::string::npos) return false;
-      size_t colon = obj.find(':', key_pos);
-      if (colon == std::string::npos) return false;
-      size_t quote1 = obj.find('"', colon);
-      if (quote1 == std::string::npos) return false;
-      size_t quote2 = obj.find('"', quote1 + 1);
-      if (quote2 == std::string::npos) return false;
-      out = obj.substr(quote1 + 1, quote2 - quote1 - 1);
+bool ProfileManager::ProfileExists(const std::string &name) const
+{
+  for (const auto &p : profiles_)
+  {
+    if (p.name == name)
       return true;
-    };
+  }
+  return false;
+}
 
-    auto extractBoolField = [&obj](const std::string& key, bool& out) {
-      size_t key_pos = obj.find("\"" + key + "\"");
-      if (key_pos == std::string::npos) return false;
-      size_t colon = obj.find(':', key_pos);
-      if (colon == std::string::npos) return false;
-      size_t val_start = colon + 1;
-      while (val_start < obj.size() && std::isspace(static_cast<unsigned char>(obj[val_start]))) ++val_start;
-      if (obj.compare(val_start, 4, "true") == 0) {
-        out = true;
-        return true;
-      }
-      if (obj.compare(val_start, 5, "false") == 0) {
-        out = false;
-        return true;
-      }
-      return false;
-    };
+std::string ProfileManager::SanitizeDirectoryName(const std::string &name) const
+{
+  std::string result;
+  for (char c : name)
+  {
+    if (std::isalnum(static_cast<unsigned char>(c)) || c == '-' || c == '_' || c == ' ')
+      result += c;
+    else
+      result += '_';
+  }
+  // Trim
+  size_t start = result.find_first_not_of(" ");
+  if (start == std::string::npos)
+    return "";
+  size_t end = result.find_last_not_of(" ");
+  return result.substr(start, end - start + 1);
+}
 
-    auto extractIntField = [&obj](const std::string& key, uint64_t& out) {
-      size_t key_pos = obj.find("\"" + key + "\"");
-      if (key_pos == std::string::npos) return false;
-      size_t colon = obj.find(':', key_pos);
-      if (colon == std::string::npos) return false;
-      size_t val_start = colon + 1;
-      while (val_start < obj.size() && std::isspace(static_cast<unsigned char>(obj[val_start]))) ++val_start;
-      size_t val_end = val_start;
-      while (val_end < obj.size() && std::isdigit(static_cast<unsigned char>(obj[val_end]))) ++val_end;
-      if (val_end > val_start) {
-        out = std::stoull(obj.substr(val_start, val_end - val_start));
-        return true;
-      }
-      return false;
-    };
+void ProfileManager::SaveProfilesToDisk()
+{
+  std::string json = "{\n  \"current_profile\": \"" + EscapeJsonString(current_profile_) + "\",\n  \"profiles\": [\n";
+  for (size_t i = 0; i < profiles_.size(); ++i)
+  {
+    json += "    {\"name\": \"" + EscapeJsonString(profiles_[i].name) + "\", ";
+    json += "\"directory\": \"" + EscapeJsonString(profiles_[i].directory_name) + "\", ";
+    json += "\"is_default\": ";
+    json += profiles_[i].is_default ? "true" : "false";
+    json += "}";
+    if (i + 1 < profiles_.size())
+      json += ",";
+    json += "\n";
+  }
+  json += "  ]\n}\n";
 
-    extractField("id", profile.id);
-    extractField("name", profile.name);
-    extractField("avatar_color", profile.avatar_color);
-    extractBoolField("is_default", profile.is_default);
-    std::string data_dir_str;
-    if (extractField("data_dir", data_dir_str)) {
-      profile.data_dir = data_dir_str;
-    }
-    extractIntField("created_at", profile.created_at);
-    extractIntField("last_used_at", profile.last_used_at);
+  std::ofstream out(profiles_dir_ / "profiles.json");
+  if (out.is_open())
+    out << json;
+}
 
-    if (!profile.id.empty()) {
-      profiles_.push_back(std::move(profile));
-    }
+void ProfileManager::LoadProfilesFromDisk()
+{
+  auto path = profiles_dir_ / "profiles.json";
+  std::ifstream in(path);
+  if (!in.is_open())
+    return;
+
+  std::stringstream buffer;
+  buffer << in.rdbuf();
+  std::string content = buffer.str();
+
+  current_profile_ = ParseStringLenient(content, "current_profile", "Default");
+
+  // Simple profile array parsing
+  size_t arr_start = content.find("\"profiles\"");
+  if (arr_start == std::string::npos)
+    return;
+  arr_start = content.find('[', arr_start);
+  if (arr_start == std::string::npos)
+    return;
+
+  size_t pos = arr_start + 1;
+  while (pos < content.size())
+  {
+    // Find next object
+    pos = content.find('{', pos);
+    if (pos == std::string::npos || pos > content.find(']', arr_start))
+      break;
+
+    size_t obj_end = content.find('}', pos);
+    if (obj_end == std::string::npos)
+      break;
+
+    std::string obj = content.substr(pos, obj_end - pos + 1);
+    BrowserProfile p;
+    p.name = ParseStringLenient(obj, "name", "");
+    p.directory_name = ParseStringLenient(obj, "directory", "");
+    p.is_default = ParseBoolLenient(obj, "is_default", false);
+
+    if (!p.name.empty() && !p.directory_name.empty())
+      profiles_.push_back(p);
 
     pos = obj_end + 1;
   }
-
-  // Find current profile
-  size_t current_pos = content.find("\"current_profile\"");
-  if (current_pos != std::string::npos) {
-    size_t colon = content.find(':', current_pos);
-    size_t quote1 = content.find('"', colon);
-    size_t quote2 = content.find('"', quote1 + 1);
-    if (quote1 != std::string::npos && quote2 != std::string::npos) {
-      current_profile_id_ = content.substr(quote1 + 1, quote2 - quote1 - 1);
-    }
-  }
-
-  size_t multi_pos = content.find("\"multi_profile_enabled\"");
-  if (multi_pos != std::string::npos) {
-    size_t colon = content.find(':', multi_pos);
-    if (colon != std::string::npos) {
-      size_t val_start = colon + 1;
-      while (val_start < content.size() && std::isspace(static_cast<unsigned char>(content[val_start]))) ++val_start;
-      if (content.compare(val_start, 4, "true") == 0) {
-        multi_profile_enabled_ = true;
-      }
-    }
-  }
-
-  // Ensure there's a default profile
-  if (profiles_.empty()) {
-    Profile default_profile;
-    default_profile.id = "default";
-    default_profile.name = kDefaultProfileName;
-    default_profile.avatar_color = GetRandomAvatarColor();
-    default_profile.is_default = true;
-    default_profile.data_dir = GetProfileDataDir("default");
-    default_profile.created_at = GetCurrentTimestamp();
-    default_profile.last_used_at = GetCurrentTimestamp();
-    profiles_.push_back(std::move(default_profile));
-    current_profile_id_ = "default";
-    SaveProfiles();
-  }
-
-  // Ensure current profile exists
-  bool found = false;
-  for (const auto& p : profiles_) {
-    if (p.id == current_profile_id_) {
-      found = true;
-      break;
-    }
-  }
-  if (!found && !profiles_.empty()) {
-    current_profile_id_ = profiles_[0].id;
-    SaveProfiles();
-  }
-}
-
-void ProfileManager::SaveProfiles() const {
-  std::filesystem::path profiles_file = profiles_dir_ / kProfilesFileName;
-  std::ofstream out(profiles_file);
-  if (!out.is_open()) {
-    return;
-  }
-
-  out << "{\n";
-  out << "  \"profiles\": [\n";
-  for (size_t i = 0; i < profiles_.size(); ++i) {
-    const auto& p = profiles_[i];
-    if (i > 0) out << ",\n";
-    out << "    {\n";
-    out << "      \"id\": \"" << EscapeJsonString(p.id) << "\",\n";
-    out << "      \"name\": \"" << EscapeJsonString(p.name) << "\",\n";
-    out << "      \"avatar_color\": \"" << EscapeJsonString(p.avatar_color) << "\",\n";
-    out << "      \"is_default\": " << (p.is_default ? "true" : "false") << ",\n";
-    out << "      \"data_dir\": \"" << EscapeJsonString(p.data_dir.string()) << "\",\n";
-    out << "      \"created_at\": " << p.created_at << ",\n";
-    out << "      \"last_used_at\": " << p.last_used_at << "\n";
-    out << "    }";
-  }
-  out << "\n  ],\n";
-  out << "  \"current_profile\": \"" << EscapeJsonString(current_profile_id_) << "\",\n";
-  out << "  \"multi_profile_enabled\": " << (multi_profile_enabled_ ? "true" : "false") << "\n";
-  out << "}\n";
-  out.flush();
-}
-
-bool ProfileManager::Initialize() {
-  LoadProfiles();
-  return true;
-}
-
-const Profile* ProfileManager::GetCurrentProfile() const {
-  for (const auto& p : profiles_) {
-    if (p.id == current_profile_id_) {
-      return &p;
-    }
-  }
-  return nullptr;
-}
-
-std::string ProfileManager::GetCurrentProfileId() const {
-  return current_profile_id_;
-}
-
-Profile* ProfileManager::CreateProfile(const std::string& name, const std::string& avatar_color) {
-  Profile profile;
-  profile.id = GenerateRandomId();
-  profile.name = name.empty() ? "Profile " + std::to_string(profiles_.size() + 1) : name;
-  profile.avatar_color = avatar_color.empty() ? GetRandomAvatarColor() : avatar_color;
-  profile.is_default = false;
-  profile.data_dir = GetProfileDataDir(profile.id);
-  profile.created_at = GetCurrentTimestamp();
-  profile.last_used_at = GetCurrentTimestamp();
-
-  profiles_.push_back(std::move(profile));
-  SaveProfiles();
-  return &profiles_.back();
-}
-
-bool ProfileManager::SwitchProfile(const std::string& profile_id) {
-  for (auto& p : profiles_) {
-    if (p.id == profile_id) {
-      if (p.id == current_profile_id_) {
-        return true; // Already current
-      }
-
-      current_profile_id_ = profile_id;
-      p.last_used_at = GetCurrentTimestamp();
-      SaveProfiles();
-
-      // Notify UI to reload with new profile data
-      if (ui_) {
-        // This would trigger a browser restart or profile data reload
-        // For now, just save the setting
-      }
-      return true;
-    }
-  }
-  return false;
-}
-
-bool ProfileManager::DeleteProfile(const std::string& profile_id) {
-  if (profiles_.size() <= 1) {
-    return false; // Cannot delete the last profile
-  }
-
-  auto it = std::find_if(profiles_.begin(), profiles_.end(),
-    [&profile_id](const Profile& p) { return p.id == profile_id; });
-
-  if (it == profiles_.end()) {
-    return false;
-  }
-
-  if (it->is_default) {
-    return false; // Cannot delete default profile
-  }
-
-  bool was_current = (it->id == current_profile_id_);
-  profiles_.erase(it);
-
-  if (was_current) {
-    current_profile_id_ = profiles_[0].id;
-  }
-
-  SaveProfiles();
-  return true;
-}
-
-bool ProfileManager::UpdateProfile(const std::string& profile_id, const std::string& name, const std::string& avatar_color) {
-  for (auto& p : profiles_) {
-    if (p.id == profile_id) {
-      if (!name.empty()) p.name = name;
-      if (!avatar_color.empty()) p.avatar_color = avatar_color;
-      SaveProfiles();
-      return true;
-    }
-  }
-  return false;
-}
-
-std::filesystem::path ProfileManager::GetProfileDataDir(const std::string& profile_id) const {
-  return profiles_dir_ / profile_id;
-}
-
-std::string ProfileManager::GenerateProfileId() const {
-  return GenerateRandomId();
-}
-
-std::string ProfileManager::GetDefaultAvatarColor() const {
-  return GetRandomAvatarColor();
-}
-
-std::string ProfileManager::ExportCurrentProfile() const {
-  const Profile* current = GetCurrentProfile();
-  if (!current) {
-    return "{}";
-  }
-
-  std::ostringstream ss;
-  ss << "{\n";
-  ss << "  \"id\": \"" << EscapeJsonString(current->id) << "\",\n";
-  ss << "  \"name\": \"" << EscapeJsonString(current->name) << "\",\n";
-  ss << "  \"avatar_color\": \"" << EscapeJsonString(current->avatar_color) << "\",\n";
-  ss << "  \"is_default\": " << (current->is_default ? "true" : "false") << ",\n";
-  ss << "  \"data_dir\": \"" << EscapeJsonString(current->data_dir.string()) << "\",\n";
-  ss << "  \"created_at\": " << current->created_at << ",\n";
-  ss << "  \"last_used_at\": " << current->last_used_at << "\n";
-  ss << "}";
-  return ss.str();
 }

@@ -376,37 +376,27 @@ Major feature sync bringing all development improvements to the stable branch.
 - Persistent History
 - Bookmark System + Import/Export
 - Directories Organization
-- Accessibility Enhancements (Reduce Motion, High Contrast, Caret Browsing)
-- Performance Optimizations (Overlay, Smooth Scrolling)
+- Accessibility Enhancements
+- Performance Optimizations
 - Tab Groups
-- Reader Mode (F9 shortcut, content extraction)
-- Custom Themes (native import/export)
-- DRM Detection Improvements (EME + license monitoring)
 - Multi-Profile Support
+- Reader Mode
+- Screenshot Tool
+- Custom Themes
+- Sync Service
+- DRM Detection Improvements
 
 </td>
 <td width="33%" valign="top">
 
 ### 🚧 In Progress
-- Bookmark System + Import/Export
-- Directories Organization
-- Accessibility Enhancements
-- Performance Optimizations
-- Tab Groups
+- (None - all items completed)
 
 </td>
 <td width="33%" valign="top">
 
 ### 🔮 Planned
-
-- Multi-Profile Support (?)
-- Reader Mode
-- Screenshot Tool (?)
-- Custom Themes
-- Sync Service (?)
-- DRM Detection Improvements
-
-
+- (None - roadmap complete)
 </td>
 </tr>
 </table>

@@ -1,0 +1,8 @@
+2026-10-07 22:48:54.239 [info] Starting: Activating C# extension (version 2.160.4)
+2026-10-07 22:49:01.215 [info] Completed: Activating C# extension (version 2.160.4) (6976ms)
+2026-10-07 22:49:03.914 [info] The C# extension version 2.160.4 installed at 'c:\Users\przem\.vscode\extensions\ms-dotnettools.csharp-2.160.4-win32-x64'.
+2026-10-07 22:49:04.795 [info] SDK install view suppressed by user setting
+2026-10-07 22:49:04.932 [info] Default solution: 
+2026-10-07 22:49:05.854 [info] Not in internal population; skipping registration of 'Upgrade Agent extension installation'.
+2026-10-07 22:49:07.466 [info] No C# project is found in the workspace.
+2026-10-07 22:50:19.650 [error] #getSession: Failed to running method. Error: 'ClientAuthError: user_canceled: See https://aka.ms/msal.js.errors#user_canceled for details'

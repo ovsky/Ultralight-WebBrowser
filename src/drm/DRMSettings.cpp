@@ -52,7 +52,7 @@ namespace drm
             std::vector<std::filesystem::path> candidates;
             auto storage_dir = ResolveStorageDirectory(settings);
             candidates.push_back(storage_dir / kCatalogFilename);
-            candidates.push_back(std::filesystem::path("assets") / "drm_sites.json");
+            candidates.push_back(std::filesystem::path("assets/data") / "drm_sites.json");
 
             for (const auto &candidate : candidates)
             {

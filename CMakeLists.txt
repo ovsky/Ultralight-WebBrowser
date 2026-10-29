@@ -81,6 +81,8 @@ set(SOURCES
 	"src/PasswordManager.cpp"
 	"src/ProfileManager.h"
 	"src/ProfileManager.cpp"
+	"src/SyncService.h"
+	"src/SyncService.cpp"
 	"src/Tab.h"
 	"src/Tab.cpp"
 	"src/UI.h"

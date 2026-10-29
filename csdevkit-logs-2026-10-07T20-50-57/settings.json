@@ -1,0 +1,215 @@
+{
+  "csdevkit": {},
+  "dotnet": {
+    "autoDetect": "on",
+    "preferVisualStudioCodeFileSystemWatcher": false,
+    "enablePublishIssuesToProblems": false,
+    "projectsystem": {
+      "useNewMemoryOptimization": false,
+      "enableLanguageServiceCache": false,
+      "cacheInProjectFolder": false
+    },
+    "testWindow": {
+      "enableNextTest": false,
+      "disableAutoDiscovery": false,
+      "disableBuildOnRefresh": false,
+      "disableBuildOnRun": false,
+      "skipTargetFrameworkCompatibilityCheck": false,
+      "enableTestExplorerDiff": false,
+      "discoveryTimeoutInSec": 900
+    },
+    "workingWithTestSignedSdk": false,
+    "useLegacyDotnetResolution": false,
+    "suppressSdkInstallView": true,
+    "debug": {
+      "suppressInvalidDebugTypeWarning": false
+    },
+    "defaultSolution": "",
+    "autoInsert": {
+      "enableAutoInsert": true
+    },
+    "formatting": {
+      "organizeImportsOnFormat": true
+    },
+    "typeMembers": {
+      "memberInsertionLocation": "withOtherMembersOfTheSameKind",
+      "propertyGenerationBehavior": "preferThrowingProperties"
+    },
+    "codeLens": {
+      "enableReferencesCodeLens": true,
+      "enableTestsCodeLens": true
+    },
+    "completion": {
+      "showCompletionItemsFromUnimportedNamespaces": true,
+      "showNameCompletionSuggestions": "true",
+      "provideRegexCompletions": "true",
+      "triggerCompletionInArgumentLists": "true"
+    },
+    "backgroundAnalysis": {
+      "analyzerDiagnosticsScope": "openFiles",
+      "compilerDiagnosticsScope": "openFiles"
+    },
+    "diagnostics": {
+      "reportInformationAsHint": true
+    },
+    "highlighting": {
+      "highlightRelatedRegexComponents": "true",
+      "highlightRelatedJsonComponents": "true"
+    },
+    "inlayHints": {
+      "enableInlayHintsForIndexerParameters": false,
+      "enableInlayHintsForLiteralParameters": false,
+      "enableInlayHintsForObjectCreationParameters": false,
+      "enableInlayHintsForOtherParameters": false,
+      "enableInlayHintsForParameters": false,
+      "suppressInlayHintsForParametersThatDifferOnlyBySuffix": false,
+      "suppressInlayHintsForParametersThatMatchArgumentName": false,
+      "suppressInlayHintsForParametersThatMatchMethodIntent": false
+    },
+    "navigation": {
+      "navigateToDecompiledSources": "true",
+      "navigateToSourceLinkAndEmbeddedSources": "true"
+    },
+    "quickInfo": {
+      "showRemarksInQuickInfo": "true"
+    },
+    "symbolSearch": {
+      "searchReferenceAssemblies": true
+    },
+    "unitTestDebuggingOptions": {},
+    "unitTests": {
+      "runSettingsPath": ""
+    },
+    "preferCSharpExtension": false,
+    "server": {
+      "path": "",
+      "componentPaths": {},
+      "startTimeout": 120000,
+      "waitForDebugger": false,
+      "extensionPaths": null,
+      "crashDumpPath": null,
+      "suppressLspErrorToasts": false,
+      "suppressMiscellaneousFilesToasts": false,
+      "useServerGC": true,
+      "environmentVariables": {},
+      "sourceGeneratorExecution": "Balanced",
+      "useOmnisharp": false
+    },
+    "enableXamlTools": true,
+    "projects": {
+      "binaryLogPath": null,
+      "enableAutomaticRestore": true,
+      "enableFileBasedPrograms": true,
+      "enableFileBasedProgramsWhenAmbiguous": false
+    },
+    "fileBasedApps": {
+      "enableAutomaticDiscovery": false
+    },
+    "help": {
+      "firstView": "gettingStarted"
+    }
+  },
+  "csharp": {
+    "experimental": {
+      "debug": {
+        "hotReload": false
+      }
+    },
+    "debug": {
+      "hotReloadOnSave": true,
+      "hotReloadVerbosity": "minimal",
+      "debugConsoleVerbosity": "minimal",
+      "stopAtEntry": false,
+      "console": "internalConsole",
+      "sourceFileMap": {},
+      "justMyCode": true,
+      "requireExactSource": true,
+      "enableStepFiltering": true,
+      "logging": {
+        "exceptions": true,
+        "moduleLoad": true,
+        "programOutput": true,
+        "browserStdOut": true,
+        "elapsedTiming": false,
+        "threadExit": false,
+        "processExit": true,
+        "engineLogging": false,
+        "diagnosticsLog": {
+          "protocolMessages": false,
+          "dispatcherMessages": "none",
+          "debugEngineAPITracing": "none",
+          "debugRuntimeEventTracing": false,
+          "expressionEvaluationTracing": false,
+          "startDebuggingTracing": false
+        },
+        "consoleUsageMessage": true
+      },
+      "suppressJITOptimizations": false,
+      "symbolOptions": {
+        "searchPaths": [],
+        "searchMicrosoftSymbolServer": false,
+        "searchNuGetOrgSymbolServer": false,
+        "cachePath": "",
+        "moduleFilter": {
+          "mode": "loadAllButExcluded",
+          "excludedModules": [],
+          "includedModules": [],
+          "includeSymbolsNextToModules": true,
+          "includeSymbolsOnDemand": true
+        }
+      },
+      "expressionEvaluationOptions": {
+        "allowImplicitFuncEval": true,
+        "allowToString": true,
+        "allowFastEvaluate": true,
+        "showRawValues": false
+      },
+      "terminateChildProcesses": false
+    },
+    "preview": {
+      "improvedLaunchExperience": true
+    },
+    "inlayHints": {
+      "enableInlayHintsForImplicitObjectCreation": false,
+      "enableInlayHintsForImplicitVariableTypes": false,
+      "enableInlayHintsForLambdaParameterTypes": false,
+      "enableInlayHintsForTypes": false
+    },
+    "wasm": {
+      "debug": {
+        "useVSDbg": true
+      }
+    },
+    "format": {
+      "enable": true
+    },
+    "suppressDotnetInstallWarning": false,
+    "suppressDotnetRestoreNotification": false,
+    "suppressProjectJsonWarning": true,
+    "suppressBuildAssetsNotification": true,
+    "suppressHiddenDiagnostics": true,
+    "referencesCodeLens": {
+      "filteredSymbols": []
+    },
+    "maxProjectFileCountForDiagnosticAnalysis": 1000,
+    "semanticHighlighting": {
+      "enabled": true
+    },
+    "showOmnisharpLogOnError": true
+  },
+  "razor": {
+    "format": {
+      "codeBlockBraceOnNextLine": false,
+      "attributeIndentStyle": "alignWithFirst",
+      "enable": true
+    },
+    "completion": {
+      "commitElementsWithSpace": false
+    },
+    "plugin": {
+      "path": ""
+    },
+    "devmode": false,
+    "disableBlazorDebugPrompt": true
+  }
+}

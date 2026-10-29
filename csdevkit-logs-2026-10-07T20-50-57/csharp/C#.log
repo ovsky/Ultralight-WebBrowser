@@ -1,0 +1,191 @@
+2026-10-07 22:48:53.673 [info] Installing C# dependencies...
+2026-10-07 22:48:53.673 [info] 
+
+2026-10-07 22:48:53.673 [info] Platform: win32, x86_64
+
+2026-10-07 22:48:53.673 [info] 
+
+2026-10-07 22:48:53.673 [info] Downloading package 'Language server for Roslyn Copilot integration' 
+2026-10-07 22:48:54.755 [info] (47 KB)
+2026-10-07 22:48:54.755 [info] .......
+2026-10-07 22:48:54.877 [info] .......
+2026-10-07 22:48:54.885 [info] ......
+2026-10-07 22:48:54.901 [info]  Done!
+
+2026-10-07 22:48:54.941 [info] Validating download...
+
+2026-10-07 22:48:54.942 [info] Integrity Check succeeded.
+
+2026-10-07 22:48:54.979 [info] Installing package 'Language server for Roslyn Copilot integration'
+
+2026-10-07 22:48:54.980 [info] 
+
+2026-10-07 22:48:56.213 [info] Downloading package 'VSWebAssemblyBridge (Platform Agnostic)' 
+2026-10-07 22:48:57.893 [info] (4590 KB)
+2026-10-07 22:48:57.893 [info] .
+2026-10-07 22:48:57.895 [info] 
+2026-10-07 22:48:57.904 [info] 
+2026-10-07 22:48:57.934 [info] 
+2026-10-07 22:48:57.953 [info] 
+2026-10-07 22:48:57.954 [info] .
+2026-10-07 22:48:57.980 [info] 
+2026-10-07 22:48:58.000 [info] 
+2026-10-07 22:48:58.015 [info] 
+2026-10-07 22:48:58.031 [info] 
+2026-10-07 22:48:58.032 [info] .
+2026-10-07 22:48:58.039 [info] 
+2026-10-07 22:48:58.050 [info] 
+2026-10-07 22:48:58.051 [info] 
+2026-10-07 22:48:58.052 [info] 
+2026-10-07 22:48:58.067 [info] .
+2026-10-07 22:48:58.068 [info] 
+2026-10-07 22:48:58.084 [info] 
+2026-10-07 22:48:58.085 [info] 
+2026-10-07 22:48:58.109 [info] 
+2026-10-07 22:48:58.122 [info] .
+2026-10-07 22:48:58.141 [info] 
+2026-10-07 22:48:58.168 [info] 
+2026-10-07 22:48:58.168 [info] 
+2026-10-07 22:48:58.169 [info] 
+2026-10-07 22:48:58.170 [info] .
+2026-10-07 22:48:58.196 [info] 
+2026-10-07 22:48:58.198 [info] 
+2026-10-07 22:48:58.215 [info] 
+2026-10-07 22:48:58.216 [info] 
+2026-10-07 22:48:58.217 [info] .
+2026-10-07 22:48:58.218 [info] 
+2026-10-07 22:48:58.233 [info] 
+2026-10-07 22:48:58.246 [info] 
+2026-10-07 22:48:58.266 [info] 
+2026-10-07 22:48:58.267 [info] .
+2026-10-07 22:48:58.269 [info] 
+2026-10-07 22:48:58.283 [info] 
+2026-10-07 22:48:58.283 [info] 
+2026-10-07 22:48:58.299 [info] 
+2026-10-07 22:48:58.300 [info] .
+2026-10-07 22:48:58.300 [info] 
+2026-10-07 22:48:58.313 [info] 
+2026-10-07 22:48:58.315 [info] 
+2026-10-07 22:48:58.323 [info] 
+2026-10-07 22:48:58.327 [info] .
+2026-10-07 22:48:58.358 [info] 
+2026-10-07 22:48:58.359 [info] 
+2026-10-07 22:48:58.370 [info] 
+2026-10-07 22:48:58.371 [info] 
+2026-10-07 22:48:58.381 [info] .
+2026-10-07 22:48:58.400 [info] 
+2026-10-07 22:48:58.428 [info] 
+2026-10-07 22:48:58.438 [info] 
+2026-10-07 22:48:58.438 [info] 
+2026-10-07 22:48:58.453 [info] .
+2026-10-07 22:48:58.459 [info] 
+2026-10-07 22:48:58.483 [info] 
+2026-10-07 22:48:58.516 [info] 
+2026-10-07 22:48:58.527 [info] 
+2026-10-07 22:48:58.567 [info] .
+2026-10-07 22:48:58.568 [info] 
+2026-10-07 22:48:58.582 [info] 
+2026-10-07 22:48:58.583 [info] 
+2026-10-07 22:48:58.584 [info] 
+2026-10-07 22:48:58.594 [info] .
+2026-10-07 22:48:58.595 [info] 
+2026-10-07 22:48:58.604 [info] 
+2026-10-07 22:48:58.604 [info] 
+2026-10-07 22:48:58.624 [info] 
+2026-10-07 22:48:58.645 [info] .
+2026-10-07 22:48:58.659 [info] 
+2026-10-07 22:48:58.660 [info] 
+2026-10-07 22:48:58.681 [info] 
+2026-10-07 22:48:58.682 [info] 
+2026-10-07 22:48:58.694 [info] .
+2026-10-07 22:48:58.710 [info] 
+2026-10-07 22:48:58.724 [info] 
+2026-10-07 22:48:58.743 [info] 
+2026-10-07 22:48:58.744 [info] 
+2026-10-07 22:48:58.745 [info] .
+2026-10-07 22:48:58.746 [info] 
+2026-10-07 22:48:58.746 [info] 
+2026-10-07 22:48:58.747 [info] 
+2026-10-07 22:48:58.747 [info] 
+2026-10-07 22:48:58.777 [info] .
+2026-10-07 22:48:58.778 [info] 
+2026-10-07 22:48:58.794 [info] 
+2026-10-07 22:48:58.796 [info] 
+2026-10-07 22:48:58.812 [info] 
+2026-10-07 22:48:58.813 [info] .
+2026-10-07 22:48:58.813 [info] 
+2026-10-07 22:48:58.833 [info] 
+2026-10-07 22:48:58.834 [info] 
+2026-10-07 22:48:58.852 [info] 
+2026-10-07 22:48:58.853 [info] .
+2026-10-07 22:48:58.855 [info] 
+2026-10-07 22:48:58.878 [info] 
+2026-10-07 22:48:58.879 [info] 
+2026-10-07 22:48:58.899 [info] 
+2026-10-07 22:48:58.944 [info]  Done!
+
+2026-10-07 22:48:59.085 [info] Validating download...
+
+2026-10-07 22:48:59.087 [info] Integrity Check succeeded.
+
+2026-10-07 22:48:59.092 [info] Installing package 'VSWebAssemblyBridge (Platform Agnostic)'
+
+2026-10-07 22:48:59.096 [info] 
+
+2026-10-07 22:49:01.123 [info] Finished
+
+2026-10-07 22:49:01.124 [info] 
+
+2026-10-07 22:49:06.702 [info] Locating .NET runtime version 10.0.5
+2026-10-07 22:49:08.386 [info] Dotnet path: C:\Program Files\dotnet\dotnet.exe
+2026-10-07 22:49:08.386 [info] Activating C# + C# Dev Kit...
+2026-10-07 22:49:11.388 [info] info: Program[0]
+2026-10-07 22:49:11.389 [info]       Server information:
+2026-10-07 22:49:11.412 [info] info: Program[0]
+2026-10-07 22:49:11.413 [info]         Assembly informational version: 5.12.0-1.26452.1+e42c0e42e89e41522593d0816707e71781ecbee2
+2026-10-07 22:49:11.414 [info] info: Program[0]
+2026-10-07 22:49:11.414 [info]         Executable path: c:\Users\przem\.vscode\extensions\ms-dotnettools.csharp-2.160.4-win32-x64\.roslyn\Microsoft.CodeAnalysis.LanguageServer.exe
+2026-10-07 22:49:11.505 [info] info: Program[0]
+2026-10-07 22:49:11.505 [info]         Process ID: 428
+2026-10-07 22:49:23.939 [info] info: Program[0]
+2026-10-07 22:49:23.940 [info]       Monitoring client process 15716 for exit
+2026-10-07 22:49:23.940 [info] info: Program[0]
+2026-10-07 22:49:23.940 [info]       Language server initialized
+2026-10-07 22:49:29.344 [info] [initialized] [Microsoft.CodeAnalysis.LanguageServer.FileBasedPrograms.FileBasedProgramsEntryPointDiscovery] Finished discovery in 'c:\Projects\AI\Ultralight-WebBrowser' in 269 milliseconds
+2026-10-07 22:49:29.413 [info] [Razor.LanguageClient.Cohost.RazorCohostDynamicRegistrationService] Requesting 27 Razor cohost registrations.
+2026-10-07 22:49:29.690 [info] [initialized] [Razor]  Razor extension startup finished.
+2026-10-07 22:49:32.544 [error] [textDocument/diagnostic] [Microsoft.CodeAnalysis.MSBuild.BuildHostProcessManager] Failed to initialize BuildHost process. Microsoft.CodeAnalysis.MSBuild.RemoteInvocationException: An exception of type System.InvalidOperationException was thrown: Error while calling hostfxr function hostfxr_resolve_sdk2. Error code: -2147450725 Detailed error: No .NET SDKs were found.
+
+Download a .NET SDK:
+https://aka.ms/dotnet/download
+
+Learn about SDK resolution:
+https://aka.ms/dotnet/sdk-not-found
+
+   at Microsoft.Build.Locator.DotNetSdkLocationHelper.<GetInstances>g__GetSdkFromGlobalSettings|5_2(String workingDirectory)
+   at Microsoft.Build.Locator.DotNetSdkLocationHelper.GetInstances(String workingDirectory, Boolean allowQueryAllRuntimes, Boolean allowAllDotnetLocations)+MoveNext()
+   at Microsoft.Build.Locator.MSBuildLocator.GetInstances(VisualStudioInstanceQueryOptions options)+MoveNext()
+   at System.Linq.Enumerable.IEnumerableWhereIterator`1.TryGetFirst(Boolean& found)
+   at System.Linq.Enumerable.FirstOrDefault[TSource](IEnumerable`1 source)
+   at Microsoft.CodeAnalysis.MSBuild.NetCoreBuildHost.FindMSBuild(String projectOrSolutionFilePath, Boolean includeUnloadableInstances)
+   at Microsoft.CodeAnalysis.MSBuild.AbstractBuildHost.FindBestMSBuild(String projectOrSolutionFilePath)
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+   at System.Reflection.MethodBaseInvoker.InvokeDirectByRefWithFewArgs(Object obj, Span`1 copyOfArgs, BindingFlags invokeAttr)
+2026-10-07 22:49:32.644 [error] [textDocument/diagnostic] [FileBasedProgramsProjectSystem] Error while loading c:\Projects\destroy\Assets\gemini-code-1791405900944.cs: Exception thrown: Microsoft.CodeAnalysis.MSBuild.RemoteInvocationException: An exception of type System.InvalidOperationException was thrown: Error while calling hostfxr function hostfxr_resolve_sdk2. Error code: -2147450725 Detailed error: No .NET SDKs were found.
+
+Download a .NET SDK:
+https://aka.ms/dotnet/download
+
+Learn about SDK resolution:
+https://aka.ms/dotnet/sdk-not-found
+
+   at Microsoft.Build.Locator.DotNetSdkLocationHelper.<GetInstances>g__GetSdkFromGlobalSettings|5_2(String workingDirectory)
+   at Microsoft.Build.Locator.DotNetSdkLocationHelper.GetInstances(String workingDirectory, Boolean allowQueryAllRuntimes, Boolean allowAllDotnetLocations)+MoveNext()
+   at Microsoft.Build.Locator.MSBuildLocator.GetInstances(VisualStudioInstanceQueryOptions options)+MoveNext()
+   at System.Linq.Enumerable.IEnumerableWhereIterator`1.TryGetFirst(Boolean& found)
+   at System.Linq.Enumerable.FirstOrDefault[TSource](IEnumerable`1 source)
+   at Microsoft.CodeAnalysis.MSBuild.NetCoreBuildHost.FindMSBuild(String projectOrSolutionFilePath, Boolean includeUnloadableInstances)
+   at Microsoft.CodeAnalysis.MSBuild.AbstractBuildHost.FindBestMSBuild(String projectOrSolutionFilePath)
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+   at System.Reflection.MethodBaseInvoker.InvokeDirectByRefWithFewArgs(Object obj, Span`1 copyOfArgs, BindingFlags invokeAttr)
+2026-10-07 22:49:32.707 [info] [textDocument/diagnostic] [FileBasedProgramsProjectSystem] Completed (re)load of 1 project(s) in 00:00:02.0820991

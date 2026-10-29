@@ -1,84 +1,58 @@
 #pragma once
-
 #include <string>
 #include <vector>
 #include <filesystem>
-#include <memory>
-#include <map>
-#include <ultralight/RefPtr.h>
 
-namespace ultralight {
-class Window;
-}
-
-class UI;
-class BookmarkStore;
-class SettingsManager;
-
-struct Profile {
-  std::string id;
+struct BrowserProfile
+{
   std::string name;
-  std::string avatar_color; // Hex color for avatar
+  std::string directory_name;
   bool is_default = false;
-  std::filesystem::path data_dir;
-  uint64_t created_at = 0;
-  uint64_t last_used_at = 0;
 };
 
-class ProfileManager {
+class ProfileManager
+{
 public:
-  explicit ProfileManager(UI* ui);
+  ProfileManager();
   ~ProfileManager();
 
-  // Initialize profiles from disk
-  bool Initialize();
+  // Initialize: load profiles from disk, create "Default" if none exist
+  void Initialize(const std::filesystem::path &base_data_dir);
 
   // Get all profiles
-  const std::vector<Profile>& GetProfiles() const { return profiles_; }
+  const std::vector<BrowserProfile> &GetProfiles() const { return profiles_; }
 
-  // Get current profile
-  const Profile* GetCurrentProfile() const;
+  // Get the current active profile name
+  const std::string &GetCurrentProfileName() const { return current_profile_; }
 
-  // Get current profile ID
-  std::string GetCurrentProfileId() const;
+  // Get the base data directory (parent of all profiles)
+  const std::filesystem::path &GetBaseDataDirectory() const { return base_data_dir_; }
+
+  // Get the data directory for a specific profile
+  std::filesystem::path GetProfileDataDirectory(const std::string &profile_name) const;
+
+  // Get the data directory for the current profile
+  std::filesystem::path GetCurrentProfileDataDirectory() const;
 
   // Create a new profile
-  Profile* CreateProfile(const std::string& name, const std::string& avatar_color = "");
+  bool CreateProfile(const std::string &name);
 
-  // Switch to a profile
-  bool SwitchProfile(const std::string& profile_id);
+  // Switch to a different profile (returns true if successful)
+  bool SwitchProfile(const std::string &name);
 
-  // Delete a profile
-  bool DeleteProfile(const std::string& profile_id);
+  // Delete a profile (cannot delete the default profile)
+  bool DeleteProfile(const std::string &name);
 
-  // Update profile info
-  bool UpdateProfile(const std::string& profile_id, const std::string& name, const std::string& avatar_color);
-
-  // Get profile data directory
-  std::filesystem::path GetProfileDataDir(const std::string& profile_id) const;
-
-  // Get profiles directory
-  std::filesystem::path GetProfilesDirectory();
-
-  // Check if multi-profile is enabled
-  bool IsMultiProfileEnabled() const { return multi_profile_enabled_; }
-  void SetMultiProfileEnabled(bool enabled) { multi_profile_enabled_ = enabled; }
-
-  // Export current profile to JSON
-  std::string ExportCurrentProfile() const;
-
-  // Save profiles to disk
-  void SaveProfiles() const;
+  // Check if a profile exists
+  bool ProfileExists(const std::string &name) const;
 
 private:
-  UI* ui_;
-  std::vector<Profile> profiles_;
-  std::string current_profile_id_;
-  bool multi_profile_enabled_ = false;
-  std::filesystem::path profiles_dir_;
+  void SaveProfilesToDisk();
+  void LoadProfilesFromDisk();
+  std::string SanitizeDirectoryName(const std::string &name) const;
 
-  void LoadProfiles();
-  void SaveProfilesImpl() const;
-  std::string GenerateProfileId() const;
-  std::string GetDefaultAvatarColor() const;
+  std::filesystem::path base_data_dir_;
+  std::filesystem::path profiles_dir_;
+  std::vector<BrowserProfile> profiles_;
+  std::string current_profile_;
 };

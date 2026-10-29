@@ -1,0 +1,81 @@
+VS Code Version : 1.122.1
+OS              : Windows_NT 10.0.26200 x64
+Node            : 22.22.1
+V8              : 14.2.231.22-electron.0
+Electron        : 39.8.8
+
+--- dotnet --info ---
+
+Host:
+  Version:      10.0.12
+  Architecture: x64
+  Commit:       95017c711e
+  RID:          win-x64
+
+.NET SDKs installed:
+  No SDKs were found.
+
+.NET runtimes installed:
+  Microsoft.NETCore.App 3.1.32 [C:\Program Files\dotnet\shared\Microsoft.NETCore.App]
+  Microsoft.NETCore.App 6.0.31 [C:\Program Files\dotnet\shared\Microsoft.NETCore.App]
+  Microsoft.NETCore.App 8.0.31 [C:\Program Files\dotnet\shared\Microsoft.NETCore.App]
+  Microsoft.NETCore.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.NETCore.App]
+  Microsoft.WindowsDesktop.App 3.1.32 [C:\Program Files\dotnet\shared\Microsoft.WindowsDesktop.App]
+  Microsoft.WindowsDesktop.App 6.0.31 [C:\Program Files\dotnet\shared\Microsoft.WindowsDesktop.App]
+  Microsoft.WindowsDesktop.App 8.0.31 [C:\Program Files\dotnet\shared\Microsoft.WindowsDesktop.App]
+  Microsoft.WindowsDesktop.App 10.0.12 [C:\Program Files\dotnet\shared\Microsoft.WindowsDesktop.App]
+
+Other architectures found:
+  x86   [C:\Program Files (x86)\dotnet]
+    registered at [HKLM\SOFTWARE\dotnet\Setup\InstalledVersions\x86\InstallLocation]
+
+Environment variables:
+  Not set
+
+global.json file:
+  Not found
+
+Learn more:
+  https://aka.ms/dotnet/info
+
+Download .NET:
+  https://aka.ms/dotnet/download
+
+
+--- Installed Extensions ---
+  anseki.vscode-color  0.4.5
+  Anthropic.claude-code  2.1.292
+  awwsky.regionmarker  0.3.7
+  chouzz.vscode-better-align  1.4.5
+  christian-kohler.path-intellisense  2.10.0
+  CiberTurtle.sharp-icons  1.2.11
+  codeflow-studio.claude-code-extension  0.1.10
+  davidbabel.antigravity-icons-supercharged-gray  1.0.3
+  DrDesten.asi-glsl  2.1.2
+  eamodio.gitlens  19.3.0
+  google.geminicodeassist  2.95.0
+  josefpihrt-vscode.roslynator  5.0.1
+  kilocode.kilo-code  7.8.8
+  kleber-swf.unity-code-snippets  2.4.0
+  lucasazzola.vscode-csproj  0.7.0
+  mechatroner.rainbow-csv  3.24.1
+  miguelsolorio.fluent-icons  0.0.19
+  ms-dotnettools.csdevkit  3.40.210
+  ms-dotnettools.csharp  2.160.4
+  ms-dotnettools.vscode-dotnet-pack  1.0.13
+  ms-dotnettools.vscode-dotnet-runtime  3.2.0
+  ms-python.debugpy  2026.6.0
+  ms-python.python  2026.8.0
+  ms-python.vscode-pylance  2026.4.1
+  ms-python.vscode-python-envs  1.38.0
+  ms-vscode.cmake-tools  1.25.2
+  ms-vscode.cpptools  1.34.4
+  ms-vscode.cpptools-extension-pack  1.5.1
+  ms-vscode.powershell  2025.4.0
+  redhat.vscode-xml  0.29.3
+  seunghwan.smartsemicolon  1.0.3
+  shadeview.shadeview  3.0.0
+  SmukkeKim.theme-setimonokai  0.0.2
+  spencerjames.csharpen  0.5.9
+  streetsidesoftware.code-spell-checker  4.9.3
+  visualstudiotoolsforunity.vstuc  1.3.2

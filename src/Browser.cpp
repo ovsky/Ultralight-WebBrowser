@@ -21,8 +21,8 @@ Browser::Browser()
   config.scroll_timer_delay = 1.0 / 90.0;
   app_ = App::Create(settings, config);
 
-  window_ = Window::Create(app_->main_monitor(), 1024, 768, false,
-                           kWindowFlags_Resizable | kWindowFlags_Titled | kWindowFlags_Maximizable);
+  window_ = Window::Create(app_->main_monitor(), 1100, 760, false,
+                            kWindowFlags_Resizable | kWindowFlags_Borderless | kWindowFlags_Maximizable);
   window_->SetTitle("Ultralight | Web Browser");
 
 #if defined(_WIN32)
@@ -72,7 +72,7 @@ Browser::Browser()
   // Initialize ad/tracker blocker with default blocklist and additional filters
   adblock_ = std::make_unique<AdBlocker>();
   adblock_->Clear();
-  adblock_->LoadBlocklist("assets/blocklist.txt", true);
+  adblock_->LoadBlocklist("assets/data/blocklist.txt", true);
   adblock_->LoadBlocklistsInDirectory("assets/filters");
   // Enable debug logging to diagnose login issues
   adblock_->set_log_all_requests(true);
