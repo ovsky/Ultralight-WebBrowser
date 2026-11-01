@@ -130,31 +130,37 @@ jobs:
           }
 
           # Auto-detect latest Windows SDK from base-sdk branch
-          $API = "https://api.github.com/repos/${{ github.repository }}/contents/sdks?ref=base-sdk"
-          Write-Host "Querying GitHub API for SDK files: $API"
-          $RESP = Invoke-RestMethod -Headers @{"Authorization" = "Bearer ${{ github.token }}"; "Accept" = "application/vnd.github+json"} -Uri $API
-          $NAMES = $RESP | ForEach-Object { $_.name }
-          Write-Host "Found files in sdks branch:"
-          $NAMES | ForEach-Object { Write-Host "  $_" }
+          try {
+            $API = "https://api.github.com/repos/${{ github.repository }}/contents/sdks?ref=base-sdk"
+            Write-Host "Querying GitHub API for SDK files: $API"
+            $RESP = Invoke-RestMethod -Headers @{"Authorization" = "Bearer ${{ github.token }}"; "Accept" = "application/vnd.github+json"} -Uri $API -ErrorAction Stop
+            $NAMES = $RESP | ForEach-Object { $_.name }
+            Write-Host "Found files in sdks branch:"
+            $NAMES | ForEach-Object { Write-Host "  $_" }
 
-          # Filter for Windows SDKs
-          $WIN_LIST = $NAMES | Where-Object { $_ -match 'ultralight.*sdk.*-windows-.*\.7z$' }
-          if ($WIN_LIST.Count -eq 0) {
-            Write-Host "::error::No Windows SDK found in base-sdk branch"
+            # Filter for Windows SDKs
+            $WIN_LIST = $NAMES | Where-Object { $_ -match 'ultralight.*sdk.*-windows-.*\.7z$' }
+            if ($WIN_LIST.Count -eq 0) {
+              Write-Host "Warning: No Windows SDK found in base-sdk branch, falling back to local data/ folder"
+              echo "present=false" >> $env:GITHUB_OUTPUT
+              exit 0
+            }
+
+            Write-Host "Windows SDK candidates:"
+            $WIN_LIST | ForEach-Object { Write-Host "  $_" }
+
+            # Pick latest version
+            $URL = $WIN_LIST | Sort-Object -Descending | Select-Object -First 1
+            $BASE_RAW = "https://raw.githubusercontent.com/${{ github.repository }}/base-sdk/sdks"
+            $FULL_URL = "$BASE_RAW/$URL"
+            Write-Host "Auto-detected latest Windows SDK URL=$FULL_URL"
+            echo "ULTRALIGHT_SDK_URL=$FULL_URL" >> $env:GITHUB_ENV
+            echo "present=true" >> $env:GITHUB_OUTPUT
+          } catch {
+            Write-Host "Warning: SDK auto-detection failed: $($_.Exception.Message), falling back to local data/ folder"
             echo "present=false" >> $env:GITHUB_OUTPUT
-            exit 1
+            exit 0
           }
-
-          Write-Host "Windows SDK candidates:"
-          $WIN_LIST | ForEach-Object { Write-Host "  $_" }
-
-          # Pick latest version
-          $URL = $WIN_LIST | Sort-Object -Descending | Select-Object -First 1
-          $BASE_RAW = "https://raw.githubusercontent.com/${{ github.repository }}/base-sdk/sdks"
-          $FULL_URL = "$BASE_RAW/$URL"
-          Write-Host "Auto-detected latest Windows SDK URL=$FULL_URL"
-          echo "ULTRALIGHT_SDK_URL=$FULL_URL" >> $env:GITHUB_ENV
-          echo "present=true" >> $env:GITHUB_OUTPUT
 
       - name: Download and Extract Windows SDK
         if: steps.prep_sdk.outputs.present == 'true'
@@ -178,8 +184,10 @@ jobs:
           }
 
           if (-not $ROOT) {
-            Write-Host "::error::Windows SDK root not found after extraction"
-            exit 1
+            Write-Host "Warning: Windows SDK root not found after extraction, falling back to local data/ folder"
+            echo "ULTRALIGHT_SDK_ROOT=data" >> $env:GITHUB_ENV
+            echo "${env:ULTRALIGHT_VERSION:-Unknown}" > build/ultralight_sdk_version.txt
+            exit 0
           }
 
           Write-Host "Using ULTRALIGHT_SDK_ROOT=$ROOT"
@@ -187,14 +195,17 @@ jobs:
           echo "${env:ULTRALIGHT_VERSION:-Unknown}" > build/ultralight_sdk_version.txt
 
       - name: Configure CMake
-        if: steps.prep_sdk.outputs.present == 'true'
         shell: pwsh
         run: |
-          Write-Host "Configuring with ULTRALIGHT_SDK_ROOT=$env:ULTRALIGHT_SDK_ROOT"
-          cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DULTRALIGHT_SDK_ROOT="$env:ULTRALIGHT_SDK_ROOT" -DBUILD_TESTING=OFF -DCMAKE_BUILD_TYPE=Release
+          if (-not [string]::IsNullOrEmpty("${env:ULTRALIGHT_SDK_ROOT}")) {
+            Write-Host "Configuring with ULTRALIGHT_SDK_ROOT=$env:ULTRALIGHT_SDK_ROOT"
+            cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DULTRALIGHT_SDK_ROOT="$env:ULTRALIGHT_SDK_ROOT" -DBUILD_TESTING=OFF -DCMAKE_BUILD_TYPE=Release
+          } else {
+            Write-Host "Configuring with local data/ folder"
+            cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DULTRALIGHT_SDK_ROOT="data" -DBUILD_TESTING=OFF -DCMAKE_BUILD_TYPE=Release
+          }
 
       - name: Build
-        if: steps.prep_sdk.outputs.present == 'true'
         shell: pwsh
         run: |
           cmake --build build --config Release --parallel
