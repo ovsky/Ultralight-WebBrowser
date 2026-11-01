@@ -3,51 +3,57 @@ on:
   workflow_dispatch:
     inputs:
       sdk_url:
-        description: 'Override ULTRALIGHT_SDK_URL'
+        description: "Override ULTRALIGHT_SDK_URL (raw .7z in base-sdk branch)"
         required: false
         type: string
       version:
-        description: 'Override ULTRALIGHT_VERSION'
+        description: "Override ULTRALIGHT_VERSION (eg. 1.4.0)"
         required: false
         type: string
       webbrowser_version:
-        description: 'Override build version name'
+        description: "Override build version name (default 'dev')"
         required: false
         type: string
       create_installer:
-        description: 'Create Windows installer via CPack (NSIS)'
+        description: "Create Windows installer via CPack (NSIS)"
         required: false
         type: boolean
       development_build:
-        description: 'Development build'
+        description: "Development build"
         required: false
         type: boolean
         default: false
       clean_build:
-        description: 'Clean build'
+        description: "Clean build"
         required: false
         type: boolean
         default: false
   workflow_call:
     inputs:
       sdk_url:
+        description: "Override ULTRALIGHT_SDK_URL (raw .7z in base-sdk branch)"
         required: false
         type: string
       version:
+        description: "Override ULTRALIGHT_VERSION (eg. 1.4.0)"
         required: false
         type: string
       webbrowser_version:
+        description: "Override build version name (default 'dev')"
         required: false
         type: string
       create_installer:
+        description: "Create Windows installer via CPack (NSIS)"
         required: false
         type: boolean
         default: false
       development_build:
+        description: "Development build"
         required: false
         type: boolean
         default: false
       clean_build:
+        description: "Clean build"
         required: false
         type: boolean
         default: false
@@ -86,12 +92,109 @@ jobs:
           submodules: recursive
           fetch-depth: 1
 
-      - name: Configure CMake
+      - name: Setup CMake Build Cache
+        if: inputs.clean_build != true
+        uses: actions/cache@v4
+        with:
+          path: |
+            build
+            !build/CMakeFiles
+            !build/Testing
+            !build/_CPack_Packages
+            !build/**/*.zip
+            !build/**/*.7z
+          key: ${{ runner.os }}-cmake-${{ hashFiles('CMakeLists.txt') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-cmake-${{ hashFiles('CMakeLists.txt') }}-
+            ${{ runner.os }}-cmake-
+
+      - name: Setup SDK Cache
+        if: inputs.clean_build != true
+        uses: actions/cache@v4
+        with:
+          path: |
+            data
+            ultralight-sdk-*.7z
+          key: ${{ runner.os }}-sdk-${{ env.ULTRALIGHT_VERSION || 'latest' }}
+          restore-keys: |
+            ${{ runner.os }}-sdk-
+
+      - name: Detect ULTRALIGHT_SDK_URL from repo base-sdk branch (Windows)
+        id: prep_sdk
         shell: pwsh
         run: |
-          cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DULTRALIGHT_SDK_ROOT="data" -DBUILD_TESTING=OFF -DCMAKE_BUILD_TYPE=Release
+          if (-not [string]::IsNullOrEmpty("${env:ULTRALIGHT_SDK_URL}")) {
+            Write-Host "ULTRALIGHT_SDK_URL already provided: $env:ULTRALIGHT_SDK_URL"
+            echo "present=true" >> $env:GITHUB_OUTPUT
+            exit 0
+          }
+
+          # Auto-detect latest Windows SDK from base-sdk branch
+          $API = "https://api.github.com/repos/${{ github.repository }}/contents/sdks?ref=base-sdk"
+          Write-Host "Querying GitHub API for SDK files: $API"
+          $RESP = Invoke-RestMethod -Headers @{"Authorization" = "Bearer ${{ github.token }}"; "Accept" = "application/vnd.github+json"} -Uri $API
+          $NAMES = $RESP | ForEach-Object { $_.name }
+          Write-Host "Found files in sdks branch:"
+          $NAMES | ForEach-Object { Write-Host "  $_" }
+
+          # Filter for Windows SDKs
+          $WIN_LIST = $NAMES | Where-Object { $_ -match 'ultralight.*sdk.*-windows-.*\.7z$' }
+          if ($WIN_LIST.Count -eq 0) {
+            Write-Host "::error::No Windows SDK found in base-sdk branch"
+            echo "present=false" >> $env:GITHUB_OUTPUT
+            exit 1
+          }
+
+          Write-Host "Windows SDK candidates:"
+          $WIN_LIST | ForEach-Object { Write-Host "  $_" }
+
+          # Pick latest version
+          $URL = $WIN_LIST | Sort-Object -Descending | Select-Object -First 1
+          $BASE_RAW = "https://raw.githubusercontent.com/${{ github.repository }}/base-sdk/sdks"
+          $FULL_URL = "$BASE_RAW/$URL"
+          Write-Host "Auto-detected latest Windows SDK URL=$FULL_URL"
+          echo "ULTRALIGHT_SDK_URL=$FULL_URL" >> $env:GITHUB_ENV
+          echo "present=true" >> $env:GITHUB_OUTPUT
+
+      - name: Download and Extract Windows SDK
+        if: steps.prep_sdk.outputs.present == 'true'
+        shell: pwsh
+        run: |
+          $SDK_URL = "${env:ULTRALIGHT_SDK_URL}"
+          $PKG = "ultralight-sdk-windows.7z"
+          Write-Host "Downloading SDK from: $SDK_URL"
+          Invoke-WebRequest -Uri $SDK_URL -OutFile $PKG
+
+          Write-Host "Extracting SDK..."
+          7z x -y -o"${env:RUNNER_TEMP}\sdk-extract" $PKG
+
+          # Find SDK root (directory containing both include and lib/bin)
+          $ROOT = ""
+          Get-ChildItem -Path "${env:RUNNER_TEMP}\sdk-extract" -Recurse -Directory | ForEach-Object {
+            $dir = $_.FullName
+            if (Test-Path "$dir\include") -and (Test-Path "$dir\lib" -or Test-Path "$dir\bin") {
+              $ROOT = $dir
+            }
+          }
+
+          if (-not $ROOT) {
+            Write-Host "::error::Windows SDK root not found after extraction"
+            exit 1
+          }
+
+          Write-Host "Using ULTRALIGHT_SDK_ROOT=$ROOT"
+          echo "ULTRALIGHT_SDK_ROOT=$ROOT" >> $env:GITHUB_ENV
+          echo "${env:ULTRALIGHT_VERSION:-Unknown}" > build/ultralight_sdk_version.txt
+
+      - name: Configure CMake
+        if: steps.prep_sdk.outputs.present == 'true'
+        shell: pwsh
+        run: |
+          Write-Host "Configuring with ULTRALIGHT_SDK_ROOT=$env:ULTRALIGHT_SDK_ROOT"
+          cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DULTRALIGHT_SDK_ROOT="$env:ULTRALIGHT_SDK_ROOT" -DBUILD_TESTING=OFF -DCMAKE_BUILD_TYPE=Release
 
       - name: Build
+        if: steps.prep_sdk.outputs.present == 'true'
         shell: pwsh
         run: |
           cmake --build build --config Release --parallel
